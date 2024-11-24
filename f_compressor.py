@@ -14,14 +14,14 @@ class TCompressor(tc):
 
     def ReadMap(self, filename):              
         super().ReadMap(filename)
-        nc_values, beta_values, wc_array = self.ReadNcBetaCrossTable(self.mapfile, 'MASS FLOW')
-        nc_values, beta_values, eta_array = self.ReadNcBetaCrossTable(self.mapfile, 'EFFICIENCY')
-        nc_values, beta_values, pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'PRESSURE RATIO')   
+        self.nc_values, self.beta_values, self.wc_array = self.ReadNcBetaCrossTable(self.mapfile, 'MASS FLOW')
+        self.nc_values, self.beta_values, self.eta_array = self.ReadNcBetaCrossTable(self.mapfile, 'EFFICIENCY')
+        self.nc_values, self.beta_values, self.pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'PRESSURE RATIO')   
 
         # define the interpolation functions allow extrapolation (i.e. fill value = None)
-        self.get_map_wc = RegularGridInterpolator((nc_values, beta_values), wc_array, bounds_error=False, fill_value=None)
-        self.get_map_eta = RegularGridInterpolator((nc_values, beta_values), eta_array, bounds_error=False, fill_value=None)
-        self.get_map_pr = RegularGridInterpolator((nc_values, beta_values), pr_array, bounds_error=False, fill_value=None)
+        self.get_map_wc = RegularGridInterpolator((self.nc_values, self.beta_values), self.wc_array, bounds_error=False, fill_value=None)
+        self.get_map_eta = RegularGridInterpolator((self.nc_values, self.beta_values), self.eta_array, bounds_error=False, fill_value=None)
+        self.get_map_pr = RegularGridInterpolator((self.nc_values, self.beta_values), self.pr_array, bounds_error=False, fill_value=None)
         # awc = get_map_wc((0.45, 0.0)) # wc value for (Nc, Beta)
         pass
 

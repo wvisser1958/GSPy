@@ -29,9 +29,27 @@ class TTurboComponent(gaspath):
         
         self.PRmap = None
 
+        # Oscar
+        self.SFmap_Nc  = 1
+        self.SFmap_Wc  = 1
+        self.SFmap_PR  = 1
+        self.SFmap_Eta = 1
+
         if all(shaft.ShaftNr != ShaftNr for shaft in fg.shaft_list):
             fg.shaft_list.append(fs.TShaft(ShaftNr, name + ' shaft ' + str(ShaftNr)) )
        
+    # Oscar
+    def GetNcArray(self):
+        return self.nc_values
+    def GetBetaArray(self):
+        return self.beta_values
+    def GetWcValues(self):
+        return self.wc_array
+    def GetEtaValues(self):
+        return self.eta_array
+    def GetPrValues(self):
+        return self.pr_array
+
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         super().ReadMap(filename)
         # with self.file:

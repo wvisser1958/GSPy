@@ -4,7 +4,9 @@ from f_BaseComponent import TComponent as component
 
 class TGaspath(component):        
     def __init__(self, name, MapFileName):    # Constructor of the class
-        super().__init__(name, MapFileName)    
+        super().__init__(name, MapFileName)   
+        # set design properties to None, if still None in PrintPerformance,
+        # then not assigned anywhere so no need to Print/output. 
         self.GasIn = None
         self.GasOut = None
         self.Wcdes = None

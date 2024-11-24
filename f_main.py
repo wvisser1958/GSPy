@@ -1,11 +1,9 @@
 import numpy as np
 import cantera as ct
 
-import matplotlib as mpl
-import pandas as pd
+# import matplotlib as mpl
+# import pandas as pd
 from scipy.optimize import root
-
-import aerocalc 
 
 import f_global as fg
 
