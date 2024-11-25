@@ -30,10 +30,13 @@ wvisser@xs4all.nl
 Faculty of Aerospace Engineering / Propulsion and Power
 Delft University of Technology
 Kluyverweg 1
-2629 HS  Delft
+2629 HS Delft
 The Netherlands
 
 Oscar Kogenhop
-EPCOR
 oscar.kogenhop@epcor.nl
+EPCOR B.V. 
+Bellsingel 41
+1119 NT Schiphol-Rijk
+The Netherlands 
 
