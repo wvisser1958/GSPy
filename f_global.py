@@ -65,8 +65,6 @@ errors = np.array([], dtype=float)
 RD = None
 FN = None 
 
-# OutputTable = pd.DataFrame(columns=['Point/Time', 'Mode'])
-
 def find_shaft_by_number(ShaftNr):
     for shaft in shaft_list:
         if shaft.ShaftNr == ShaftNr:

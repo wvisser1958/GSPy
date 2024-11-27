@@ -69,6 +69,13 @@ def main():
         for comp in turbojet:
             q_gas = comp.PrintPerformance(Mode, PointTime) 
         fg.PrintPerformance(Mode, PointTime)   
+        
+        # table output
+        newrownumber = len(fg.OutputTable) 
+        fg.OutputTable.loc[newrownumber, 'Point/Time'] = PointTime
+        fg.OutputTable.loc[newrownumber, 'Mode'] = Mode
+        for comp in turbojet:
+            comp.AddOutputToTable(Mode, newrownumber)
 
     # run the system model Design Point (DP) calculation
     Mode = 'DP'
@@ -105,12 +112,6 @@ def main():
     for ipoint in inputpoints:
         solution = root(residuals, fg.states, method='krylov')    
         Do_Output(Mode, inputpoints[ipoint])
-
-        # table output
-        fg.OutputTable.loc[ipoint, 'Point/Time'] = inputpoints[ipoint]
-        fg.OutputTable.loc[ipoint, 'Mode'] = Mode
-        for comp in turbojet:
-            comp.AddOutputToTable(Mode, ipoint)
         
         # for debug
         wf = fu.get_component_object(turbojet, 'combustor1').Wf
@@ -121,6 +122,9 @@ def main():
     print(savedstates)
 
     print(fg.OutputTable)
+
+    # Export to Excel
+    fg.OutputTable.to_csv('output.csv', index=False)
 
     print("end of main program")
 
