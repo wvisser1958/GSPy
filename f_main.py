@@ -63,7 +63,7 @@ def main():
         Control.PrintPerformance(Mode, PointTime) 
         for comp in turbojet:
             q_gas = comp.PrintPerformance(Mode, PointTime) 
-        fg.PrintPerformance(Mode, PointTime)    
+        fg.PrintPerformance(Mode, PointTime)   
 
     # run the system model Design Point (DP) calculation
     Mode = 'DP'
@@ -85,6 +85,7 @@ def main():
     print("=======================")
     # set OD ambient/flight conditions
     # Ambient.SetConditions( 0, 0, 0, None, None)
+
     def residuals(states):
         fg.states = states.copy()
         # test with GSP final performan with 0.3 kg/s fuel at ISA static
@@ -93,10 +94,21 @@ def main():
         return fg.errors.copy()     
     # solution = fg.newton_raphson(fg.states, residuals)
 
+    # for debug
+    savedstates = np.empty((0, fg.states.size+2), dtype=float)
+    
     for ipoint in inputpoints:
         solution = root(residuals, fg.states, method='krylov')    
         Do_Output(Mode, inputpoints[ipoint])
         
+        # for debug
+        wf = fu.get_component_object(turbojet, 'combustor1').Wf
+        wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
+        point_wf_states_array = np.concatenate((wfpoint, fg.states))        
+        savedstates = np.vstack([savedstates, point_wf_states_array])          
+    
+    print(savedstates)
+
     print("end of main program")
 
 # main program start, calls main()

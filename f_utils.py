@@ -116,3 +116,6 @@ def exit_T_and_enthalpy_for_pressure_ratio(gas, target_PR, eta_is) :
     final_enthalpy = initial_enthalpy - (initial_enthalpy - final_enthalpy_is) * eta_is
     gas.HP = final_enthalpy, Pend
     return gas.T, gas.enthalpy_mass    
+
+def get_component_object(component_objects, aname):
+    return next((obj for obj in component_objects if obj.name == aname), None)
