@@ -7,8 +7,8 @@ from f_gaspath import TGaspath as gaspath
 import f_global as fg
 
 class TExhaust(gaspath):
-    def __init__(self, name, MapFileName, CXdes, CVdes, CDdes):    # Constructor of the class
-        super().__init__(name, MapFileName)    
+    def __init__(self, name, MapFileName, stationin, stationout, CXdes, CVdes, CDdes):    # Constructor of the class
+        super().__init__(name, MapFileName, stationin, stationout)    
         self.CXdes = CXdes
         self.CVdes = CVdes    
         self.CDdes = CDdes

@@ -4,8 +4,8 @@ import f_global as fg
 from f_gaspath import TGaspath as gaspath
 
 class TCombustor(gaspath):        
-    def __init__(self, name, MapFileName, Control, Wfdes, Texitdes, PRdes, Etades):    # Constructor of the class
-        super().__init__(name, MapFileName)    
+    def __init__(self, name, MapFileName, stationin, stationout, Control, Wfdes, Texitdes, PRdes, Etades):    # Constructor of the class
+        super().__init__(name, MapFileName, stationin, stationout)    
         self.Wfdes = Wfdes
         self.Texitdes = Texitdes
         self.PRdes = PRdes

@@ -1,12 +1,15 @@
 import numpy as np
 import cantera as ct
 from f_BaseComponent import TComponent as component
+import f_global as fg
 
 class TGaspath(component):        
-    def __init__(self, name, MapFileName):    # Constructor of the class
+    def __init__(self, name, MapFileName, stationin, stationout):    # Constructor of the class
         super().__init__(name, MapFileName)   
+        self.stationin = stationin
+        self.stationout = stationout
         # set design properties to None, if still None in PrintPerformance,
-        # then not assigned anywhere so no need to Print/output. 
+        # then not assigned anywhere so no need to Print/output.         
         self.GasIn = None
         self.GasOut = None
         self.Wcdes = None
@@ -39,3 +42,17 @@ class TGaspath(component):
             print(f"\t\tPressure ratio  : {self.PR:.4f}")
         if self.PRdes != None:
             print(f"\t\tDP Pressure ratio  : {self.PRdes:.4f}")
+
+    def GetOutputTableColumns(self):
+        return [f"W{self.stationin}", f"Wc{self.stationin}", f"T{self.stationin}", f"P{self.stationin}", "PR"]
+         
+    def AddOutputToTable(self, Mode, rownr):
+        for columnname in self.GetOutputTableColumns():
+            # fg.OutputTable.loc[rownr, columnname] = getattr(self, columnname) 
+            fg.OutputTable.loc[rownr, f"W{self.stationin}"]  = self.GasIn.mass 
+            fg.OutputTable.loc[rownr, f"Wc{self.stationin}"] = self.Wc 
+            fg.OutputTable.loc[rownr, f"T{self.stationin}"]  = self.GasIn.T 
+            fg.OutputTable.loc[rownr, f"P{self.stationin}"]  = self.GasIn.P 
+            fg.OutputTable.loc[rownr, f"PR{self.stationin}"] = self.PR 
+          
+            

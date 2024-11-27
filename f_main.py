@@ -2,7 +2,7 @@ import numpy as np
 import cantera as ct
 
 # import matplotlib as mpl
-# import pandas as pd
+import pandas as pd
 from scipy.optimize import root
 
 import f_global as fg
@@ -33,13 +33,18 @@ def main():
     Ambient = TAmbient('Ambient',     0, 0,   0,   None,   None)
     
     # create a turbojet system model
-    turbojet = [TInlet('Inlet1','',                         19.9, 1    ),                   \
-                TCompressor('compressor1', 'compmap.map',   1, 0.8, 1,   16540, 0.825, 6.92),       \
-                TCombustor('combustor1', '', Control,       0.38, 0,    1, 1    ),          \
-                TTurbine('turbine1', 'turbimap.map',        1, 0.8,       1,   16540, 0.88       ),       \
-                TDuct('exhaustduct', '',                    1                 ),            \
-                TExhaust('exhaust1', '',                    1, 1, 1           )]
-    
+    turbojet = [TInlet('Inlet1',          '',            0,2,   19.9, 1    ),                           \
+                TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92),       \
+                TCombustor('combustor1',  '',            3,4,   Control, 0.38, 0,    1, 1    ),                  \
+                TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88       ), \
+                TDuct('exhaustduct',      '',            5,6,   1                 ),                    \
+                TExhaust('exhaust1',      '',            6,8,   1, 1, 1           )]
+
+    OutputColumns = []
+    for comp in turbojet:
+        OutputColumns = OutputColumns + comp.GetOutputTableColumns()
+    fg.OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + OutputColumns)
+
     # define the gas model
     gas = ct.Solution('gri30.yaml')
     # gas = ct.Solution('jetsurf.yaml') 
@@ -100,6 +105,12 @@ def main():
     for ipoint in inputpoints:
         solution = root(residuals, fg.states, method='krylov')    
         Do_Output(Mode, inputpoints[ipoint])
+
+        # table output
+        fg.OutputTable.loc[ipoint, 'Point/Time'] = inputpoints[ipoint]
+        fg.OutputTable.loc[ipoint, 'Mode'] = Mode
+        for comp in turbojet:
+            comp.AddOutputToTable(Mode, ipoint)
         
         # for debug
         wf = fu.get_component_object(turbojet, 'combustor1').Wf
@@ -108,6 +119,8 @@ def main():
         savedstates = np.vstack([savedstates, point_wf_states_array])          
     
     print(savedstates)
+
+    print(fg.OutputTable)
 
     print("end of main program")
 

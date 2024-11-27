@@ -7,8 +7,8 @@ import f_shaft as fs
 from f_TurboComponent import TTurboComponent as tc
 
 class TCompressor(tc):
-    def __init__(self, name, MapFileName, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades, PRdes):    # Constructor of the class
-        super().__init__(name, MapFileName, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades)   
+    def __init__(self, name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades, PRdes):    # Constructor of the class
+        super().__init__(name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades)   
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
 

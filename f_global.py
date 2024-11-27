@@ -1,6 +1,7 @@
 import math 
 import numpy as np
 import cantera as ct
+import pandas as pd
 
 # Create a gas object for air and products using gri30.yaml (or another suitable mechanism)
 gas = ct.Solution('gri30.yaml')
@@ -63,6 +64,8 @@ errors = np.array([], dtype=float)
 
 RD = None
 FN = None 
+
+# OutputTable = pd.DataFrame(columns=['Point/Time', 'Mode'])
 
 def find_shaft_by_number(ShaftNr):
     for shaft in shaft_list:

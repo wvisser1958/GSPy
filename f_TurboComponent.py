@@ -4,8 +4,8 @@ import f_shaft as fs
 from f_gaspath import TGaspath as gaspath
         
 class TTurboComponent(gaspath):
-    def __init__(self, name, MapFileName, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades):    # Constructor of the class
-        super().__init__(name, MapFileName)    
+    def __init__(self, name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades):    # Constructor of the class
+        super().__init__(name, MapFileName, stationin, stationout)    
         self.GasIn = None
         self.GasOut = None
         self.ShaftNr = ShaftNr

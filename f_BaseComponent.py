@@ -55,7 +55,15 @@ class TComponent:
     #     return RegularGridInterpolator()
 
     def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:    
-        raise NotImplementedError("Subclass must implement abstract method")
+        raise NotImplementedError("Subclass must implement Run abstract method")
     
     def PrintPerformance(self, Mode, PointTime):
         print(f"{self.name} ({Mode}) Point/Time:{PointTime}")
+
+    def GetOutputTableColumns(self):
+        # raise NotImplementedError("Subclass must implement InitOutputTable abstract method")
+        return []
+        
+    def AddOutputToTable(self, Mode, rownr):
+        raise NotImplementedError("Subclass must implement AddOutputToTable abstract method")
+
