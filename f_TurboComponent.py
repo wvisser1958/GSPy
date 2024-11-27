@@ -38,6 +38,9 @@ class TTurboComponent(gaspath):
         if all(shaft.ShaftNr != ShaftNr for shaft in fg.shaft_list):
             fg.shaft_list.append(fs.TShaft(ShaftNr, name + ' shaft ' + str(ShaftNr)) )
        
+        mapxopoints = np.array([], dtype=float)
+        mapyopoints = np.array([], dtype=float)
+
     # Oscar
     def GetNcArray(self):
         return self.nc_values
@@ -65,8 +68,8 @@ class TTurboComponent(gaspath):
             RNI[1] = float(items[3].split("=", 1)[1]) 
             f_RNI[1] = float(items[4].split("=", 1)[1])             
 
-    def PrintPerformance(self, Mode):
-        super().PrintPerformance(Mode)
+    def PrintPerformance(self, Mode, PointTime):
+        super().PrintPerformance(Mode, PointTime)
         print(f"\tRotor speed  : {self.N:.0f} rpm")
         print(f"\tCorr Rotor speed : {self.Nc:.0f} rpm")
         if self.Ncmap != None:

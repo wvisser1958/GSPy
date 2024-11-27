@@ -119,6 +119,6 @@ def newton_raphson(x0, residuals_func, tol=1e-5, max_iter=100):
     print("Newton-Raphson did not converge within the maximum number of iterations.")
     return None
 
-def PrintPerformance(Mode):
-    print(f"System performance")
+def PrintPerformance(Mode, PointTime):
+    print(f"System performance ({Mode}) Point/Time:{PointTime}")
     print(f"\tNet thrust: {FN:.2f} N")

@@ -57,5 +57,5 @@ class TComponent:
     def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:    
         raise NotImplementedError("Subclass must implement abstract method")
     
-    def PrintPerformance(self, Mode):
-        print(f"{self.name} ({Mode})")
+    def PrintPerformance(self, Mode, PointTime):
+        print(f"{self.name} ({Mode}) Point/Time:{PointTime}")

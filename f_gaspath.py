@@ -21,8 +21,8 @@ class TGaspath(component):
             self.GasInDes = ct.Quantity(GasIn.phase, mass = GasIn.mass) 
         return self.GasOut    
     
-    def PrintPerformance(self, Mode):
-        super().PrintPerformance(Mode)
+    def PrintPerformance(self, Mode, PointTime):
+        super().PrintPerformance(Mode, PointTime)
         print(f"\tInlet conditions:")
         print(f"\t\tMass flow  : {self.GasIn.mass:.2f} kg/s")
         print(f"\t\tTemperature: {self.GasIn.T:.1f} K")

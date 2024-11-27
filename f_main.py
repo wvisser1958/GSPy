@@ -58,12 +58,12 @@ def main():
         for comp in turbojet:
             q_gas = comp.Run(Mode, PointTime, q_gas, Ambient)
 
-    def Do_Output(Mode):
-        Ambient.PrintPerformance(Mode)     
-        Control.PrintPerformance(Mode) 
+    def Do_Output(Mode, PointTime):
+        Ambient.PrintPerformance(Mode, PointTime)     
+        Control.PrintPerformance(Mode, PointTime) 
         for comp in turbojet:
-            q_gas = comp.PrintPerformance(Mode) 
-        fg.PrintPerformance(Mode)    
+            q_gas = comp.PrintPerformance(Mode, PointTime) 
+        fg.PrintPerformance(Mode, PointTime)    
 
     # run the system model Design Point (DP) calculation
     Mode = 'DP'
@@ -72,7 +72,7 @@ def main():
     # set DP ambient/flight conditions
     # Ambient.SetConditions( 0, 0, 0, None, None)
     Do_Run(Mode, 0, q_gas)    
-    Do_Output(Mode)
+    Do_Output(Mode, 0)
 
     # return
 
@@ -95,7 +95,7 @@ def main():
 
     for ipoint in inputpoints:
         solution = root(residuals, fg.states, method='krylov')    
-        Do_Output(Mode)
+        Do_Output(Mode, inputpoints[ipoint])
         
     print("end of main program")
 

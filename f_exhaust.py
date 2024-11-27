@@ -54,8 +54,8 @@ class TExhaust(gaspath):
             pass    
         return self.GasOut
     
-    def PrintPerformance(self, Mode):
-        super().PrintPerformance(Mode)
+    def PrintPerformance(self, Mode, PointTime):
+        super().PrintPerformance(Mode, PointTime)
         # Print and return the results
         print(f"\tExit velocity: {self.Vthroat:.2f} m/s")
         if Mode == 'DP':    

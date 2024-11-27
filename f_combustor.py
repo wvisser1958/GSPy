@@ -57,7 +57,7 @@ class TCombustor(gaspath):
        
         return self.GasOut      
     
-    def PrintPerformance(self, Mode):
-        super().PrintPerformance(Mode)
+    def PrintPerformance(self, Mode, PointTime):
+        super().PrintPerformance(Mode, PointTime)
         print(f"\tFuel flow                 : {self.w_fuel:.4f} kg/s")
         print(f"\tCombustion End Temperature: {self.GasOut.T:.2f} K")
