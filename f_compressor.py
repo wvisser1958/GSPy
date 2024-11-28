@@ -99,7 +99,6 @@ class TCompressor(tc):
             self.Eta = self.SFmap_Eta * self.Etamap
             # self.Eta = 0.8374
 
-
             Sin = GasIn.entropy_mass
             Pout = GasIn.P*self.PR
             self.GasOut.SP = Sin, Pout # get GasOut at constant s and higher P

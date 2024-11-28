@@ -75,7 +75,11 @@ def calculate_expansion_to_A(gas, pressure_ratio, A):
     exit_enthalpy = gas.enthalpy_mass
 
     # Calculate the exit velocity
-    velocity = (2 * (stagnation_enthalpy - exit_enthalpy))**0.5
+    dh = stagnation_enthalpy - exit_enthalpy
+    if dh < 0:
+        velocity = 0
+    else:
+        velocity = (2 * dh)**0.5
     Mout = velocity / gas.sound_speed 
     if Mout < 1:
         exit_enthalpy = gas.enthalpy_mass   

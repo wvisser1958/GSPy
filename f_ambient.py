@@ -1,7 +1,7 @@
 import numpy as np
 import cantera as ct
-import aerocalc as ac # see https://www.kilohotel.com/python/aerocalc/html/ 
-#  from aerocalc.std_atm import atm
+import aerocalc as ac     # !!!! install with "pip install aero-calc", see https://www.kilohotel.com/python/aerocalc/html/ 
+# from aerocalc3 import std_atm as ac
 from f_BaseComponent import TComponent as component
 import f_global as fg 
 
@@ -38,3 +38,4 @@ class TAmbient(component):
         # set values in the GasIn object conditions
         GasIn.TPY = self.Tt0, self.Pt0, fg.s_air_composition_mass
         self.V = self.mach * ac.std_atm.temp2speed_of_sound(self.Ts0, speed_units = 'm/s', temp_units = 'K')
+        pass

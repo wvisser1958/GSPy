@@ -109,15 +109,19 @@ def main():
     # for debug
     savedstates = np.empty((0, fg.states.size+2), dtype=float)
     
-    for ipoint in inputpoints:
-        solution = root(residuals, fg.states, method='krylov')    
-        Do_Output(Mode, inputpoints[ipoint])
-        
-        # for debug
-        wf = fu.get_component_object(turbojet, 'combustor1').Wf
-        wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
-        point_wf_states_array = np.concatenate((wfpoint, fg.states))        
-        savedstates = np.vstack([savedstates, point_wf_states_array])          
+    try:
+        for ipoint in inputpoints:
+            solution = root(residuals, fg.states, method='krylov')    
+            Do_Output(Mode, inputpoints[ipoint])
+            
+            # for debug
+            wf = fu.get_component_object(turbojet, 'combustor1').Wf
+            wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
+            point_wf_states_array = np.concatenate((wfpoint, fg.states))        
+            savedstates = np.vstack([savedstates, point_wf_states_array])          
+        # solution = root(residuals, [ 0.55198737,  0.71696654,  0.76224776,  0.85820746], method='krylov')    
+    except Exception as e:
+        print(f"An error occurred: {e}")
     
     print(savedstates)
 

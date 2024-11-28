@@ -9,3 +9,4 @@ class TControl(component):
             self.Wfdes = 0.38
         else:
             self.Wf = self.Wfdes - PointTime * (self.Wfdes-0.08)/40    
+            # self.Wf = 0.11
