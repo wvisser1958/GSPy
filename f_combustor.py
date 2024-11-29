@@ -16,8 +16,11 @@ class TCombustor(gaspath):
         super().Run(Mode, PointTime, GasIn, Ambient)
         if Mode == 'DP':
             self.Wf = self.Wfdes
+            self.PR = self.PRdes
         else:
             self.Wf = self.Control.Wf
+            # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
+            self.PR = self.PRdes
         T_fuel = 288.15
         Sin = GasIn.s
         Pin = GasIn.P
@@ -54,10 +57,20 @@ class TCombustor(gaspath):
 
         self.GasOut.HP = h_prod_final, Pout
         self.GasOut.mass = self.GasIn.mass + self.Wf
-       
+
+        # calculate parameters for output
+        self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)
+
         return self.GasOut      
     
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
         print(f"\tFuel flow                 : {self.Wf:.4f} kg/s")
         print(f"\tCombustion End Temperature: {self.GasOut.T:.2f} K")
+
+    def GetOutputTableColumns(self):
+        return super().GetOutputTableColumns() + ["Wf_"+self.name]
+         
+    def AddOutputToTable(self, Mode, rownr):
+        super().AddOutputToTable(Mode, rownr)
+        fg.OutputTable.loc[rownr, "Wf_"+self.name] = self.Wf

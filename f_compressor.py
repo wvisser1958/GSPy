@@ -25,9 +25,9 @@ class TCompressor(tc):
         dummy_value, self.sl_wc_array, self.sl_pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'SURGE LINE')
 
         # define the interpolation functions allow extrapolation (i.e. fill value = None)
-        self.get_map_wc = RegularGridInterpolator((self.nc_values, self.beta_values), self.wc_array, bounds_error=False, fill_value=None)
-        self.get_map_eta = RegularGridInterpolator((self.nc_values, self.beta_values), self.eta_array, bounds_error=False, fill_value=None)
-        self.get_map_pr = RegularGridInterpolator((self.nc_values, self.beta_values), self.pr_array, bounds_error=False, fill_value=None)
+        self.get_map_wc = RegularGridInterpolator((self.nc_values, self.beta_values), self.wc_array, bounds_error=False, fill_value=None, method = 'cubic')
+        self.get_map_eta = RegularGridInterpolator((self.nc_values, self.beta_values), self.eta_array, bounds_error=False, fill_value=None, method = 'cubic')
+        self.get_map_pr = RegularGridInterpolator((self.nc_values, self.beta_values), self.pr_array, bounds_error=False, fill_value=None, method = 'cubic')
         # awc = get_map_wc((0.45, 0.0)) # wc value for (Nc, Beta)
         pass
 
@@ -76,7 +76,7 @@ class TCompressor(tc):
             # error for equation GasIn.wc = wcmap
             fg.errors = np.append(fg.errors, 0)
             self.ierror_wc = fg.errors.size-1                     
-            pass
+            self.PR = self.PRdes
         else:
             self.N = fg.states[self.istate_n] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(GasIn)
@@ -110,9 +110,12 @@ class TCompressor(tc):
             self.PW = self.GasOut.H - self.GasIn.H
             # self.PW = self.Wmap * (self.GasOut.enthalpy_mass - self.GasIn.enthalpy_mass)
             shaft.PW_sum = shaft.PW_sum - self.PW  
-            self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)
             # fg.errors[self.ierror_wc ] = (self.wcin - self.wc) / self.Wcdes 
             fg.errors[self.ierror_wc ] = (self.Wmap - self.GasIn.mass) / self.Wdes 
             self.GasOut.mass = self.Wmap
             self.N = self.Nc * fg.GetRotorspeedCorrectionFactor(GasIn)          
+
+        # calculate parameters for output
+        self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)
+
         return self.GasOut

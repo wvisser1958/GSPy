@@ -37,10 +37,10 @@ def main():
                 TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92),       \
                 TCombustor('combustor1',  '',            3,4,   Control, 0.38, 0,    1, 1    ),                  \
                 TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88       ), \
-                TDuct('exhaustduct',      '',            5,6,   1                 ),                    \
-                TExhaust('exhaust1',      '',            6,8,   1, 1, 1           )]
+                TDuct('exhduct',      '',                5,7,   1                 ),                    \
+                TExhaust('exhaust1',      '',            7,8,9, 1, 1, 1           )]
 
-    OutputColumns = []
+    OutputColumns = Ambient.GetOutputTableColumns() + Control.GetOutputTableColumns()
     for comp in turbojet:
         OutputColumns = OutputColumns + comp.GetOutputTableColumns()
     fg.OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + OutputColumns)
@@ -74,6 +74,8 @@ def main():
         newrownumber = len(fg.OutputTable) 
         fg.OutputTable.loc[newrownumber, 'Point/Time'] = PointTime
         fg.OutputTable.loc[newrownumber, 'Mode'] = Mode
+        Ambient.AddOutputToTable(Mode, newrownumber)
+        Control.AddOutputToTable(Mode, newrownumber)
         for comp in turbojet:
             comp.AddOutputToTable(Mode, newrownumber)
 
@@ -107,7 +109,7 @@ def main():
     # solution = fg.newton_raphson(fg.states, residuals)
 
     # for debug
-    savedstates = np.empty((0, fg.states.size+2), dtype=float)
+    # savedstates = np.empty((0, fg.states.size+2), dtype=float)
     
     try:
         for ipoint in inputpoints:
@@ -115,15 +117,16 @@ def main():
             Do_Output(Mode, inputpoints[ipoint])
             
             # for debug
-            wf = fu.get_component_object(turbojet, 'combustor1').Wf
-            wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
-            point_wf_states_array = np.concatenate((wfpoint, fg.states))        
-            savedstates = np.vstack([savedstates, point_wf_states_array])          
+            # wf = fu.get_component_object(turbojet, 'combustor1').Wf
+            # wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
+            # point_wf_states_array = np.concatenate((wfpoint, fg.states))        
+            # savedstates = np.vstack([savedstates, point_wf_states_array])          
+        # for debug
         # solution = root(residuals, [ 0.55198737,  0.71696654,  0.76224776,  0.85820746], method='krylov')    
     except Exception as e:
         print(f"An error occurred: {e}")
     
-    print(savedstates)
+    # print(savedstates)
 
     print(fg.OutputTable)
 

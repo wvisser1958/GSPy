@@ -87,3 +87,11 @@ class TTurboComponent(gaspath):
         print(f"\tEta     : {self.Eta:.4f}")
         print(f"\tEta map : {self.Etamap:.4f}")
 
+    def GetOutputTableColumns(self):
+        return super().GetOutputTableColumns() + ["N_"+self.name, "Nc_"+self.name, "Eta_is_"+self.name]
+         
+    def AddOutputToTable(self, Mode, rownr):
+        super().AddOutputToTable(Mode, rownr)
+        fg.OutputTable.loc[rownr, "N_"+self.name] = self.N
+        fg.OutputTable.loc[rownr, "Nc_"+self.name] = self.Nc
+        fg.OutputTable.loc[rownr, "Eta_is_"+self.name] = self.Eta

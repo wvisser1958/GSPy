@@ -1,5 +1,6 @@
 import numpy as np
 import cantera as ct
+import f_global as fg
 from f_gaspath import TGaspath as gaspath
 
 class TDuct(gaspath):
@@ -10,7 +11,11 @@ class TDuct(gaspath):
     def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:  
         super().Run(Mode, PointTime, GasIn, Ambient)
         if Mode == 'DP':
-            GasIn.TP = GasIn.T, GasIn.P*self.PRdes
+            self.PR = self.PRdes
         else:
-            pass    
+            # this duct has constant PR, no OD PR yet (use manual input in code here, or make PR map)
+            self.PR = self.PRdes
+        self.GasOut.TP = GasIn.T, GasIn.P*self.PR
+        # calculate parameters for output
+        self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)
         return self.GasOut   

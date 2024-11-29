@@ -45,9 +45,9 @@ class TTurbine(tc):
                     beta_values[icol] * (prmax_array[irow] - prmin_array[irow])
 
         # define the interpolation functions allow extrapolation (i.e. fill value = None)
-        self.get_map_wc = RegularGridInterpolator((nc_values, beta_values), wc_array, bounds_error=False, fill_value=None)
-        self.get_map_eta = RegularGridInterpolator((nc_values, beta_values), eta_array, bounds_error=False, fill_value=None)
-        self.get_map_pr = RegularGridInterpolator((nc_values, beta_values), pr_array, bounds_error=False, fill_value=None)
+        self.get_map_wc = RegularGridInterpolator((nc_values, beta_values), wc_array, bounds_error=False, fill_value=None, method='cubic')
+        self.get_map_eta = RegularGridInterpolator((nc_values, beta_values), eta_array, bounds_error=False, fill_value=None, method='cubic')
+        self.get_map_pr = RegularGridInterpolator((nc_values, beta_values), pr_array, bounds_error=False, fill_value=None, method='cubic')
         # aeta = get_map_eta((0.70, 0.75)) # wc value for (Nc, Beta)
         # apr = get_map_pr((0.70, 0.75)) # wc value for (Nc, Beta)
         pass
