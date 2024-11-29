@@ -23,13 +23,6 @@ class MapPlot:
         pass
     
 class CompressorMapPlot(MapPlot):
-    # properties
-    # NcArrayValues   = None
-    # WcArrayValues   = None
-    # PRArrayValues   = None
-    # EtaArrayValues  = None
-    # slWcArrayValues = None
-    # slPRArrayValues = None
     
     # constructor
     def __init__(self, mapname, compressorObject):
@@ -46,7 +39,6 @@ class CompressorMapPlot(MapPlot):
         self.slWcArrayValues  = None
         self.slPRArrayValues  = None
 
-        
     # methods
     # -------
     # Get map data arrays
@@ -62,11 +54,14 @@ class CompressorMapPlot(MapPlot):
         self.slPRArrayValues  = (self.compressorObject).GetSlPrValues() * (self.compressorObject).SFmap_PR
     
     def ContourPlotMap(self):
-        plt.figure('Compressor map plot', figsize=(10,8))
-        ax = plt.gca()
+        fig1 = plt.figure(num='Compressor map plot', figsize=(10,8))
+        ax = fig1.gca()
+        self.fig1 = fig1
         self.ax = ax
         # Get the data arrays for plotting the map
         self.GetMapData()
+        
+        self.fig1.suptitle((self.compressorObject).MapFileName)
 
         # Plot Wc-PR top subplot
         for index, NcValue in enumerate(self.NcArrayValues): 
@@ -110,8 +105,11 @@ class CompressorMapPlot(MapPlot):
 
     def PlotMap(self):
         super().PlotMap()
-        plt.figure('Split compressor map plot')
-        fig0, (ax1, ax2) = plt.subplots( 2, 1, figsize=(10,8))
+        # Create a figure with the name "testplot"
+        fig0 = plt.figure(num="Split compressor map plot", figsize=(10,8))
+        # Add two subplots to the figure
+        ax1 = fig0.add_subplot(2, 1, 1)  # First subplot (2 rows, 1 column, position 1)
+        ax2 = fig0.add_subplot(2, 1, 2)  # Second subplot (2 rows, 1 column, position 2)
         self.fig0 = fig0
         self.ax1 = ax1
         self.ax2 = ax2
@@ -119,7 +117,7 @@ class CompressorMapPlot(MapPlot):
         # Get the data arrays for plotting the map
         self.GetMapData()
        
-        self.fig0.suptitle('Compressor map')
+        self.fig0.suptitle((self.compressorObject).MapFileName)
         
         # Plot Wc-Eta top subplot
         for index, NcValue in enumerate(self.NcArrayValues): 
@@ -148,14 +146,23 @@ class CompressorMapPlot(MapPlot):
     
     def PlotOperatingCurve(self,wc_values, pr_values, eta_values):
         # Pass operating data to plot in the map
-        plt.figure('Compressor map plot')
-        # self.ax1.plot(wc_values, eta_values, linewidth=1.5, linestyle='solid', color='navy')
-        self.ax.plot(wc_values, pr_values,  linewidth=1.5, linestyle='solid', color='navy')
+        if self.fig0 is not None:
+            plt.figure('Split compressor map plot')
+            self.ax1.plot(wc_values, eta_values, linewidth=1.5, linestyle='solid', color='navy')
+            self.ax2.plot(wc_values, pr_values, linewidth=1.5, linestyle='solid', color='navy')
+        if self.fig1 is not None:
+            plt.figure('Compressor map plot')
+            self.ax.plot(wc_values, pr_values,  linewidth=1.5, linestyle='solid', color='navy')
+        
         
     def PlotDesignPoint(self,wc_value, pr_value, eta_value):
-        plt.figure('Compressor map plot')
-        # self.ax1.plot(wc_value, eta_value, markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
-        self.ax.plot(wc_value, pr_value,  markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+        if self.fig0 is not None:
+            plt.figure('Split compressor map plot')
+            self.ax1.plot(wc_value, eta_value, markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+            self.ax2.plot(wc_value, pr_value, markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+        if self.fig1 is not None:
+            plt.figure('Compressor map plot')
+            self.ax.plot(wc_value, pr_value,  markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
         
         
 # test program start
