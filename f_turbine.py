@@ -29,25 +29,25 @@ class TTurbine(tc):
         super().ReadMap(filename)
 
         # read PR min values
-        nc_values, prmin_array = self.ReadPRlimits(self.mapfile, 'MIN PRESSURE RATIO')  
-        nc_values, prmax_array = self.ReadPRlimits(self.mapfile, 'MAX PRESSURE RATIO')  
+        self.nc_values, self.prmin_array = self.ReadPRlimits(self.mapfile, 'MIN PRESSURE RATIO')  
+        self.nc_values, self.prmax_array = self.ReadPRlimits(self.mapfile, 'MAX PRESSURE RATIO')  
 
-        nc_values, beta_values, wc_array = self.ReadNcBetaCrossTable(self.mapfile, 'MASS FLOW')
-        nc_values, beta_values, eta_array = self.ReadNcBetaCrossTable(self.mapfile, 'EFFICIENCY')
+        self.nc_values, self.beta_values, self.wc_array = self.ReadNcBetaCrossTable(self.mapfile, 'MASS FLOW')
+        self.nc_values, self.beta_values, self.eta_array = self.ReadNcBetaCrossTable(self.mapfile, 'EFFICIENCY')
 
         # now calculate PR_value table:
         # Unlike with the compressor, for the turbine PR values can be calculated
-        pr_array = np.zeros((nc_values.size, beta_values.size), dtype=float)
+        self.pr_array = np.zeros((self.nc_values.size, self.beta_values.size), dtype=float)
         
-        for irow in range(nc_values.size):
-            for icol in range(beta_values.size):
-                pr_array[irow, icol] = prmin_array[irow] + \
-                    beta_values[icol] * (prmax_array[irow] - prmin_array[irow])
+        for irow in range(self.nc_values.size):
+            for icol in range(self.beta_values.size):
+                self.pr_array[irow, icol] = self.prmin_array[irow] + \
+                    self.beta_values[icol] * (self.prmax_array[irow] - self.prmin_array[irow])
 
         # define the interpolation functions allow extrapolation (i.e. fill value = None)
-        self.get_map_wc = RegularGridInterpolator((nc_values, beta_values), wc_array, bounds_error=False, fill_value=None, method='cubic')
-        self.get_map_eta = RegularGridInterpolator((nc_values, beta_values), eta_array, bounds_error=False, fill_value=None, method='cubic')
-        self.get_map_pr = RegularGridInterpolator((nc_values, beta_values), pr_array, bounds_error=False, fill_value=None, method='cubic')
+        self.get_map_wc = RegularGridInterpolator((self.nc_values, self.beta_values), self.wc_array, bounds_error=False, fill_value=None)
+        self.get_map_eta = RegularGridInterpolator((self.nc_values, self.beta_values), self.eta_array, bounds_error=False, fill_value=None)
+        self.get_map_pr = RegularGridInterpolator((self.nc_values, self.beta_values), self.pr_array, bounds_error=False, fill_value=None)
         # aeta = get_map_eta((0.70, 0.75)) # wc value for (Nc, Beta)
         # apr = get_map_pr((0.70, 0.75)) # wc value for (Nc, Beta)
         pass
