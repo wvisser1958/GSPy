@@ -96,8 +96,8 @@ class TurbineMapPlot(MapPlot):
         # Plot Wc-PR top subplot
         for index, NcValue in enumerate(self.turbNcArrayValues): 
             self.tAx.plot(self.turbPRArrayValues[index], self.turbWcArrayValues[index], linewidth=0.25, linestyle='dashed', color='black', label=str(NcValue))
-        self.tAx.set_xlabel('Corected massflow')
-        self.tAx.set_ylabel('Pressure Ratio')
+        self.tAx.set_ylabel('Corected massflow')
+        self.tAx.set_xlabel('Pressure Ratio')
         
         # Plot surge line
         # self.tAx.plot(self.turbSlWcArrayValues, self.turbSlPRArrayValues[0], linewidth=1.0, linestyle='solid', color='red', label='Surge Line')
