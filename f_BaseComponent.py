@@ -60,7 +60,7 @@ class TComponent:
     def PrintPerformance(self, Mode, PointTime):
         print(f"{self.name} ({Mode}) Point/Time:{PointTime}")
 
-    def GetOutputTableColumns(self):
+    def GetOutputTableColumnNames(self):
         # raise NotImplementedError("Subclass must implement InitOutputTable abstract method")
         return []
         

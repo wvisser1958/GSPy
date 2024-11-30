@@ -1,0 +1,50 @@
+
+import numpy as np
+
+shaft_list = []
+
+states = np.array([], dtype=float)
+errors = np.array([], dtype=float)
+
+FG = 0.0
+FN = 0.0
+RD = 0.0
+WF = 0.0
+OutputColumnNames = None
+OutputTable = None
+
+def find_shaft_by_number(ShaftNr):
+    for shaft in shaft_list:
+        if shaft.ShaftNr == ShaftNr:
+            return shaft
+    return None  # Return None if no matching object is found
+
+def reinit_states_and_errors():
+    global states, errors
+    for state in states:
+        state = 1     
+    for error in errors:
+        state = 0
+
+def reinit_system():
+    for shaft in shaft_list:
+        shaft.PW_sum = 0
+    global FG, FN, RD, WF
+    FG = 0.0
+    FN = 0.0
+    RD = 0.0
+    WF = 0.0
+
+def PrintPerformance(Mode, PointTime):
+    print(f"System performance ({Mode}) Point/Time:{PointTime}")
+    print(f"\tNet thrust: {FN:.2f} N")
+
+def GetOutputTableColumnNames():
+    return ["FG", "FN", "RD", "WF"]
+
+def AddOutputToTable(Mode, rownr):
+    FN = FG - RD
+    OutputTable.loc[rownr, "FG"] = FG
+    OutputTable.loc[rownr, "FN"] = FN
+    OutputTable.loc[rownr, "RD"] = RD
+    OutputTable.loc[rownr, "WF"] = WF

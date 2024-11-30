@@ -57,25 +57,6 @@ def InitializeGas(gas):
     global h_air_ref
     h_air_ref = gas.enthalpy_mass
 
-shaft_list = []
-
-states = np.array([], dtype=float)
-errors = np.array([], dtype=float)
-
-RD = None
-FN = None 
-
-def find_shaft_by_number(ShaftNr):
-    for shaft in shaft_list:
-        if shaft.ShaftNr == ShaftNr:
-            return shaft
-    return None  # Return None if no matching object is found
-
-def reinit_all_shafts():
-    for shaft in shaft_list:
-        shaft.PW_sum = 0
-    return None  # Return None if no matching object is found
-
 def GetRotorspeedCorrectionFactor(gas: ct.Quantity):
     return math.sqrt(gas.T/T_std)
 def GetFlowCorrectionFactor(gas: ct.Quantity):
@@ -119,7 +100,3 @@ def newton_raphson(x0, residuals_func, tol=1e-5, max_iter=100):
 
     print("Newton-Raphson did not converge within the maximum number of iterations.")
     return None
-
-def PrintPerformance(Mode, PointTime):
-    print(f"System performance ({Mode}) Point/Time:{PointTime}")
-    print(f"\tNet thrust: {FN:.2f} N")

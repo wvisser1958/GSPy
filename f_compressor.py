@@ -3,7 +3,7 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 import cantera as ct
 import f_global as fg
-import f_shaft as fs
+import f_system as fsys
 from f_TurboComponent import TTurboComponent as tc
 
 class TCompressor(tc):
@@ -40,7 +40,7 @@ class TCompressor(tc):
             Hisout = self.GasOut.phase.enthalpy_mass # isentropic exit specific enthalpy
             Hout = GasIn.phase.enthalpy_mass + (Hisout - GasIn.phase.enthalpy_mass) / self.Etades
             self.GasOut.HP = Hout, Pout 
-            shaft = fg.find_shaft_by_number(self.ShaftNr)
+            shaft = fsys.find_shaft_by_number(self.ShaftNr)
             # if shaft.assigned:
             self.PW = self.GasOut.H - self.GasIn.H
             shaft.PW_sum = shaft.PW_sum - self.PW               
@@ -68,19 +68,19 @@ class TCompressor(tc):
                 self.SFmap_Eta = self.Etades / self.Etamap
                 pass 
             # add states and errors 
-            fg.states = np.append(fg.states, 1)
-            self.istate_n = fg.states.size-1
+            fsys.states = np.append(fsys.states, 1)
+            self.istate_n = fsys.states.size-1
             shaft.istate = self.istate_n
-            fg.states = np.append(fg.states, 1)
-            self.istate_beta = fg.states.size-1
+            fsys.states = np.append(fsys.states, 1)
+            self.istate_beta = fsys.states.size-1
             # error for equation GasIn.wc = wcmap
-            fg.errors = np.append(fg.errors, 0)
-            self.ierror_wc = fg.errors.size-1                     
+            fsys.errors = np.append(fsys.errors, 0)
+            self.ierror_wc = fsys.errors.size-1                     
             self.PR = self.PRdes
         else:
-            self.N = fg.states[self.istate_n] * self.Ndes
+            self.N = fsys.states[self.istate_n] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(GasIn)
-            self.Betamap = fg.states[self.istate_beta] * self.Betamapdes
+            self.Betamap = fsys.states[self.istate_beta] * self.Betamapdes
             self.Ncmap = self.Nc / self.SFmap_Nc 
             self.GasIn.TP = GasIn.T, GasIn.P
             self.GasIn.mass = GasIn.mass                     
@@ -105,13 +105,13 @@ class TCompressor(tc):
             Hisout = self.GasOut.phase.enthalpy_mass # isentropic exit specific enthalpy
             Hout = GasIn.phase.enthalpy_mass + (Hisout - GasIn.phase.enthalpy_mass) / self.Eta
             self.GasOut.HP = Hout, Pout 
-            shaft = fg.find_shaft_by_number(self.ShaftNr)
+            shaft = fsys.find_shaft_by_number(self.ShaftNr)
             # if shaft.assigned:
             self.PW = self.GasOut.H - self.GasIn.H
             # self.PW = self.Wmap * (self.GasOut.enthalpy_mass - self.GasIn.enthalpy_mass)
             shaft.PW_sum = shaft.PW_sum - self.PW  
             # fg.errors[self.ierror_wc ] = (self.wcin - self.wc) / self.Wcdes 
-            fg.errors[self.ierror_wc ] = (self.Wmap - self.GasIn.mass) / self.Wdes 
+            fsys.errors[self.ierror_wc ] = (self.Wmap - self.GasIn.mass) / self.Wdes 
             self.GasOut.mass = self.Wmap
             self.N = self.Nc * fg.GetRotorspeedCorrectionFactor(GasIn)          
 

@@ -1,6 +1,7 @@
 import numpy as np
 import cantera as ct
 import f_global as fg
+import f_system as fsys
 from f_gaspath import TGaspath as gaspath
 
 class TCombustor(gaspath):        
@@ -61,6 +62,8 @@ class TCombustor(gaspath):
         # calculate parameters for output
         self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)
 
+        fsys.WF = fsys.WF + self.Wf
+
         return self.GasOut      
     
     def PrintPerformance(self, Mode, PointTime):
@@ -68,9 +71,9 @@ class TCombustor(gaspath):
         print(f"\tFuel flow                 : {self.Wf:.4f} kg/s")
         print(f"\tCombustion End Temperature: {self.GasOut.T:.2f} K")
 
-    def GetOutputTableColumns(self):
-        return super().GetOutputTableColumns() + ["Wf_"+self.name]
+    def GetOutputTableColumnNames(self):
+        return super().GetOutputTableColumnNames() + ["Wf_"+self.name]
          
     def AddOutputToTable(self, Mode, rownr):
         super().AddOutputToTable(Mode, rownr)
-        fg.OutputTable.loc[rownr, "Wf_"+self.name] = self.Wf
+        fsys.OutputTable.loc[rownr, "Wf_"+self.name] = self.Wf

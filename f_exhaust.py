@@ -5,6 +5,7 @@ from scipy.optimize import root_scalar
 # from scipy.optimize import root
 from f_gaspath import TGaspath as gaspath
 import f_global as fg
+import f_system as fsys
 
 class TExhaust(gaspath):
     def __init__(self, name, MapFileName, stationin, stationthroat, stationout, CXdes, CVdes, CDdes):    # Constructor of the class
@@ -21,7 +22,7 @@ class TExhaust(gaspath):
         Sin = GasIn.entropy_mass
         Hin = GasIn.enthalpy_mass
         Pin = GasIn.P
-        Pout = Ambient.Pa
+        Pout = Ambient.Psa
         self.PR = Pin/Pout
         if Mode == 'DP':                                        
             Vthroat_is, self.Tthroat = fu.calculate_exit_velocity(self.GasOut.phase, self.PR)
@@ -46,8 +47,8 @@ class TExhaust(gaspath):
                 self.Vthroat = Vthroat_is * self.CVdes
             self.Tthroat = self.GasThroat.T
             # exit flow error
-            fg.errors = np.append(fg.errors, 0)
-            self.ierror_w = fg.errors.size - 1 
+            fsys.errors = np.append(fsys.errors, 0)
+            self.ierror_w = fsys.errors.size - 1 
             self.Athroat_des = self.GasThroat.mass / self.GasThroat.phase.density / self.Vthroat
             self.Athroat = self.Athroat_des
         else:
@@ -55,13 +56,14 @@ class TExhaust(gaspath):
             self.Pthroat, self.Tthroat, Vthroat_is, massflow = fu.calculate_expansion_to_A(self.GasIn.phase, Pin/Pout, self.Athroat)
             self.GasThroat.TP = self.Tthroat, self.Pthroat
             self.Vthroat = Vthroat_is * self.CVdes
-            fg.errors[self.ierror_w] = (self.GasIn.mass - massflow) / self.GasInDes.mass   
+            fsys.errors[self.ierror_w] = (self.GasIn.mass - massflow) / self.GasInDes.mass   
             self.Mthroat = self.Vthroat / self.GasThroat.phase.sound_speed           
         # calculate parameters for output
         self.GasOut.TP = self.Tthroat, Pout # assume no further expansion
         self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)            
         self.FG = self.CXdes * (self.GasOut.mass * self.Vthroat + self.Athroat*(self.Pthroat-Pout)) 
-        fg.FN = self.FG - fg.RD     
+        # add gross thrust to system level thrust (note that multiple propelling nozzles may exist)
+        fsys.FG = fsys.FG + self.FG 
         self.Athroat_geom = self.Athroat / self.CDdes
         return self.GasOut
     
@@ -76,8 +78,8 @@ class TExhaust(gaspath):
         print(f"\tExit static pressure: {self.GasOut.P:.0f} Pa")
         print(f"\tGross thrust: {self.FG:.2f} N")
 
-    def GetOutputTableColumns(self):
-        return super().GetOutputTableColumns()                                                              \
+    def GetOutputTableColumnNames(self):
+        return super().GetOutputTableColumnNames()                                                              \
             + [f"T{self.stationthroat}", f"P{self.stationthroat}", f"V{self.stationthroat}", f"Mach{self.stationthroat}", \
                f"T{self.stationout}", f"P{self.stationout}",                                                \
                "Athroat_"+self.name, "Athroat_geom_" + self.name, "FG_" + self.name]
@@ -85,13 +87,13 @@ class TExhaust(gaspath):
     def AddOutputToTable(self, Mode, rownr):
         # fg.OutputTable.loc[rownr, columnname] = getattr(self, columnname) 
         super().AddOutputToTable(Mode, rownr)
-        fg.OutputTable.loc[rownr, f"T{self.stationthroat}"]  = self.Tthroat
-        fg.OutputTable.loc[rownr, f"P{self.stationthroat}"]  = self.Pthroat 
-        fg.OutputTable.loc[rownr, f"V{self.stationthroat}"]  = self.Vthroat
-        fg.OutputTable.loc[rownr, f"Mach{self.stationthroat}"]  = self.Mthroat
-        fg.OutputTable.loc[rownr, f"T{self.stationout}"]  = self.GasOut.T 
-        fg.OutputTable.loc[rownr, f"P{self.stationout}"]  = self.GasOut.P 
-        fg.OutputTable.loc[rownr, "Athroat_"+self.name]  = self.Athroat
-        fg.OutputTable.loc[rownr, "Athroat_geom_"+self.name]  = self.Athroat_geom
-        fg.OutputTable.loc[rownr, "FG_"+self.name]  = self.FG
+        fsys.OutputTable.loc[rownr, f"T{self.stationthroat}"]  = self.Tthroat
+        fsys.OutputTable.loc[rownr, f"P{self.stationthroat}"]  = self.Pthroat 
+        fsys.OutputTable.loc[rownr, f"V{self.stationthroat}"]  = self.Vthroat
+        fsys.OutputTable.loc[rownr, f"Mach{self.stationthroat}"]  = self.Mthroat
+        fsys.OutputTable.loc[rownr, f"T{self.stationout}"]  = self.GasOut.T 
+        fsys.OutputTable.loc[rownr, f"P{self.stationout}"]  = self.GasOut.P 
+        fsys.OutputTable.loc[rownr, "Athroat_"+self.name]  = self.Athroat
+        fsys.OutputTable.loc[rownr, "Athroat_geom_"+self.name]  = self.Athroat_geom
+        fsys.OutputTable.loc[rownr, "FG_"+self.name]  = self.FG
         

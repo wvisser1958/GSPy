@@ -3,6 +3,7 @@ import cantera as ct
 from scipy.optimize import root
 from scipy.interpolate import RegularGridInterpolator
 import f_global as fg
+import f_system as fsys
 import f_utils as fu
 from f_TurboComponent import TTurboComponent as tc
 
@@ -54,7 +55,7 @@ class TTurbine(tc):
 
     def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:   
         super().Run(Mode, PointTime, GasIn, Ambient)
-        shaft = fg.find_shaft_by_number(self.ShaftNr)
+        shaft = fsys.find_shaft_by_number(self.ShaftNr)
         Sin = GasIn.entropy_mass
         Pin = GasIn.P
 
@@ -93,17 +94,17 @@ class TTurbine(tc):
                 pass                      
             # add states and errors 
             # rotor speed state is same as compressor's
-            fg.states = np.append(fg.states, 1)
-            self.istate_beta = fg.states.size-1
+            fsys.states = np.append(fsys.states, 1)
+            self.istate_beta = fsys.states.size-1
             # error for equation GasIn.wc = wcmap
-            fg.errors = np.append(fg.errors, 0)
-            self.ierror_wc = fg.errors.size-1  
+            fsys.errors = np.append(fsys.errors, 0)
+            self.ierror_wc = fsys.errors.size-1  
             # shaft power error
-            fg.errors = np.append(fg.errors, 0)
-            self.ierror_shaftpw = fg.errors.size-1 
+            fsys.errors = np.append(fsys.errors, 0)
+            self.ierror_shaftpw = fsys.errors.size-1 
         else:
-            self.Betamap = fg.states[self.istate_beta] * self.Betamapdes
-            self.N = fg.states[shaft.istate] * self.Ndes
+            self.Betamap = fsys.states[self.istate_beta] * self.Betamapdes
+            self.N = fsys.states[shaft.istate] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(GasIn)
             self.Ncmap = self.Nc / self.SFmap_Nc
             self.Wcmap = self.get_map_wc((self.Ncmap, self.Betamap))
@@ -130,11 +131,11 @@ class TTurbine(tc):
 
             # self.wcin = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)
             # fg.errors[self.ierror_wc ] = (self.wcin - self.wc) / self.Wcdes             
-            fg.errors[self.ierror_wc ] = (self.Wmap - self.GasOut.mass) / self.Wdes             
+            fsys.errors[self.ierror_wc ] = (self.Wmap - self.GasOut.mass) / self.Wdes             
 
             self.PW = self.GasIn.H - self.GasOut.H
             shaft.PW_sum = shaft.PW_sum + self.PW             
-            fg.errors[self.ierror_shaftpw] = shaft.PW_sum / self.PWdes 
+            fsys.errors[self.ierror_shaftpw] = shaft.PW_sum / self.PWdes 
 
             # set out flow rate to Wmap
             self.GasOut.mass = self.Wmap

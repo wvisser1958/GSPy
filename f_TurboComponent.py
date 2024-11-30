@@ -1,6 +1,7 @@
 import numpy as np
 import f_global as fg
-import f_shaft as fs
+import f_system as fsys
+import f_shaft as fshaft
 from f_gaspath import TGaspath as gaspath
         
 class TTurboComponent(gaspath):
@@ -35,8 +36,8 @@ class TTurboComponent(gaspath):
         self.SFmap_PR  = 1
         self.SFmap_Eta = 1
 
-        if all(shaft.ShaftNr != ShaftNr for shaft in fg.shaft_list):
-            fg.shaft_list.append(fs.TShaft(ShaftNr, name + ' shaft ' + str(ShaftNr)) )
+        if all(shaft.ShaftNr != ShaftNr for shaft in fsys.shaft_list):
+            fsys.shaft_list.append(fshaft.TShaft(ShaftNr, name + ' shaft ' + str(ShaftNr)) )
        
         mapxopoints = np.array([], dtype=float)
         mapyopoints = np.array([], dtype=float)
@@ -87,11 +88,11 @@ class TTurboComponent(gaspath):
         print(f"\tEta     : {self.Eta:.4f}")
         print(f"\tEta map : {self.Etamap:.4f}")
 
-    def GetOutputTableColumns(self):
-        return super().GetOutputTableColumns() + ["N_"+self.name, "Nc_"+self.name, "Eta_is_"+self.name]
+    def GetOutputTableColumnNames(self):
+        return super().GetOutputTableColumnNames() + ["N_"+self.name, "Nc_"+self.name, "Eta_is_"+self.name]
          
     def AddOutputToTable(self, Mode, rownr):
         super().AddOutputToTable(Mode, rownr)
-        fg.OutputTable.loc[rownr, "N_"+self.name] = self.N
-        fg.OutputTable.loc[rownr, "Nc_"+self.name] = self.Nc
-        fg.OutputTable.loc[rownr, "Eta_is_"+self.name] = self.Eta
+        fsys.OutputTable.loc[rownr, "N_"+self.name] = self.N
+        fsys.OutputTable.loc[rownr, "Nc_"+self.name] = self.Nc
+        fsys.OutputTable.loc[rownr, "Eta_is_"+self.name] = self.Eta

@@ -2,6 +2,7 @@ import numpy as np
 import cantera as ct
 from f_BaseComponent import TComponent as component
 import f_global as fg
+import f_system as fsys
 
 class TGaspath(component):        
     def __init__(self, name, MapFileName, stationin, stationout):    # Constructor of the class
@@ -43,16 +44,16 @@ class TGaspath(component):
         if self.PRdes != None:
             print(f"\t\tDP Pressure ratio  : {self.PRdes:.4f}")
 
-    def GetOutputTableColumns(self):
+    def GetOutputTableColumnNames(self):
         return [f"W{self.stationin}", f"Wc{self.stationin}", f"T{self.stationin}", f"P{self.stationin}", "PR_"+self.name]
          
     def AddOutputToTable(self, Mode, rownr):
-        for columnname in self.GetOutputTableColumns():
+        for columnname in self.GetOutputTableColumnNames():
             # fg.OutputTable.loc[rownr, columnname] = getattr(self, columnname) 
-            fg.OutputTable.loc[rownr, f"W{self.stationin}"]  = self.GasIn.mass 
-            fg.OutputTable.loc[rownr, f"Wc{self.stationin}"] = self.Wc 
-            fg.OutputTable.loc[rownr, f"T{self.stationin}"]  = self.GasIn.T 
-            fg.OutputTable.loc[rownr, f"P{self.stationin}"]  = self.GasIn.P 
-            fg.OutputTable.loc[rownr, "PR_"+self.name] = self.PR 
+            fsys.OutputTable.loc[rownr, f"W{self.stationin}"]  = self.GasIn.mass 
+            fsys.OutputTable.loc[rownr, f"Wc{self.stationin}"] = self.Wc 
+            fsys.OutputTable.loc[rownr, f"T{self.stationin}"]  = self.GasIn.T 
+            fsys.OutputTable.loc[rownr, f"P{self.stationin}"]  = self.GasIn.P 
+            fsys.OutputTable.loc[rownr, "PR_"+self.name] = self.PR 
           
             

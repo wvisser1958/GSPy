@@ -6,6 +6,7 @@ import pandas as pd
 from scipy.optimize import root
 
 import f_global as fg
+import f_system as fsys
 
 from f_control import TControl
 from f_ambient import TAmbient
@@ -24,14 +25,14 @@ import f_utils as fu
 global q_gas
     
 def main():
-    # create a control (controlling all inputs to the system model) 
-    Control = TControl('Control', '')
-   
     # create Ambient conditions object (to set ambient/inlet/flight conditions)
     #                              Altitude, Mach, dTs,    Ps0,    Ts0 
     # None for Ps0 and Ts0 means values are calculated from standard atmosphere
     Ambient = TAmbient('Ambient',     0, 0,   0,   None,   None)
     
+    # create a control (controlling all inputs to the system model) 
+    Control = TControl('Control', '')
+
     # create a turbojet system model
     turbojet = [TInlet('Inlet1',          '',            0,2,   19.9, 1    ),                           \
                 TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92),       \
@@ -40,10 +41,14 @@ def main():
                 TDuct('exhduct',      '',                5,7,   1                 ),                    \
                 TExhaust('exhaust1',      '',            7,8,9, 1, 1, 1           )]
 
-    OutputColumns = Ambient.GetOutputTableColumns() + Control.GetOutputTableColumns()
+    # add Ambient (Flight / Ambient operating conditions) output column names
+    fsys.OutputColumnNames = Ambient.GetOutputTableColumnNames() + Control.GetOutputTableColumnNames()
+    # add Component models
     for comp in turbojet:
-        OutputColumns = OutputColumns + comp.GetOutputTableColumns()
-    fg.OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + OutputColumns)
+        fsys.OutputColumnNames = fsys.OutputColumnNames + comp.GetOutputTableColumnNames()
+    # add system performance output
+    fsys.OutputColumnNames = fsys.OutputColumnNames + fsys.GetOutputTableColumnNames()
+    fsys.OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + fsys.OutputColumnNames)
 
     # define the gas model
     gas = ct.Solution('gri30.yaml')
@@ -57,7 +62,7 @@ def main():
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
     def Do_Run(Mode, PointTime, q_gas):
-        fg.reinit_all_shafts()
+        fsys.reinit_system()
         Ambient.Run(Mode, PointTime, q_gas)     
         Control.Run(Mode, PointTime, q_gas, Ambient)
         for comp in turbojet:
@@ -68,27 +73,28 @@ def main():
         Control.PrintPerformance(Mode, PointTime) 
         for comp in turbojet:
             q_gas = comp.PrintPerformance(Mode, PointTime) 
-        fg.PrintPerformance(Mode, PointTime)   
+        fsys.PrintPerformance(Mode, PointTime)   
         
         # table output
-        newrownumber = len(fg.OutputTable) 
-        fg.OutputTable.loc[newrownumber, 'Point/Time'] = PointTime
-        fg.OutputTable.loc[newrownumber, 'Mode'] = Mode
+        newrownumber = len(fsys.OutputTable) 
+        fsys.OutputTable.loc[newrownumber, 'Point/Time'] = PointTime
+        fsys.OutputTable.loc[newrownumber, 'Mode'] = Mode
         Ambient.AddOutputToTable(Mode, newrownumber)
         Control.AddOutputToTable(Mode, newrownumber)
         for comp in turbojet:
             comp.AddOutputToTable(Mode, newrownumber)
+        fsys.AddOutputToTable(Mode, newrownumber)            
 
     # run the system model Design Point (DP) calculation
     Mode = 'DP'
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    # Ambient.SetConditions( 0, 0, 0, None, None)
+    Ambient.SetConditions('DP', 0, 0, 0, None, None)
+    # not using states and errors yet for DP, but do this for later when doing DP iterations
+    fsys.reinit_states_and_errors()
     Do_Run(Mode, 0, q_gas)    
     Do_Output(Mode, 0)
-
-    # return
 
     # run the Off-Design (OD) simulation, using Newton-Raphson to find
     # the steady state operating point
@@ -98,28 +104,29 @@ def main():
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions
-    # Ambient.SetConditions( 0, 0, 0, None, None)
-
+    Ambient.SetConditions('OD', 0, 0, 0, None, None)
     def residuals(states):
-        fg.states = states.copy()
+        fsys.states = states.copy()
         # test with GSP final performan with 0.3 kg/s fuel at ISA static
-        # fg.states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
+        # fsys.states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
         Do_Run(Mode, inputpoints[ipoint], q_gas)
-        return fg.errors.copy()     
-    # solution = fg.newton_raphson(fg.states, residuals)
+        return fsys.errors.copy()     
+    # solution = fg.newton_raphson(fsys.states, residuals)
 
     # for debug
-    # savedstates = np.empty((0, fg.states.size+2), dtype=float)
+    # savedstates = np.empty((0, fsys.states.size+2), dtype=float)
     
     try:
+        # start with all states 1 and errors 0
+        fsys.reinit_states_and_errors() 
         for ipoint in inputpoints:
-            solution = root(residuals, fg.states, method='krylov')    
+            solution = root(residuals, fsys.states, method='krylov')    
             Do_Output(Mode, inputpoints[ipoint])
             
             # for debug
             # wf = fu.get_component_object(turbojet, 'combustor1').Wf
             # wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
-            # point_wf_states_array = np.concatenate((wfpoint, fg.states))        
+            # point_wf_states_array = np.concatenate((wfpoint, fsys.states))        
             # savedstates = np.vstack([savedstates, point_wf_states_array])          
         # for debug
         # solution = root(residuals, [ 0.55198737,  0.71696654,  0.76224776,  0.85820746], method='krylov')    
@@ -128,10 +135,10 @@ def main():
     
     # print(savedstates)
 
-    print(fg.OutputTable)
+    print(fsys.OutputTable)
 
     # Export to Excel
-    fg.OutputTable.to_csv('output.csv', index=False)
+    fsys.OutputTable.to_csv('output.csv', index=False)
 
     print("end of main program")
 
