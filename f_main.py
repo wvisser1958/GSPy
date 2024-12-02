@@ -105,6 +105,7 @@ def main():
     print("=======================")
     # set OD ambient/flight conditions
     Ambient.SetConditions('OD', 0, 0, 0, None, None)
+    
     def residuals(states):
         fsys.states = states.copy()
         # test with GSP final performan with 0.3 kg/s fuel at ISA static
