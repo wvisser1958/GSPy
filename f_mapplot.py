@@ -4,7 +4,7 @@ from f_turbine import TTurbine
 import numpy as np
 from scipy.interpolate import griddata
 from scipy.ndimage import gaussian_filter
-from PIL import Image
+# from PIL import Image
 
 class MapPlot:
     # properties
