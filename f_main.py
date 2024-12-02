@@ -123,7 +123,7 @@ def main():
         fsys.reinit_states_and_errors() 
         for ipoint in inputpoints:
             # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
-            solution = root(residuals, fsys.states, method='krylov') # leave tolerance at default: is fastest   
+            solution = root(residuals, fsys.states, method='krylov') # leave tolerance at default: is fastest and error ususally < 0.00001  
             Do_Output(Mode, inputpoints[ipoint])
             
             # for debug
