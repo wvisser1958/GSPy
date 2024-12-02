@@ -36,7 +36,7 @@ def main():
     # create a turbojet system model
     turbojet = [TInlet('Inlet1',          '',            0,2,   19.9, 1    ),                           \
                 TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92),       \
-                TCombustor('combustor1',  '',            3,4,   Control, 0.38, 0,    1, 1    ),                  \
+                TCombustor('combustor1',  '',            3,4,   Control, 0.38, 0,    1, 1    ),         \
                 TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88       ), \
                 TDuct('exhduct',      '',                5,7,   1                 ),                    \
                 TExhaust('exhaust1',      '',            7,8,9, 1, 1, 1           )]
@@ -110,7 +110,7 @@ def main():
     
     def residuals(states):
         # residuals will return residuals of system conservation equations, schedules, limiters etc.
-        # the residuals are the errors returned bu Do_Run        
+        # the residuals are the errors returned by Do_Run        
         # test with GSP final performan with 0.3 kg/s fuel at ISA static
         # states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
         return Do_Run(Mode, inputpoints[ipoint], q_gas, states) 
