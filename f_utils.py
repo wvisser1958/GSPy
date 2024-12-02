@@ -77,13 +77,13 @@ def calculate_expansion_to_A(gas, pressure_ratio, A):
     # Calculate the exit velocity
     dh = stagnation_enthalpy - exit_enthalpy
     if dh < 0:
-        velocity = 0
+        # allow backwards flow during iteration (avoiding complex number for velocity)
+        velocity = -(2 * abs(dh))**0.5
     else:
         velocity = (2 * dh)**0.5
     Mout = velocity / gas.sound_speed 
     if Mout < 1:
         exit_enthalpy = gas.enthalpy_mass   
-        velocity = (2 * (stagnation_enthalpy - exit_enthalpy))**0.5
         massflow = A * velocity * gas.density 
         return exit_pressure, gas.T, velocity, massflow
     else:
@@ -91,11 +91,13 @@ def calculate_expansion_to_A(gas, pressure_ratio, A):
         # keep entropy S constant
         def throat_H_error(Ps_throat):
             gas.SP = stagnation_entropy, Ps_throat  # Isentropic expansion to exit pressure
-            exit_enthalpy = gas.enthalpy_mass   
-            velocity = (2 * (stagnation_enthalpy - exit_enthalpy))**0.5
-            # exit_enthalpy1 = stagnation_enthalpy - 0.5 * gas.sound_speed**2
+            dh = stagnation_enthalpy - gas.enthalpy_mass
+            # allow backwards flow during iteration (avoiding complex number for velocity)
+            if dh < 0:
+                velocity = -(2 * abs(dh))**0.5
+            else:
+                velocity = (2 * dh)**0.5
             velocity1 = gas.sound_speed
-            # return exit_enthalpy - exit_enthalpy1
             return velocity - velocity1
         initial_guess = [stagnation_pressure/1.9] # 1.0 approx. critical PR
         solution = root(throat_H_error, initial_guess)

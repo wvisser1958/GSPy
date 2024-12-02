@@ -61,12 +61,14 @@ def main():
 
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
-    def Do_Run(Mode, PointTime, q_gas):
+    def Do_Run(Mode, PointTime, q_gas, states):
+        fsys.states = states.copy()
         fsys.reinit_system()
         Ambient.Run(Mode, PointTime, q_gas)     
         Control.Run(Mode, PointTime, q_gas, Ambient)
         for comp in turbojet:
             q_gas = comp.Run(Mode, PointTime, q_gas, Ambient)
+        return fsys.errors
 
     def Do_Output(Mode, PointTime):
         Ambient.PrintPerformance(Mode, PointTime)     
@@ -93,7 +95,7 @@ def main():
     Ambient.SetConditions('DP', 0, 0, 0, None, None)
     # not using states and errors yet for DP, but do this for later when doing DP iterations
     fsys.reinit_states_and_errors()
-    Do_Run(Mode, 0, q_gas)    
+    Do_Run(Mode, 0, q_gas, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
     Do_Output(Mode, 0)
 
     # run the Off-Design (OD) simulation, using Newton-Raphson to find
@@ -107,13 +109,12 @@ def main():
     Ambient.SetConditions('OD', 0, 0, 0, None, None)
     
     def residuals(states):
-        fsys.states = states.copy()
+        # residuals will return residuals of system conservation equations, schedules, limiters etc.
+        # the residuals are the errors returned bu Do_Run        
         # test with GSP final performan with 0.3 kg/s fuel at ISA static
-        # fsys.states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
-        Do_Run(Mode, inputpoints[ipoint], q_gas)
-        return fsys.errors.copy()     
-    # solution = fg.newton_raphson(fsys.states, residuals)
-
+        # states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
+        return Do_Run(Mode, inputpoints[ipoint], q_gas, states) 
+        
     # for debug
     # savedstates = np.empty((0, fsys.states.size+2), dtype=float)
     
@@ -121,7 +122,8 @@ def main():
         # start with all states 1 and errors 0
         fsys.reinit_states_and_errors() 
         for ipoint in inputpoints:
-            solution = root(residuals, fsys.states, method='krylov')    
+            # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
+            solution = root(residuals, fsys.states, method='krylov') # leave tolerance at default: is fastest   
             Do_Output(Mode, inputpoints[ipoint])
             
             # for debug
@@ -136,7 +138,7 @@ def main():
     
     # print(savedstates)
 
-    print(fsys.OutputTable)
+    # print(fsys.OutputTable)
 
     # Export to Excel
     fsys.OutputTable.to_csv('output.csv', index=False)
