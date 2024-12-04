@@ -15,14 +15,14 @@ class TExhaust(gaspath):
         self.CVdes = CVdes    
         self.CDdes = CDdes
     
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:    
-        super().Run(Mode, PointTime, GasIn, Ambient)
+    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
+        super().Run(Mode, PointTime, GasIn)
         # add nozzle throat station
         self.GasThroat = ct.Quantity(GasIn.phase, mass = GasIn.mass) 
         Sin = GasIn.entropy_mass
         Hin = GasIn.enthalpy_mass
         Pin = GasIn.P
-        Pout = Ambient.Psa
+        Pout = fsys.Ambient.Psa
         self.PR = Pin/Pout
         if Mode == 'DP':                                        
             Vthroat_is, self.Tthroat = fu.calculate_exit_velocity(self.GasOut.phase, self.PR)
@@ -49,6 +49,9 @@ class TExhaust(gaspath):
             # exit flow error
             fsys.errors = np.append(fsys.errors, 0)
             self.ierror_w = fsys.errors.size - 1 
+            if self.Vthroat <= 0:
+                self.Vthroat = 0.001  # always assume a minimal flow velocity: 0.001 will result in a theoretical
+                                      # very large exhaust area        
             self.Athroat_des = self.GasThroat.mass / self.GasThroat.phase.density / self.Vthroat
             self.Athroat = self.Athroat_des
         else:
@@ -95,5 +98,6 @@ class TExhaust(gaspath):
         fsys.OutputTable.loc[rownr, f"P{self.stationout}"]  = self.GasOut.P 
         fsys.OutputTable.loc[rownr, "Athroat_"+self.name]  = self.Athroat
         fsys.OutputTable.loc[rownr, "Athroat_geom_"+self.name]  = self.Athroat_geom
+        fsys.OutputTable.loc[rownr, "FG_"+self.name]  = self.FG
         fsys.OutputTable.loc[rownr, "FG_"+self.name]  = self.FG
         

@@ -5,7 +5,7 @@ import f_system as fsys
 from f_BaseComponent import TComponent as component
 
 class TControl(component):
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:    
+    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
         if Mode == 'DP':
             # in case of DP control
             self.Wfdes = 0.38

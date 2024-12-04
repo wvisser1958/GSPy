@@ -7,10 +7,11 @@ import f_system as fsys
 from f_TurboComponent import TTurboComponent as tc
 
 class TCompressor(tc):
-    def __init__(self, name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades, PRdes):    # Constructor of the class
+    def __init__(self, name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades, PRdes, SpeedOption):    # Constructor of the class
         super().__init__(name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades)   
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
+        self.SpeedOption = SpeedOption
 
     def GetSlWcValues(self):
         return self.sl_wc_array
@@ -31,8 +32,8 @@ class TCompressor(tc):
         # awc = get_map_wc((0.45, 0.0)) # wc value for (Nc, Beta)
         pass
 
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:    
-        super().Run(Mode, PointTime, GasIn, Ambient)
+    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
+        super().Run(Mode, PointTime, GasIn)
         if Mode == 'DP':
             Sin = GasIn.s
             Pout = GasIn.P*self.PRdes
@@ -68,9 +69,10 @@ class TCompressor(tc):
                 self.SFmap_Eta = self.Etades / self.Etamap
                 pass 
             # add states and errors 
-            fsys.states = np.append(fsys.states, 1)
-            self.istate_n = fsys.states.size-1
-            shaft.istate = self.istate_n
+            if self.SpeedOption != 'CS':
+                fsys.states = np.append(fsys.states, 1)
+                self.istate_n = fsys.states.size-1
+                shaft.istate = self.istate_n
             fsys.states = np.append(fsys.states, 1)
             self.istate_beta = fsys.states.size-1
             # error for equation GasIn.wc = wcmap
@@ -78,7 +80,8 @@ class TCompressor(tc):
             self.ierror_wc = fsys.errors.size-1                     
             self.PR = self.PRdes
         else:
-            self.N = fsys.states[self.istate_n] * self.Ndes
+            if self.SpeedOption != 'CS':
+                self.N = fsys.states[self.istate_n] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(GasIn)
             self.Betamap = fsys.states[self.istate_beta] * self.Betamapdes
             self.Ncmap = self.Nc / self.SFmap_Nc 

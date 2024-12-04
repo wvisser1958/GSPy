@@ -15,10 +15,10 @@ class TGaspath(component):
         self.GasOut = None
         self.Wcdes = None
         self.Wc = None
-        self.PRdes = None
+        self.PRdes = 1
         self.PR = None
             
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:  
+    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:  
         self.GasIn = ct.Quantity(GasIn.phase, mass = GasIn.mass) 
         self.GasOut = ct.Quantity(GasIn.phase, mass = GasIn.mass) 
         if Mode == 'DP':

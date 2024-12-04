@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import root
+from f_gaspath import TGaspath as gaspath
     
 atomweightC = 12.010914 
 molemassCO2 = 44.0098
@@ -123,5 +124,8 @@ def exit_T_and_enthalpy_for_pressure_ratio(gas, target_PR, eta_is) :
     gas.HP = final_enthalpy, Pend
     return gas.T, gas.enthalpy_mass    
 
-def get_component_object(component_objects, aname):
+def get_component_object_by_name(component_objects, aname):
     return next((obj for obj in component_objects if obj.name == aname), None)
+
+def get_gaspathcomponent_object_inlet_stationnr(component_objects, astationnr):
+    return next((obj for obj in component_objects if (isinstance(obj, gaspath)) and (obj.stationin == astationnr)), None)

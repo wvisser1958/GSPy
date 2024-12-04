@@ -54,7 +54,7 @@ class TComponent:
     # def MapMassFlow(Nc, Beta):
     #     return RegularGridInterpolator()
 
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:    
+    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
         raise NotImplementedError("Subclass must implement Run abstract method")
     
     def PrintPerformance(self, Mode, PointTime):

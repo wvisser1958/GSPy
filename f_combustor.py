@@ -5,21 +5,20 @@ import f_system as fsys
 from f_gaspath import TGaspath as gaspath
 
 class TCombustor(gaspath):        
-    def __init__(self, name, MapFileName, stationin, stationout, Control, Wfdes, Texitdes, PRdes, Etades):    # Constructor of the class
+    def __init__(self, name, MapFileName, stationin, stationout, Wfdes, Texitdes, PRdes, Etades):    # Constructor of the class
         super().__init__(name, MapFileName, stationin, stationout)    
         self.Wfdes = Wfdes
         self.Texitdes = Texitdes
         self.PRdes = PRdes
         self.Etades = Etades
-        self.Control = Control
-    
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:    
-        super().Run(Mode, PointTime, GasIn, Ambient)
+        
+    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
+        super().Run(Mode, PointTime, GasIn)
         if Mode == 'DP':
             self.Wf = self.Wfdes
             self.PR = self.PRdes
         else:
-            self.Wf = self.Control.Wf
+            self.Wf = fsys.Control.Wf
             # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
             self.PR = self.PRdes
         T_fuel = 288.15

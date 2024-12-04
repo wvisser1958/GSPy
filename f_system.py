@@ -10,6 +10,7 @@ FG = 0.0
 FN = 0.0
 RD = 0.0
 WF = 0.0
+
 OutputColumnNames = None
 OutputTable = None
 
@@ -38,13 +39,20 @@ def reinit_system():
 def PrintPerformance(Mode, PointTime):
     print(f"System performance ({Mode}) Point/Time:{PointTime}")
     print(f"\tNet thrust: {FN:.2f} N")
+    for shaft in shaft_list:
+        print(f"\tPower shaft {shaft.ShaftNr} : {shaft.PW_sum/1000:.2f} kW")
 
 def GetOutputTableColumnNames():
-    return ["FG", "FN", "RD", "WF"]
-
+    colnames = ["FG", "FN", "RD", "WF"]
+    for shaft in shaft_list:
+        colnames = colnames + [f"PW{shaft.ShaftNr}"]
+    return colnames
+    
 def AddOutputToTable(Mode, rownr):
     FN = FG - RD
     OutputTable.loc[rownr, "FG"] = FG
     OutputTable.loc[rownr, "FN"] = FN
     OutputTable.loc[rownr, "RD"] = RD
     OutputTable.loc[rownr, "WF"] = WF
+    for shaft in shaft_list:
+        OutputTable.loc[rownr, f"PW{shaft.ShaftNr}"] = shaft.PW_sum/1000

@@ -21,6 +21,7 @@ from f_duct import TDuct
 from f_exhaust import TExhaust
 
 import f_utils as fu
+import os
 
 global q_gas
     
@@ -28,23 +29,33 @@ def main():
     # create Ambient conditions object (to set ambient/inlet/flight conditions)
     #                              Altitude, Mach, dTs,    Ps0,    Ts0 
     # None for Ps0 and Ts0 means values are calculated from standard atmosphere
-    Ambient = TAmbient('Ambient',     0, 0,   0,   None,   None)
+    fsys.Ambient = TAmbient('Ambient',     0, 0,   0,   None,   None)
     
     # create a control (controlling all inputs to the system model) 
-    Control = TControl('Control', '')
+    fsys.Control = TControl('Control', '')
 
     # create a turbojet system model
-    turbojet = [TInlet('Inlet1',          '',            0,2,   19.9, 1    ),                           \
-                TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92),       \
-                TCombustor('combustor1',  '',            3,4,   Control, 0.38, 0,    1, 1    ),         \
-                TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88       ), \
-                TDuct('exhduct',      '',                5,7,   1                 ),                    \
-                TExhaust('exhaust1',      '',            7,8,9, 1, 1, 1           )]
+    fsys.systemmodel = [TInlet('Inlet1',          '',            0,2,   19.9, 1    ),                           \
+                        
+                        # for turbojet
+                        # TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92, 'GG'),       \
+                        # for turboshaft, constant speed
+                        TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92, 'CS'),       \
+                        
+                        TCombustor('combustor1',  '',            3,4,   0.38, 0,    1, 1    ),         \
+                        
+                        # for turbojet
+                        # TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88, 'GG'   ), \
+                        # for turboshaft
+                        TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88, 'PT'   ), \
+                        
+                        TDuct('exhduct',      '',                5,7,   0.9                 ),                    \
+                        TExhaust('exhaust1',      '',            7,8,9, 1, 1, 1           )]
 
     # add Ambient (Flight / Ambient operating conditions) output column names
-    fsys.OutputColumnNames = Ambient.GetOutputTableColumnNames() + Control.GetOutputTableColumnNames()
+    fsys.OutputColumnNames = fsys.Ambient.GetOutputTableColumnNames() + fsys.Control.GetOutputTableColumnNames()
     # add Component models
-    for comp in turbojet:
+    for comp in fsys.systemmodel:
         fsys.OutputColumnNames = fsys.OutputColumnNames + comp.GetOutputTableColumnNames()
     # add system performance output
     fsys.OutputColumnNames = fsys.OutputColumnNames + fsys.GetOutputTableColumnNames()
@@ -64,16 +75,16 @@ def main():
     def Do_Run(Mode, PointTime, q_gas, states):
         fsys.states = states.copy()
         fsys.reinit_system()
-        Ambient.Run(Mode, PointTime, q_gas)     
-        Control.Run(Mode, PointTime, q_gas, Ambient)
-        for comp in turbojet:
-            q_gas = comp.Run(Mode, PointTime, q_gas, Ambient)
+        fsys.Ambient.Run(Mode, PointTime, q_gas)     
+        fsys.Control.Run(Mode, PointTime, q_gas)
+        for comp in fsys.systemmodel:
+            q_gas = comp.Run(Mode, PointTime, q_gas)
         return fsys.errors
 
     def Do_Output(Mode, PointTime):
-        Ambient.PrintPerformance(Mode, PointTime)     
-        Control.PrintPerformance(Mode, PointTime) 
-        for comp in turbojet:
+        fsys.Ambient.PrintPerformance(Mode, PointTime)     
+        fsys.Control.PrintPerformance(Mode, PointTime) 
+        for comp in fsys.systemmodel:
             q_gas = comp.PrintPerformance(Mode, PointTime) 
         fsys.PrintPerformance(Mode, PointTime)   
         
@@ -81,9 +92,9 @@ def main():
         newrownumber = len(fsys.OutputTable) 
         fsys.OutputTable.loc[newrownumber, 'Point/Time'] = PointTime
         fsys.OutputTable.loc[newrownumber, 'Mode'] = Mode
-        Ambient.AddOutputToTable(Mode, newrownumber)
-        Control.AddOutputToTable(Mode, newrownumber)
-        for comp in turbojet:
+        fsys.Ambient.AddOutputToTable(Mode, newrownumber)
+        fsys.Control.AddOutputToTable(Mode, newrownumber)
+        for comp in fsys.systemmodel:
             comp.AddOutputToTable(Mode, newrownumber)
         fsys.AddOutputToTable(Mode, newrownumber)            
 
@@ -92,7 +103,7 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    Ambient.SetConditions('DP', 0, 0, 0, None, None)
+    fsys.Ambient.SetConditions('DP', 0, 0, 0, None, None)
     # not using states and errors yet for DP, but do this for later when doing DP iterations
     fsys.reinit_states_and_errors()
     Do_Run(Mode, 0, q_gas, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
@@ -101,12 +112,13 @@ def main():
     # run the Off-Design (OD) simulation, using Newton-Raphson to find
     # the steady state operating point
     Mode = 'OD'
-    inputpoints = np.arange(0, 44, 1)
+    # inputpoints = np.arange(0, 44, 1)
+    inputpoints = np.arange(0, 10, 1)
     ipoint = 0
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions
-    Ambient.SetConditions('OD', 0, 0, 0, None, None)
+    fsys.Ambient.SetConditions('OD', 0, 0, 0, None, None)
     
     def residuals(states):
         # residuals will return residuals of system conservation equations, schedules, limiters etc.
@@ -127,7 +139,7 @@ def main():
             Do_Output(Mode, inputpoints[ipoint])
             
             # for debug
-            # wf = fu.get_component_object(turbojet, 'combustor1').Wf
+            # wf = fu.get_component_object_by_name(turbojet, 'combustor1').Wf
             # wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
             # point_wf_states_array = np.concatenate((wfpoint, fsys.states))        
             # savedstates = np.vstack([savedstates, point_wf_states_array])          
@@ -141,7 +153,9 @@ def main():
     # print(fsys.OutputTable)
 
     # Export to Excel
-    fsys.OutputTable.to_csv('output.csv', index=False)
+    output_directory = 'output'
+    os.makedirs(output_directory, exist_ok=True)
+    fsys.OutputTable.to_csv(os.path.join(output_directory, 'output.csv'), index=False)
 
     print("end of main program")
 

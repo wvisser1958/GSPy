@@ -10,8 +10,8 @@ class TInlet(gaspath):
         self.Wdes = Wdes
         self.PRdes = PRdes        
 
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:    
-        super().Run(Mode, PointTime, GasIn, Ambient)
+    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
+        super().Run(Mode, PointTime, GasIn)
         self.GasIn.TP = GasIn.T, GasIn.P
         if Mode == 'DP':
             self.GasIn.mass = self.Wdes                     
@@ -32,7 +32,7 @@ class TInlet(gaspath):
 
         self.GasOut.TP = GasIn.T, GasIn.P * self.PR              
         self.GasOut.mass = self.GasIn.mass            
-        self.RD = self.GasIn.mass * Ambient.V    
+        self.RD = self.GasIn.mass * fsys.Ambient.V    
         # add ram drag to system level ram drag (note that multiple inlets may exist)
         fsys.RD = fsys.RD + self.RD        
         return self.GasOut

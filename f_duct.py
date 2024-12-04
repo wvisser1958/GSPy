@@ -8,8 +8,8 @@ class TDuct(gaspath):
         super().__init__(name, MapFileName, stationin, stationout)    
         self.PRdes = PRdes
         
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity, Ambient) -> ct.Quantity:  
-        super().Run(Mode, PointTime, GasIn, Ambient)
+    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:  
+        super().Run(Mode, PointTime, GasIn)
         if Mode == 'DP':
             self.PR = self.PRdes
         else:
