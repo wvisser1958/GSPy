@@ -8,12 +8,17 @@ import f_global as fg
 import f_system as fsys
 
 class TExhaust(gaspath):
-    def __init__(self, name, MapFileName, stationin, stationthroat, stationout, CXdes, CVdes, CDdes):    # Constructor of the class
+    def __init__(self, name, MapFileName, stationin, stationthroat, stationout, CXdes, CVdes, CDdes, PRdes):    # Constructor of the class
+        # CXdes, CVdes, CDdes are for propelling nozzle
+        # PRdes = diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
+        # If PRdes <> None then a divergent diffuser expansion is calculated, with PRdes as the diffuser
+        # pressure loss. PRdes must be < 1. Psout then determines the diffuser exit area A9.
         super().__init__(name, MapFileName, stationin, stationout) 
         self.stationthroat = stationthroat
         self.CXdes = CXdes
         self.CVdes = CVdes    
         self.CDdes = CDdes
+        self.PRdes = PRdes
     
     def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
         super().Run(Mode, PointTime, GasIn)
@@ -70,6 +75,12 @@ class TExhaust(gaspath):
         self.Athroat_geom = self.Athroat / self.CDdes
         return self.GasOut
     
+    def Aexitname(self):
+        if self.PRdes == None:
+            return 'Athroat'
+        else:
+            return 'Aexit'
+
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
         # Print and return the results
@@ -80,12 +91,13 @@ class TExhaust(gaspath):
         print(f"\tThroat static pressure: {self.Pthroat:.0f} Pa")
         print(f"\tExit static pressure: {self.GasOut.P:.0f} Pa")
         print(f"\tGross thrust: {self.FG:.2f} N")
-
+        print(f"\t{self.Aexitname()}: {self.Athroat:.2f} m2")
+        
     def GetOutputTableColumnNames(self):
         return super().GetOutputTableColumnNames()                                                              \
             + [f"T{self.stationthroat}", f"P{self.stationthroat}", f"V{self.stationthroat}", f"Mach{self.stationthroat}", \
                f"T{self.stationout}", f"P{self.stationout}",                                                \
-               "Athroat_"+self.name, "Athroat_geom_" + self.name, "FG_" + self.name]
+               f"{self.Aexitname()}_"+self.name, f"{self.Aexitname()}_geom_" + self.name, "FG_" + self.name]
          
     def AddOutputToTable(self, Mode, rownr):
         # fg.OutputTable.loc[rownr, columnname] = getattr(self, columnname) 
@@ -96,8 +108,8 @@ class TExhaust(gaspath):
         fsys.OutputTable.loc[rownr, f"Mach{self.stationthroat}"]  = self.Mthroat
         fsys.OutputTable.loc[rownr, f"T{self.stationout}"]  = self.GasOut.T 
         fsys.OutputTable.loc[rownr, f"P{self.stationout}"]  = self.GasOut.P 
-        fsys.OutputTable.loc[rownr, "Athroat_"+self.name]  = self.Athroat
-        fsys.OutputTable.loc[rownr, "Athroat_geom_"+self.name]  = self.Athroat_geom
+        fsys.OutputTable.loc[rownr, f"{self.Aexitname()}_"+self.name]  = self.Athroat
+        fsys.OutputTable.loc[rownr, f"{self.Aexitname()}_"+self.name]  = self.Athroat_geom
         fsys.OutputTable.loc[rownr, "FG_"+self.name]  = self.FG
         fsys.OutputTable.loc[rownr, "FG_"+self.name]  = self.FG
         

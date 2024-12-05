@@ -47,10 +47,10 @@ def main():
                         # for turbojet
                         # TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88, 'GG'   ), \
                         # for turboshaft
-                        TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88, 'PT'   ), \
+                        TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88, 0.99, 'PT'   ), \
                         
-                        TDuct('exhduct',      '',                5,7,   0.9                 ),                    \
-                        TExhaust('exhaust1',      '',            7,8,9, 1, 1, 1           )]
+                        TDuct('exhduct',      '',                5,7,   1.0                 ),                    \
+                        TExhaust('exhaust1',      '',            7,8,9, 1, 1, 1, 0.99           )]
 
     # add Ambient (Flight / Ambient operating conditions) output column names
     fsys.OutputColumnNames = fsys.Ambient.GetOutputTableColumnNames() + fsys.Control.GetOutputTableColumnNames()
@@ -111,6 +111,9 @@ def main():
 
     # run the Off-Design (OD) simulation, using Newton-Raphson to find
     # the steady state operating point
+
+    # return # uncomment for design point only
+
     Mode = 'OD'
     # inputpoints = np.arange(0, 44, 1)
     inputpoints = np.arange(0, 10, 1)

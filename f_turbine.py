@@ -8,8 +8,9 @@ import f_utils as fu
 from f_TurboComponent import TTurboComponent as tc
 
 class TTurbine(tc):
-    def __init__(self, name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades, TurbineType):    # Constructor of the class
+    def __init__(self, name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades, Etamechdes, TurbineType):    # Constructor of the class
         super().__init__(name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades)  
+        self.Etamechdes = Etamechdes # spool mechanical efficiency
         self.TurbineType = TurbineType  # gas generator turbine providing all power required by compressor(s)
         # TurbineType = 'PT'  # heavy duty single spool or power turbine, providing power to external loads
         # only call SetDPparameters in instantiable classes in init creator
