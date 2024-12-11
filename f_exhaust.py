@@ -91,7 +91,7 @@ class TExhaust(gaspath):
         print(f"\tThroat static pressure: {self.Pthroat:.0f} Pa")
         print(f"\tExit static pressure: {self.GasOut.P:.0f} Pa")
         print(f"\tGross thrust: {self.FG:.2f} N")
-        print(f"\t{self.Aexitname()}: {self.Athroat:.2f} m2")
+        print(f"\t{self.Aexitname()}: {self.Athroat:.4f} m2")
         
     def GetOutputTableColumnNames(self):
         return super().GetOutputTableColumnNames()                                                              \
@@ -111,5 +111,5 @@ class TExhaust(gaspath):
         fsys.OutputTable.loc[rownr, f"{self.Aexitname()}_"+self.name]  = self.Athroat
         fsys.OutputTable.loc[rownr, f"{self.Aexitname()}_"+self.name]  = self.Athroat_geom
         fsys.OutputTable.loc[rownr, "FG_"+self.name]  = self.FG
-        fsys.OutputTable.loc[rownr, "FG_"+self.name]  = self.FG
+
         

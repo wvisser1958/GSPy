@@ -1,0 +1,105 @@
+import numpy as np
+from f_map import TMap
+from scipy.interpolate import RegularGridInterpolator
+
+class TTurboMap(TMap):
+    def __init__(self, name, MapFileName, Ncmapdes, Betamapdes):    # Constructor of the class
+        super().__init__(name, MapFileName)          
+        self.Ncmapdes = Ncmapdes
+        self.Betamapdes = Betamapdes
+        self.Betamap = None
+        self.Ncmap = None
+        self.Etamap = None
+        self.Wcmapdes = None
+        self.Wcmap = None
+        self.PRmap = None
+
+        # Oscar
+        self.SFmap_Nc  = 1
+        self.SFmap_Wc  = 1
+        self.SFmap_PR  = 1
+        self.SFmap_Eta = 1
+
+    def ReadMap(self, filename):              # Abstract method, defined by convention only
+        amaptype, amaptitle, amapfile = super().ReadMap(filename)  
+        # with self.file:
+        if self.mapfile is not None:
+            line = self.mapfile.readline()     
+            while 'REYNOLDS' not in line.upper():
+                line = self.mapfile.readline()      
+            RNI = np.empty(2, dtype=float)
+            f_RNI = np.empty(2, dtype=float)
+            items = line.split()
+            RNI[0] = float(items[1].split("=", 1)[1]) 
+            f_RNI[0] = float(items[2].split("=", 1)[1]) 
+            RNI[1] = float(items[3].split("=", 1)[1]) 
+            f_RNI[1] = float(items[4].split("=", 1)[1])             
+        return amaptype, amaptitle, amapfile
+    
+    def ReadNcBetaCrossTable(self, file, keyword):
+        line = file.readline()  
+        while keyword not in line.upper():
+            line = file.readline()  
+        line = file.readline()  
+        items = line.split()
+        nccount1, betacount1  = divmod(float(items[0]),1)
+        nccount = round(nccount1)-1
+        betacount = round(betacount1*1000)-1
+
+        beta_values = np.array(list(map(float, line.split()[1:])))
+        nc_values = np.empty(nccount, dtype=float)
+        fval_array = np.zeros((nccount, betacount), dtype=float)
+        line = file.readline()  
+        inc = 0
+        while line.strip():
+            items = line.split()
+            nc_values[inc] = float(items[0])
+            fval_array[inc] = list(map(float, line.split()[1:]))
+            line = file.readline()  
+            inc +=1        
+        return nc_values, beta_values, fval_array      
+    
+    def ReadMapAndSetScaling(self, Ncdes, Wcdes, PRdes, Etades):
+        self.ReadMap(self.MapFileName)  
+        if self.mapfile is not None:
+            # get map scaling parameters
+            # for Nc
+            self.SFmap_Nc = Ncdes / self.Ncmapdes
+            # for Wc
+            self.Wcmapdes = self.get_map_wc((self.Ncmapdes, self.Betamapdes))
+            self.SFmap_Wc = Wcdes / self.Wcmapdes
+            # for PR
+            self.PRmap = self.get_map_pr((self.Ncmapdes, self.Betamapdes))
+            self.SFmap_PR = (PRdes - 1) / (self.PRmap - 1)
+            # for Eta
+            self.Etamap = self.get_map_eta((self.Ncmapdes, self.Betamapdes))
+            self.SFmap_Eta = Etades / self.Etamap
+
+    def DefineInterpolationFunctions(self):
+        self.get_map_wc = RegularGridInterpolator((self.nc_values, self.beta_values), self.wc_array, bounds_error=False, fill_value=None, method = 'cubic')
+        self.get_map_eta = RegularGridInterpolator((self.nc_values, self.beta_values), self.eta_array, bounds_error=False, fill_value=None, method = 'cubic')
+        self.get_map_pr = RegularGridInterpolator((self.nc_values, self.beta_values), self.pr_array, bounds_error=False, fill_value=None, method = 'cubic')
+
+    def GetScaledMapPerformance(self, Nc, Beta_state):
+        self.Ncmap = Nc / self.SFmap_Nc 
+        self.Betamap = Beta_state * self.Betamapdes
+        wcmap = self.get_map_wc((self.Ncmap, self.Betamap))
+        etamap = self.get_map_eta((self.Ncmap, self.Betamap))
+        prmap = self.get_map_pr((self.Ncmap, self.Betamap))
+        Wc = self.SFmap_Wc * wcmap
+        PR = self.SFmap_PR * (prmap - 1) + 1
+        Eta = self.SFmap_Eta * etamap
+        return Wc, PR, Eta
+
+    # Oscar
+    def GetNcArray(self):
+        return self.nc_values
+    def GetBetaArray(self):
+        return self.beta_values
+    def GetWcValues(self):
+        return self.wc_array
+    def GetEtaValues(self):
+        return self.eta_array
+    def GetPrValues(self):
+        return self.pr_array
+

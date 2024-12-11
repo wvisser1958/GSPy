@@ -38,6 +38,7 @@ def reinit_system():
 
 def PrintPerformance(Mode, PointTime):
     print(f"System performance ({Mode}) Point/Time:{PointTime}")
+    FN = FG - RD
     print(f"\tNet thrust: {FN:.2f} N")
     for shaft in shaft_list:
         print(f"\tPower shaft {shaft.ShaftNr} : {shaft.PW_sum/1000:.2f} kW")

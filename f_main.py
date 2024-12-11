@@ -15,6 +15,7 @@ from f_shaft import TShaft
 
 from f_inlet import TInlet
 from f_compressor import TCompressor
+from f_fan import TFan
 from f_combustor import TCombustor
 from f_turbine import TTurbine
 from f_duct import TDuct
@@ -38,19 +39,22 @@ def main():
     fsys.systemmodel = [TInlet('Inlet1',          '',            0,2,   19.9, 1    ),                           \
                         
                         # for turbojet
-                        # TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92, 'GG'),       \
+                        TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92, 'GG'),       \
                         # for turboshaft, constant speed
-                        TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92, 'CS'),       \
-                        
+                        # TCompressor('compressor1','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92, 'CS'),       \
+
+                        # TFan('fan','compmap.map', 2,3,   1, 0.8, 1,   16540, 0.825, 6.92, 'CS', 5,        \
+                        #             0.825, 6.92, 'compmap.map', 1, 0.8), 
+
                         TCombustor('combustor1',  '',            3,4,   0.38, 0,    1, 1    ),         \
                         
                         # for turbojet
-                        # TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88, 'GG'   ), \
+                        TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88, 1, 'GG'   ), \
                         # for turboshaft
-                        TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88, 0.99, 'PT'   ), \
+                        # TTurbine('turbine1',      'turbimap.map',4,5,   1, 0.8,       1,   16540, 0.88, 0.99, 'PT'   ), \
                         
                         TDuct('exhduct',      '',                5,7,   1.0                 ),                    \
-                        TExhaust('exhaust1',      '',            7,8,9, 1, 1, 1, 0.99           )]
+                        TExhaust('exhaust1',      '',            7,8,9, 1, 1, 1, 1           )]
 
     # add Ambient (Flight / Ambient operating conditions) output column names
     fsys.OutputColumnNames = fsys.Ambient.GetOutputTableColumnNames() + fsys.Control.GetOutputTableColumnNames()
@@ -115,8 +119,8 @@ def main():
     # return # uncomment for design point only
 
     Mode = 'OD'
-    # inputpoints = np.arange(0, 44, 1)
-    inputpoints = np.arange(0, 10, 1)
+    inputpoints = np.arange(0, 44, 1)
+    # inputpoints = np.arange(0, 10, 1)
     ipoint = 0
     print("\nOff-design (OD) results")
     print("=======================")

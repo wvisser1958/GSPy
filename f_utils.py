@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import root
+import cantera as ct
 from f_gaspath import TGaspath as gaspath
     
 atomweightC = 12.010914 
@@ -129,3 +130,23 @@ def get_component_object_by_name(component_objects, aname):
 
 def get_gaspathcomponent_object_inlet_stationnr(component_objects, astationnr):
     return next((obj for obj in component_objects if (isinstance(obj, gaspath)) and (obj.stationin == astationnr)), None)
+
+def Compression(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Etais):
+    Sin = GasIn.s
+    Pout = GasIn.P*PR
+    GasOut.SP = Sin, Pout # get GasOut at constant s and higher P
+    Hisout = GasOut.phase.enthalpy_mass # isentropic exit specific enthalpy
+    Hout = GasIn.phase.enthalpy_mass + (Hisout - GasIn.phase.enthalpy_mass) / Etais
+    GasOut.HP = Hout, Pout 
+    PW = GasOut.H - GasIn.H
+    return PW
+
+def TurbineExpansion(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Etais):
+    Pout = GasIn.P / PR 
+    GasOut.SP = GasIn.entropy_mass, Pout
+    final_enthalpy_is = GasOut.enthalpy_mass
+    # eta_is = (initial_enthalpy - final_enthalpy) / (initial_enthalpy - final_enthalpy_is)
+    final_enthalpy = GasIn.enthalpy_mass - (GasIn.enthalpy_mass - final_enthalpy_is) * Etais
+    GasOut.HP = final_enthalpy, Pout 
+    PW = GasIn.H - GasOut.H
+    return PW

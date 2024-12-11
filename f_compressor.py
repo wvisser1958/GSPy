@@ -4,7 +4,9 @@ from scipy.interpolate import RegularGridInterpolator
 import cantera as ct
 import f_global as fg
 import f_system as fsys
+import f_utils as fu
 from f_TurboComponent import TTurboComponent as tc
+import f_compressormap 
 
 class TCompressor(tc):
     def __init__(self, name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades, PRdes, SpeedOption):    # Constructor of the class
@@ -12,62 +14,17 @@ class TCompressor(tc):
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
-
-    def GetSlWcValues(self):
-        return self.sl_wc_array
-    def GetSlPrValues(self):
-        return self.sl_pr_array
-
-    def ReadMap(self, filename):              
-        super().ReadMap(filename)
-        self.nc_values, self.beta_values, self.wc_array = self.ReadNcBetaCrossTable(self.mapfile, 'MASS FLOW')
-        self.nc_values, self.beta_values, self.eta_array = self.ReadNcBetaCrossTable(self.mapfile, 'EFFICIENCY')
-        self.nc_values, self.beta_values, self.pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'PRESSURE RATIO')
-        dummy_value, self.sl_wc_array, self.sl_pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'SURGE LINE')
-
-        # define the interpolation functions allow extrapolation (i.e. fill value = None)
-        self.get_map_wc = RegularGridInterpolator((self.nc_values, self.beta_values), self.wc_array, bounds_error=False, fill_value=None, method = 'cubic')
-        self.get_map_eta = RegularGridInterpolator((self.nc_values, self.beta_values), self.eta_array, bounds_error=False, fill_value=None, method = 'cubic')
-        self.get_map_pr = RegularGridInterpolator((self.nc_values, self.beta_values), self.pr_array, bounds_error=False, fill_value=None, method = 'cubic')
-        # awc = get_map_wc((0.45, 0.0)) # wc value for (Nc, Beta)
-        pass
+        self.map = f_compressormap.TCompressorMap(name + '_map', MapFileName, Ncmapdes, Betamapdes)
 
     def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
         super().Run(Mode, PointTime, GasIn)
         if Mode == 'DP':
-            Sin = GasIn.s
-            Pout = GasIn.P*self.PRdes
-            self.GasOut.SP = Sin, Pout # get GasOut at constant s and higher P
-            Hisout = self.GasOut.phase.enthalpy_mass # isentropic exit specific enthalpy
-            Hout = GasIn.phase.enthalpy_mass + (Hisout - GasIn.phase.enthalpy_mass) / self.Etades
-            self.GasOut.HP = Hout, Pout 
+            self.PW = fu.Compression(GasIn, self.GasOut, self.PRdes, self.Etades)
             shaft = fsys.find_shaft_by_number(self.ShaftNr)
-            # if shaft.assigned:
-            self.PW = self.GasOut.H - self.GasIn.H
             shaft.PW_sum = shaft.PW_sum - self.PW               
 
-            self.N = self.Ndes
-            self.Ncdes = self.Ndes / fg.GetRotorspeedCorrectionFactor(GasIn) 
-            self.Nc = self.Ncdes
-            self.Eta = self.Etades
+            self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
 
-            self.ReadMap(self.MapFileName)  
-            if self.mapfile is not None:
-                # get map scaling parameters
-                # for Nc
-                self.SFmap_Nc = self.Ncdes / self.Ncmapdes
-                # for Wc
-                self.Wcmapdes = self.get_map_wc((self.Ncmapdes, self.Betamapdes))
-                self.Wdes = self.GasIn.mass
-                self.Wcdes = self.Wdes * fg.GetFlowCorrectionFactor(GasIn)
-                self.SFmap_Wc = self.Wcdes / self.Wcmapdes
-                # for PR
-                self.PRmap = self.get_map_pr((self.Ncmapdes, self.Betamapdes))
-                self.SFmap_PR = (self.PRdes - 1) / (self.PRmap - 1)
-                # for Eta
-                self.Etamap = self.get_map_eta((self.Ncmapdes, self.Betamapdes))
-                self.SFmap_Eta = self.Etades / self.Etamap
-                pass 
             # add states and errors 
             if self.SpeedOption != 'CS':
                 fsys.states = np.append(fsys.states, 1)
@@ -78,47 +35,26 @@ class TCompressor(tc):
             # error for equation GasIn.wc = wcmap
             fsys.errors = np.append(fsys.errors, 0)
             self.ierror_wc = fsys.errors.size-1                     
+            # calculate parameters for output
             self.PR = self.PRdes
+            self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)     
         else:
             if self.SpeedOption != 'CS':
                 self.N = fsys.states[self.istate_n] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(GasIn)
-            self.Betamap = fsys.states[self.istate_beta] * self.Betamapdes
-            self.Ncmap = self.Nc / self.SFmap_Nc 
-            self.GasIn.TP = GasIn.T, GasIn.P
-            self.GasIn.mass = GasIn.mass                     
             
-            # for Wc
-            self.Wcmap = self.get_map_wc((self.Ncmap, self.Betamap))
-            self.Wc = self.SFmap_Wc * self.Wcmap
-            # self.wc = 18.4385
-            self.Wmap = self.Wc / fg.GetFlowCorrectionFactor(GasIn)
-            # for PR
-            self.PRmap = self.get_map_pr((self.Ncmap, self.Betamap))
-            # self.SFmap_PR = (self.PRdes - 1) / (PRmap - 1)
-            self.PR = self.SFmap_PR * (self.PRmap - 1) + 1
-            # for Eta
-            self.Etamap = self.get_map_eta((self.Ncmap, self.Betamap))
-            self.Eta = self.SFmap_Eta * self.Etamap
-            # self.Eta = 0.8374
+            self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
+            
+            self.PW = fu.Compression(GasIn, self.GasOut, self.PR, self.Eta)
 
-            Sin = GasIn.entropy_mass
-            Pout = GasIn.P*self.PR
-            self.GasOut.SP = Sin, Pout # get GasOut at constant s and higher P
-            Hisout = self.GasOut.phase.enthalpy_mass # isentropic exit specific enthalpy
-            Hout = GasIn.phase.enthalpy_mass + (Hisout - GasIn.phase.enthalpy_mass) / self.Eta
-            self.GasOut.HP = Hout, Pout 
             shaft = fsys.find_shaft_by_number(self.ShaftNr)
-            # if shaft.assigned:
-            self.PW = self.GasOut.H - self.GasIn.H
-            # self.PW = self.Wmap * (self.GasOut.enthalpy_mass - self.GasIn.enthalpy_mass)
             shaft.PW_sum = shaft.PW_sum - self.PW  
-            # fg.errors[self.ierror_wc ] = (self.wcin - self.wc) / self.Wcdes 
-            fsys.errors[self.ierror_wc ] = (self.Wmap - self.GasIn.mass) / self.Wdes 
-            self.GasOut.mass = self.Wmap
-            self.N = self.Nc * fg.GetRotorspeedCorrectionFactor(GasIn)          
-
-        # calculate parameters for output
-        self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)
+            self.W = self.Wc / fg.GetFlowCorrectionFactor(GasIn)
+            fsys.errors[self.ierror_wc ] = (self.W - self.GasIn.mass) / self.Wdes 
+            
+            # set out flow rate to W according to map 
+            # may deviate from self.GasIn.mass during iteration: this is to propagate the effect of mass flow error 
+            # to downstream components for more stable convergence in the solver (?)
+            self.GasOut.mass = self.W
 
         return self.GasOut
