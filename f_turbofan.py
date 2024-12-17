@@ -30,34 +30,41 @@ def main():
     # create Ambient conditions object (to set ambient/inlet/flight conditions)
     #                              Altitude, Mach, dTs,    Ps0,    Ts0 
     # None for Ps0 and Ts0 means values are calculated from standard atmosphere
-    fsys.Ambient = TAmbient('Ambient', 0, 0, 0,   0,   None,   None)
+    fsys.Ambient = TAmbient('Ambient', 0,   0, 0,   0,   None,   None)
     
     # create a control (controlling all inputs to the system model) 
     # direct fuel flow input
-    # fsys.Control = TControl('Control', '', 0.38, 0.38, 0.06, -0.01)
-    # combustor Texit input, with Wf 0.38 as first guess for 1200 K combustor exit temperature
-    fsys.Control = TControl('Control', '', 0.38, 1200, 1000, -20)
-
+    # fsys.Control = TControl('Control', '', 0.48, 0.48, 0.08, -0.01)
+    # combustor Texit input, with Wf 0.48 as first guess for 1200 K combustor exit temperature
+    fsys.Control = TControl('Control', '', 0.50, 1600, 1100, -50)
+    
     # create a turbojet system model
-    fsys.systemmodel = [TInlet('Inlet1',          '',            0,2,   19.9, 1    ),                           
+    fsys.systemmodel = [TInlet('Inlet1',          '',            0,2,   100, .9    ),                           
                         
-                        # for turbojet
-                        TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'GG'),       
-                        # for turboshaft, constant speed
-                        # TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'CS'),       
+                        # for turbofan, note that fan has 2 GasOut outputs
+                        TFan('FAN_BST','bigfanc.map', 2, 25, 21,   1,   4400, 0.825, 5, 1, 0.8, 2, 
+                                       'bigfand.map', 1, 0.8, 1.3, 0.8),       
+                                               
+                        # always start with the components following the 1st GasOut object
+                        TCompressor('HPC','compmap.map', 25,3,   2,   16540, 0.825, 1, 0.8, 6.92, 'GG'),       
 
                         # fuel input
                         # TCombustor('combustor1',  '',            3,4,   0.38, None,    1, 1    ),         
                         # Texit input
-                        TCombustor('combustor1',  '',            3,4,   0.38, 1200,    1, 1    ),         
+                        TCombustor('combustor1',  '',            3,4,   0.5, 1600,    1, 1    ),            
                         
-                        # for turbojet
-                        TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.8, 1, 'GG'   ), 
-                        # for turboshaft
-                        # TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.8, 0.99, 'PT'   ), 
-                        
-                        TDuct('exhduct',      '',                5,7,   1.0                 ),                    
-                        TExhaust('exhaust1',      '',            7,8,9, 1, 1, 1, 1           )]
+                        TTurbine('HPT',      'turbimap.map',4,45,   2,   16540, 0.88,       1, 0.8, 1, 'GG'   ), 
+
+                        TTurbine('LPT',      'turbimap.map',45,5,   1,   4400, 0.88,       1, 0.8, 1, 'GG'   ), 
+
+
+                        TDuct('Exhduct_hot',      '',                5,7,   1.0                 ),                    
+                        TExhaust('HotNozzle',      '',            7,8,9, 1, 1, 1, 1           ),
+
+                        # now add the list with components following the 2nd fan GasOut (i.e. the bypass duct)
+                        TDuct('Exhduct_cold',      '',                21,23,   1.0                 ),                    
+                        TExhaust('ColdNozzle',      '',            23,18,19, 1, 1, 1, 1           )]
+
 
     # add Ambient (Flight / Ambient operating conditions) output column names
     fsys.OutputColumnNames = fsys.Ambient.GetOutputTableColumnNames() + fsys.Control.GetOutputTableColumnNames()
@@ -85,14 +92,16 @@ def main():
         fsys.Ambient.Run(Mode, PointTime, gas)     
         fsys.Control.Run(Mode, PointTime)
         for comp in fsys.systemmodel:
-            q_gas = comp.Run(Mode, PointTime)
+            # q_gas = comp.Run(Mode, PointTime, q_gas)
+            comp.Run(Mode, PointTime)
         return fsys.errors
 
     def Do_Output(Mode, PointTime):
         fsys.Ambient.PrintPerformance(Mode, PointTime)     
         fsys.Control.PrintPerformance(Mode, PointTime) 
         for comp in fsys.systemmodel:
-            q_gas = comp.PrintPerformance(Mode, PointTime) 
+            # q_gas = comp.PrintPerformance(Mode, PointTime) 
+            comp.PrintPerformance(Mode, PointTime) 
         fsys.PrintPerformance(Mode, PointTime)   
         
         # table output
@@ -124,6 +133,7 @@ def main():
     Mode = 'OD'
     inputpoints = fsys.Control.Get_OD_inputpoints()
     # inputpoints = np.arange(0, 10, 1)
+    ipoint = 0
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions

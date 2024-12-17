@@ -1,10 +1,10 @@
 import numpy as np
 import cantera as ct
-from f_BaseComponent import TComponent as component
+from f_BaseComponent import TComponent 
 import f_global as fg
 import f_system as fsys
 
-class TGaspath(component):        
+class TGaspath(TComponent):        
     def __init__(self, name, MapFileName, stationin, stationout):    # Constructor of the class
         super().__init__(name, MapFileName)   
         self.stationin = stationin
@@ -13,16 +13,26 @@ class TGaspath(component):
         # then not assigned anywhere so no need to Print/output.         
         self.GasIn = None
         self.GasOut = None
-        self.Wcdes = None
         self.Wc = None
         self.PRdes = 1
         self.PR = None
             
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:  
-        self.GasIn = ct.Quantity(GasIn.phase, mass = GasIn.mass) 
-        self.GasOut = ct.Quantity(GasIn.phase, mass = GasIn.mass) 
+    def Run(self, Mode, PointTime):    
+        # self.GasIn = ct.Quantity(GasIn.phase, mass = GasIn.mass) 
+        self.GasIn = fsys.gaspath_conditions[self.stationin] 
+        
         if Mode == 'DP':
-            self.GasInDes = ct.Quantity(GasIn.phase, mass = GasIn.mass) 
+            # create GasInDes, GasOut cantera Quantity (GasIn already created)
+            self.GasInDes = ct.Quantity(self.GasIn.phase, mass = self.GasIn.mass) 
+            self.GasOut = ct.Quantity(self.GasIn.phase, mass = self.GasIn.mass) 
+            self.Wdes = self.GasInDes.mass
+            self.Wcdes = self.Wdes * fg.GetFlowCorrectionFactor(self.GasInDes)        
+            self.Wc = self.Wcdes
+        else:
+            self.GasOut.TPY = self.GasIn.TPY
+            self.GasOut.mass = self.GasIn.mass
+            
+        fsys.gaspath_conditions[self.stationout] = self.GasOut       
         return self.GasOut    
     
     def PrintPerformance(self, Mode, PointTime):
@@ -54,6 +64,7 @@ class TGaspath(component):
             fsys.OutputTable.loc[rownr, f"Wc{self.stationin}"] = self.Wc 
             fsys.OutputTable.loc[rownr, f"T{self.stationin}"]  = self.GasIn.T 
             fsys.OutputTable.loc[rownr, f"P{self.stationin}"]  = self.GasIn.P 
-            fsys.OutputTable.loc[rownr, "PR_"+self.name] = self.PR 
+            if self.PR != None:
+                fsys.OutputTable.loc[rownr, "PR_"+self.name] = self.PR 
           
             

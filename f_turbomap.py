@@ -47,6 +47,11 @@ class TTurboMap(TMap):
         betacount = round(betacount1*1000)-1
 
         beta_values = np.array(list(map(float, line.split()[1:])))
+        # read any beta values from subsequent lines until all added
+        while len(beta_values) < betacount:
+            line = file.readline()  
+            beta_values = np.append(beta_values, np.array(list(map(float, line.split()[0:]))))
+
         nc_values = np.empty(nccount, dtype=float)
         fval_array = np.zeros((nccount, betacount), dtype=float)
         line = file.readline()  
@@ -54,7 +59,15 @@ class TTurboMap(TMap):
         while line.strip():
             items = line.split()
             nc_values[inc] = float(items[0])
-            fval_array[inc] = list(map(float, line.split()[1:]))
+            # get a list of items from 1 or multiple lines 
+            line_value_items = items[1:]
+            # read any items from subsequent lines for the same Nc until values for all Beta values added
+            while len(line_value_items) < betacount:
+                line = file.readline()  
+                line_value_items = line_value_items + line.split()
+            # now assign all betacount items to the fval_array
+            fval_array[inc] = list(map(float, line_value_items))
+
             line = file.readline()  
             inc +=1        
         return nc_values, beta_values, fval_array      

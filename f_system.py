@@ -1,6 +1,9 @@
 
 import numpy as np
 
+# use dictionary for gas path conditions oriented by gas path station number
+gaspath_conditions = {}
+
 shaft_list = []
 
 states = np.array([], dtype=float)

@@ -27,7 +27,8 @@ class TComponent:
         except FileNotFoundError:   
             print(f"Map file '{filename}' does not exist.")            
     
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
+    # def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
+    def Run(self, Mode, PointTime):    
         raise NotImplementedError("Subclass must implement Run abstract method")
     
     def PrintPerformance(self, Mode, PointTime):

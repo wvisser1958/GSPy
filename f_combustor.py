@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.optimize import root
 import cantera as ct
 import f_global as fg
 import f_system as fsys
@@ -9,22 +10,52 @@ class TCombustor(gaspath):
         super().__init__(name, MapFileName, stationin, stationout)    
         self.Wfdes = Wfdes
         self.Texitdes = Texitdes
+        # OD Wf and Texit: set as None, use None or not None to determine input type : Wf of Texit
+        self.Wf = Wfdes
+        self.Texit = None
         self.PRdes = PRdes
         self.Etades = Etades
         
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
-        super().Run(Mode, PointTime, GasIn)
+    def Run(self, Mode, PointTime):    
+        def CalcEndConditions():
+            O2_exit_mass = w_air * fg.air_O2_fraction_mass - self.Wf/CHyOzMoleMass * (1+HC_ratio/4) * fg.O2_molar_mass 
+            CO2_exit_mass = fg.CO2_molar_mass * self.Wf/CHyOzMoleMass + w_air*fg.air_CO2_fraction_mass   
+            H2O_exit_mass = fg.H2O_molar_mass * self.Wf/CHyOzMoleMass * HC_ratio/2
+            Ar_exit_mass = w_air * fg.air_Ar_fraction_mass
+            N2_exit_mass = w_air * fg.air_N2_fraction_mass
+
+            # calculate composition of combustion products mixed with excess air
+            product_composition_mass = f'O2:{O2_exit_mass}, CO2:{CO2_exit_mass}, H2O:{H2O_exit_mass}, AR:{Ar_exit_mass}, N2:{N2_exit_mass}'
+            self.GasOut.TPY = fg.T_standard_ref, fg.P_standard_ref, product_composition_mass
+
+            h_prod_ref = self.GasOut.enthalpy_mass # get H in J/kg
+
+            # now, from the equation (conservation of energy "in = out"):
+            # w_fuel * LHV_kJ_kg*1000 + w_air * (h_air_initial - fg.h_air_ref)  =   (w_air + w_fuel) * (h_prod_final - h_prod_ref)
+            h_prod_final = (self.Wf * LHV_kJ_kg * 1000 + w_air * (h_air_initial-fg.h_air_ref)) / (w_air + self.Wf) + h_prod_ref
+
+            self.GasOut.HP = h_prod_final, Pout
+            self.GasOut.mass = self.GasIn.mass + self.Wf
+            return self.GasOut.T
+        
+        super().Run(Mode, PointTime)
         if Mode == 'DP':
-            self.Wf = self.Wfdes
-            self.PR = self.PRdes
+            if self.Texitdes  != None: # calc Wf from Texit, use Wfdes as Wf first guess
+                self.Texit = self.Texitdes
+            else:          
+                self.Wf = self.Wfdes
         else:
-            self.Wf = fsys.Control.Wf
-            # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
-            self.PR = self.PRdes
+            if self.Texit != None: # calc Wf from Texit
+                self.Texit =  fsys.Control.Inputvalue
+            else:
+                self.Wf = fsys.Control.Inputvalue
+
+        # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
+        self.PR = self.PRdes
         T_fuel = 288.15
-        Sin = GasIn.s
-        Pin = GasIn.P
-        Pout = GasIn.P*self.PRdes
+        Sin = self.GasIn.s
+        Pin = self.GasIn.P
+        Pout = self.GasIn.P*self.PRdes
 
         # Given parameters for the virtual fuel
         LHV_kJ_kg = 43031  # Lower Heating Value in kJ/kg
@@ -34,32 +65,26 @@ class TCombustor(gaspath):
 
         w_air = self.GasIn.mass
 
-        h_air_initial = GasIn.enthalpy_mass
+        h_air_initial = self.GasIn.enthalpy_mass
 
         # Convert LHV from kJ/kg to J/mol
         LHV_J_mol = LHV_kJ_kg * 1000 * (average_molar_mass_fuel / 1000)
 
-        # calculate compostion of combustion products mixed with excess air
-        O2_exit_mass = w_air * fg.air_O2_fraction_mass - self.Wf/CHyOzMoleMass * (1+HC_ratio/4) * fg.O2_molar_mass 
-        CO2_exit_mass = fg.CO2_molar_mass * self.Wf/CHyOzMoleMass + w_air*fg.air_CO2_fraction_mass   
-        H2O_exit_mass = fg.H2O_molar_mass * self.Wf/CHyOzMoleMass * HC_ratio/2
-        Ar_exit_mass = w_air * fg.air_Ar_fraction_mass
-        N2_exit_mass = w_air * fg.air_N2_fraction_mass
-
-        product_composition_mass = f'O2:{O2_exit_mass}, CO2:{CO2_exit_mass}, H2O:{H2O_exit_mass}, AR:{Ar_exit_mass}, N2:{N2_exit_mass}'
-        self.GasOut.TPY = fg.T_standard_ref, fg.P_standard_ref, product_composition_mass
-
-        h_prod_ref = self.GasOut.enthalpy_mass # get H in J/kg
-
-        # now, from the equation (conservation of energy "in = out"):
-        # w_fuel * LHV_kJ_kg*1000 + w_air * (h_air_initial - fg.h_air_ref)  =   (w_air + w_fuel) * (h_prod_final - h_prod_ref)
-        h_prod_final = (self.Wf * LHV_kJ_kg * 1000 + w_air * (h_air_initial-fg.h_air_ref)) / (w_air + self.Wf) + h_prod_ref
-
-        self.GasOut.HP = h_prod_final, Pout
-        self.GasOut.mass = self.GasIn.mass + self.Wf
+        Wf0 = self.Wf
+        if self.Texit != None:
+            def equation(Wfiter):
+                self.Wf=Wfiter[0]
+                return CalcEndConditions() - self.Texit
+            solution = root(equation, x0 = Wf0)
+            if solution.success:
+                self.Wf = solution.x[0] 
+            else:
+                print(f"Wf for Combustor Texit value of {self.Texit:.0f} not found")
+        else: # just calculate Texit from Wf
+            CalcEndConditions()
 
         # calculate parameters for output
-        self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)
+        self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(self.GasIn)
 
         fsys.WF = fsys.WF + self.Wf
 

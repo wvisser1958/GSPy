@@ -7,8 +7,9 @@ import f_global as fg
 import f_system as fsys
 
 class TAmbient(component):
-    def __init__(self, name, Altitude, Macha, dTs, Psa, Tsa):    # Constructor of the class
+    def __init__(self, name, stationnr, Altitude, Macha, dTs, Psa, Tsa):    # Constructor of the class
         super().__init__(name, '')    
+        self.stationnr = stationnr
         self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa)
 
     def SetConditions(self, Mode, Altitude, Macha, dTs, Psa, Tsa):
@@ -25,7 +26,7 @@ class TAmbient(component):
             self.Psa = Psa      # if None then this will override value from standard atmosphere Alt, Machm dTs
             self.Tsa = Tsa      # if None then this will override value from standard atmosphere Alt, Machm dTs
 
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:  
+    def Run(self, Mode, PointTime, Gas_Ambient):  
         if Mode == 'DP':  # alway reset de DP conditions
             self.Altitude = self.Altitude_des 
             self.Macha = self.Macha_des
@@ -49,9 +50,11 @@ class TAmbient(component):
         self.Tta = self.Tsa * ( 1 + 0.2 * self.Macha**2)
         self.Pta = self.Psa * ((self.Tta/self.Tsa)**3.5)
         # set values in the GasIn object conditions
-        GasIn.TPY = self.Tta, self.Pta, fg.s_air_composition_mass
+        self.Gas_Ambient = Gas_Ambient
+        self.Gas_Ambient.TPY = self.Tta, self.Pta, fg.s_air_composition_mass
         self.V = self.Macha * ac.std_atm.temp2speed_of_sound(self.Tsa, speed_units = 'm/s', temp_units = 'K')
-    
+        # fsys.gaspath_conditions[self.stationnr] = Gas_Ambient        
+
     def GetOutputTableColumnNames(self):
         return super().GetOutputTableColumnNames() + ["Tsa", "Psa", "Tta", "Pta", "Macha"]
          

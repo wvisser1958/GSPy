@@ -20,13 +20,13 @@ class TExhaust(gaspath):
         self.CDdes = CDdes
         self.PRdes = PRdes
     
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
-        super().Run(Mode, PointTime, GasIn)
+    def Run(self, Mode, PointTime):     
+        super().Run(Mode, PointTime)
         # add nozzle throat station
-        self.GasThroat = ct.Quantity(GasIn.phase, mass = GasIn.mass) 
-        Sin = GasIn.entropy_mass
-        Hin = GasIn.enthalpy_mass
-        Pin = GasIn.P
+        self.GasThroat = ct.Quantity(self.GasIn.phase, mass = self.GasIn.mass) 
+        Sin = self.GasIn.entropy_mass
+        Hin = self.GasIn.enthalpy_mass
+        Pin = self.GasIn.P
         Pout = fsys.Ambient.Psa
         self.PR = Pin/Pout
         if Mode == 'DP':                                        
@@ -68,11 +68,12 @@ class TExhaust(gaspath):
             self.Mthroat = self.Vthroat / self.GasThroat.phase.sound_speed           
         # calculate parameters for output
         self.GasOut.TP = self.Tthroat, Pout # assume no further expansion
-        self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(GasIn)            
+        self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(self.GasIn)            
         self.FG = self.CXdes * (self.GasOut.mass * self.Vthroat + self.Athroat*(self.Pthroat-Pout)) 
         # add gross thrust to system level thrust (note that multiple propelling nozzles may exist)
         fsys.FG = fsys.FG + self.FG 
         self.Athroat_geom = self.Athroat / self.CDdes
+        fsys.gaspath_conditions[self.stationthroat] = self.GasThroat  
         return self.GasOut
     
     def Aexitname(self):

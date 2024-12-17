@@ -10,9 +10,11 @@ class TInlet(gaspath):
         self.Wdes = Wdes
         self.PRdes = PRdes        
 
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
-        super().Run(Mode, PointTime, GasIn)
-        self.GasIn.TP = GasIn.T, GasIn.P
+    def Run(self, Mode, PointTime):       
+        # self.GasIn = ct.Quantity(fsys.gaspath_conditions[self.stationin].phase, mass = self.Wdes) 
+        fsys.gaspath_conditions[self.stationin] = ct.Quantity(fsys.Ambient.Gas_Ambient, mass = self.Wdes) 
+        super().Run(Mode, PointTime)
+        self.GasIn.TP = self.GasIn.T, self.GasIn.P
         if Mode == 'DP':
             self.GasIn.mass = self.Wdes                     
             self.wcdes = self.GasIn.mass * fg.GetFlowCorrectionFactor(self.GasIn)
@@ -26,11 +28,11 @@ class TInlet(gaspath):
         else:
             self.wc = fsys.states[self.istate_wc] * self.wcdes
             self.GasIn.mass = self.wc / fg.GetFlowCorrectionFactor(self.GasIn)                     
-            self.GasOut.TP = GasIn.T, GasIn.P * self.PRdes  
+            self.GasOut.TP = self.GasIn.T, self.GasIn.P * self.PRdes  
             # this inlet has constant PR, no OD PR yet (use manual input in code here, or make PR, Ram recovery map)
             self.PR = self.PRdes  
 
-        self.GasOut.TP = GasIn.T, GasIn.P * self.PR              
+        self.GasOut.TP = self.GasIn.T, self.GasIn.P * self.PR              
         self.GasOut.mass = self.GasIn.mass            
         self.RD = self.GasIn.mass * fsys.Ambient.V    
         # add ram drag to system level ram drag (note that multiple inlets may exist)

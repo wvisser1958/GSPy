@@ -4,17 +4,17 @@ from scipy.optimize import root
 import f_global as fg
 import f_system as fsys
 import f_utils as fu
-from f_TurboComponent import TTurboComponent as tc
-import f_turbinemap
+from f_TurboComponent import TTurboComponent
+from f_turbinemap import TTurbineMap
 
-class TTurbine(tc):
-    def __init__(self, name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades, Etamechdes, TurbineType):    # Constructor of the class
-        super().__init__(name, MapFileName, stationin, stationout, Ncmapdes, Betamapdes, ShaftNr, Ndes, Etades)  
+class TTurbine(TTurboComponent):
+    def __init__(self, name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes, Etamechdes, TurbineType):    # Constructor of the class
+        super().__init__(name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades)  
         self.Etamechdes = Etamechdes # spool mechanical efficiency
         self.TurbineType = TurbineType  # gas generator turbine providing all power required by compressor(s)
         # TurbineType = 'PT'  # heavy duty single spool or power turbine, providing power to external loads
         # only call SetDPparameters in instantiable classes in init creator
-        self.map = f_turbinemap.TTurbineMap(name + '_map', MapFileName, Ncmapdes, Betamapdes)
+        self.map = TTurbineMap(name + '_map', MapFileName, Ncmapdes, Betamapdes)
 
     def GetTotalPRdesUntilAmbient(self):
         # always at least one gas path component downstream a turbine (if only one: exhaust)
@@ -27,11 +27,11 @@ class TTurbine(tc):
             agaspathcomponent = fu.get_gaspathcomponent_object_inlet_stationnr(fsys.systemmodel, agaspathcomponent.stationout)             
         return PRdesuntilAmbient 
 
-    def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:   
-        super().Run(Mode, PointTime, GasIn)
+    def Run(self, Mode, PointTime):     
+        super().Run(Mode, PointTime)
         shaft = fsys.find_shaft_by_number(self.ShaftNr)
-        Sin = GasIn.entropy_mass
-        Pin = GasIn.P        
+        Sin = self.GasIn.entropy_mass
+        Pin = self.GasIn.P        
         if Mode == 'DP':
             if self.TurbineType == 'GG':    # gas generator turbine, providing all power required by compressor(s)
                 # this turbine is providing all the power required by the shaft
@@ -46,7 +46,7 @@ class TTurbine(tc):
             else:
                 PRdesuntilAmbient = self.GetTotalPRdesUntilAmbient()
                 Pout = fsys.Ambient.Psa / PRdesuntilAmbient  
-                self.PRdes = GasIn.P/Pout
+                self.PRdes = self.GasIn.P/Pout
 
                 self.PW = fu.TurbineExpansion(GasIn, self.GasOut, self.PRdes, self.Etades) 
                 shaft.PW_sum = shaft.PW_sum + self.PW * self.Etamechdes
@@ -67,17 +67,17 @@ class TTurbine(tc):
                 fsys.errors = np.append(fsys.errors, 0)
                 self.ierror_shaftpw = fsys.errors.size-1 
             # calculate parameters for output
-            self.N = self.Nc * fg.GetRotorspeedCorrectionFactor(GasIn)  
+            self.N = self.Nc * fg.GetRotorspeedCorrectionFactor(self.GasIn)  
         else:
             if self.TurbineType == 'GG':
                 self.N = fsys.states[shaft.istate] * self.Ndes
-            self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(GasIn)
+            self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.GasIn)
 
             self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
-            self.W = self.Wc / fg.GetFlowCorrectionFactor(GasIn)
+            self.W = self.Wc / fg.GetFlowCorrectionFactor(self.GasIn)
             fsys.errors[self.ierror_wc ] = (self.W - self.GasOut.mass) / self.Wdes             
 
-            self.PW = fu.TurbineExpansion(GasIn, self.GasOut, self.PR, self.Eta) 
+            self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PR, self.Eta) 
             shaft.PW_sum = shaft.PW_sum + self.PW * self.Etamechdes             
             if self.TurbineType == 'GG':
                 fsys.errors[self.ierror_shaftpw] = shaft.PW_sum / self.PWdes 
