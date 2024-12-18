@@ -17,6 +17,7 @@ WF = 0.0
 OutputColumnNames = None
 OutputTable = None
 
+
 def find_shaft_by_number(ShaftNr):
     for shaft in shaft_list:
         if shaft.ShaftNr == ShaftNr:
