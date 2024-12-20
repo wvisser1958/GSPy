@@ -34,9 +34,9 @@ def main():
     
     # create a control (controlling all inputs to the system model) 
     # direct fuel flow input
-    # fsys.Control = TControl('Control', '', 0.38, 0.38, 0.06, -0.01)
+    fsys.Control = TControl('Control', '', 0.38, 0.38, 0.16, -0.01)
     # combustor Texit input, with Wf 0.38 as first guess for 1200 K combustor exit temperature
-    fsys.Control = TControl('Control', '', 0.38, 1200, 1000, -20)
+    # fsys.Control = TControl('Control', '', 0.38, 1200, 1000, -20)
 
     # create a turbojet system model
     fsys.systemmodel = [TInlet('Inlet1',          '',            0,2,   19.9, 1    ),                           
@@ -46,10 +46,25 @@ def main():
                         # for turboshaft, constant speed
                         # TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'CS'),       
 
+                        # ***************** Combustor ******************************************************
                         # fuel input
-                        # TCombustor('combustor1',  '',            3,4,   0.38, None,    1, 1    ),         
+                        TCombustor('combustor1',  '',            3,4,   0.38, None,    1, 1,    
                         # Texit input
-                        TCombustor('combustor1',  '',            3,4,   0.38, 1200,    1, 1    ),         
+                        # TCombustor('combustor1',  '',            3,4,   0.38, 1200,    1, 1    ),         
+                                                    
+                                                    # fuel specification examples:
+                                                    # fuel specified by LHV, HCratio, OCratio:
+                                                        # None,      43031, 1.9167, 0, ''),
+
+                                                    # fuel specified by Fuel composition (by mass)
+                                                        # NC12H26 = Dodecane ~ jet fuel, CH4 for hydrogen
+                                                    # None,      None, None, None, 'NC12H26:1'),
+                                                    # fuel specified by Fuel temperature and Fuel composition (by mass)                                                    
+                                                        # 288.15,      None, None, None, 'CH4:1'),
+
+                                                    # fuel mixtures    
+                                                    # fuel specified by Fuel temperature and Fuel composition (by mass)                                                    
+                                                        288.15,      None, None, None, 'CH4:5, C2H6:1'),
                         
                         # for turbojet
                         TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.8, 1, 'GG'   ), 
@@ -68,21 +83,17 @@ def main():
     fsys.OutputColumnNames = fsys.OutputColumnNames + fsys.GetOutputTableColumnNames()
     fsys.OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + fsys.OutputColumnNames)
 
-    # define the gas model
-    gas = ct.Solution('gri30.yaml')
-    # gas = ct.Solution('jetsurf.yaml') 
-    # start with air
-    fg.InitializeGas(gas)
-    # gas.TPY = fg.T_std, fg.P_std, fg.s_air_composition_mass
+    # define the gas model in f_global
+    fg.InitializeGas()
     global q_gas
-    q_gas = ct.Quantity(gas, mass = 1) # initialize quantity
+    q_gas = ct.Quantity(fg.gas, mass = 1) # initialize quantity
 
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
     def Do_Run(Mode, PointTime, q_gas, states):
         fsys.states = states.copy()
         fsys.reinit_system()
-        fsys.Ambient.Run(Mode, PointTime, gas)     
+        fsys.Ambient.Run(Mode, PointTime, fg.gas)     
         fsys.Control.Run(Mode, PointTime)
         for comp in fsys.systemmodel:
             q_gas = comp.Run(Mode, PointTime)

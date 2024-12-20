@@ -2,7 +2,6 @@ import numpy as np
 import cantera as ct
 import f_utils as fu
 from scipy.optimize import root_scalar
-# from scipy.optimize import root
 from f_gaspath import TGaspath as gaspath
 import f_global as fg
 import f_system as fsys
@@ -36,15 +35,20 @@ class TExhaust(gaspath):
             self.Mthroat = Vthroat_is / self.GasThroat.phase.sound_speed 
             if self.Mthroat > 1: # cannot be, correct for Mthroat = 1
                 self.Mthroat = 1
+                
                 # Function to find the pressure for Mach 1
                 def mach_number_difference(exit_pressure):
-                    self.GasThroat.SP = Sin, exit_pressure  # Set state at the given pressure
+                    self.GasThroat.SP = Sin, float(exit_pressure)  # Set state at the given pressure
                     local_speed_of_sound = self.GasThroat.sound_speed
                     velocity = (2 * (Hin - self.GasThroat.enthalpy_mass))**0.5
                     mach_number = velocity / local_speed_of_sound
                     return mach_number - 1.0  # We want Mach number to be exactly 1
                 # Use a numerical solver to find the exit pressure where Mach = 1
-                rootresult = root_scalar(mach_number_difference, bracket=[0.1*Pout, Pin], method='brentq')
+                # rootresult = root_scalar(mach_number_difference, bracket=[0.1*Pout, Pin], method='brentq')
+                # use newton with 1.9 as guess for PR critical/choke to calculate initial exit_pressure
+                P0 = Pin/1.9
+                rootresult = root_scalar(mach_number_difference, x0=P0, method='newton')
+                
                 self.Pthroat = rootresult.root
                 self.Vthroat = self.GasThroat.phase.sound_speed * self.CVdes                
             else:

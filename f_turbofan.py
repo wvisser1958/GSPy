@@ -48,11 +48,26 @@ def main():
                         # always start with the components following the 1st GasOut object
                         TCompressor('HPC','compmap.map', 25,3,   2,   16540, 0.825, 1, 0.8, 6.92, 'GG'),       
 
+                        # ***************** Combustor ******************************************************
                         # fuel input
-                        # TCombustor('combustor1',  '',            3,4,   0.38, None,    1, 1    ),         
+                        # TCombustor('combustor1',  '',            3,4,   0.38, None,    1, 1,    
                         # Texit input
-                        TCombustor('combustor1',  '',            3,4,   0.5, 1600,    1, 1    ),            
-                        
+                        TCombustor('combustor1',  '',            3,4,   0.5, 1600,    1, 1,       
+                                                    
+                                                    # fuel specification examples:
+                                                    # fuel specified by LHV, HCratio, OCratio:
+                                                        # None,      43031, 1.9167, 0, ''),
+
+                                                    # fuel specified by Fuel composition (by mass)
+                                                        # NC12H26 = Dodecane ~ jet fuel, CH4 for hydrogen
+                                                    None,      None, None, None, 'NC12H26:1'),
+                                                    # fuel specified by Fuel temperature and Fuel composition (by mass)                                                    
+                                                        # 288.15,      None, None, None, 'CH4:1'),
+
+                                                    # fuel mixtures    
+                                                    # fuel specified by Fuel temperature and Fuel composition (by mass)                                                    
+                                                    # 288.15,      None, None, None, 'CH4:5, C2H6:1'),
+
                         TTurbine('HPT',      'turbimap.map',4,45,   2,   16540, 0.88,       1, 0.8, 1, 'GG'   ), 
 
                         TTurbine('LPT',      'turbimap.map',45,5,   1,   4400, 0.88,       1, 0.8, 1, 'GG'   ), 
@@ -75,21 +90,17 @@ def main():
     fsys.OutputColumnNames = fsys.OutputColumnNames + fsys.GetOutputTableColumnNames()
     fsys.OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + fsys.OutputColumnNames)
 
-    # define the gas model
-    gas = ct.Solution('gri30.yaml')
-    # gas = ct.Solution('jetsurf.yaml') 
-    # start with air
-    fg.InitializeGas(gas)
-    # gas.TPY = fg.T_std, fg.P_std, fg.s_air_composition_mass
+    # define the gas model in f_global
+    fg.InitializeGas()
     global q_gas
-    q_gas = ct.Quantity(gas, mass = 1) # initialize quantity
+    q_gas = ct.Quantity(fg.gas, mass = 1) # initialize quantity
 
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
     def Do_Run(Mode, PointTime, q_gas, states):
         fsys.states = states.copy()
         fsys.reinit_system()
-        fsys.Ambient.Run(Mode, PointTime, gas)     
+        fsys.Ambient.Run(Mode, PointTime, fg.gas)     
         fsys.Control.Run(Mode, PointTime)
         for comp in fsys.systemmodel:
             # q_gas = comp.Run(Mode, PointTime, q_gas)
@@ -153,8 +164,13 @@ def main():
         # start with all states 1 and errors 0
         fsys.reinit_states_and_errors() 
         for ipoint in inputpoints:
-            # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
-            solution = root(residuals, fsys.states, method='krylov') # leave tolerance at default: is fastest and error ususally < 0.00001  
+            # solution returns the residual errors after conversion (should be within the tolerance 'tol')
+            options = {
+                # "xtol":1e-4           # this only avoids an initial warning, 
+                                        # leave it: only warning at initial step, but a bit faster 
+                                        # (with automatic min step size)  
+            }
+            solution = root(residuals, fsys.states, method='krylov', options=options) # leave tolerance at default: is fastest and error ususally < 0.00001  
             Do_Output(Mode, inputpoints[ipoint])
             
             # for debug

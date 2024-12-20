@@ -4,7 +4,9 @@ import cantera as ct
 import pandas as pd
 
 # Create a gas object for air and products using gri30.yaml (or another suitable mechanism)
-gas = ct.Solution('gri30.yaml')
+# gas = ct.Solution('gri30.yaml')
+# jetsurf has kerosine subsitute species like PXC12H25, fur user specified fuel composition
+gas = ct.Solution('jetsurf.yaml')
 
 C_atom_weight = gas.atomic_weight(gas.element_index('C'))
 O_atom_weight = gas.atomic_weight(gas.element_index('O'))
@@ -52,7 +54,7 @@ T_standard_ref = 298.15 # (25°C)
 P_standard_ref = ct.one_atm  # (1 atm)
 
 h_air_ref = None
-def InitializeGas(gas):
+def InitializeGas():
     gas.TPY = T_standard_ref, P_standard_ref, s_air_composition_mass
     global h_air_ref
     h_air_ref = gas.enthalpy_mass
