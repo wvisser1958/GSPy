@@ -36,11 +36,16 @@ def main():
     # combustor Texit input, with Wf 0.38 as first guess for 1200 K combustor exit temperature
     # fsys.Control = TControl('Control', '', 0.38, 1200, 1000, -20)
 
+    # for turbojet
+    compressor1 = TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'GG')
+    turbine1 = TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.8, 1, 'GG'   )
+    
     # create a turbojet system model
     fsys.systemmodel = [TInlet('Inlet1',          '',            0,2,   19.9, 1    ),                           
                         
                         # for turbojet
-                        TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'GG'),       
+                        compressor1,
+                        # TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'GG'),       
                         # for turboshaft, constant speed
                         # TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'CS'),       
 
@@ -65,7 +70,8 @@ def main():
                                                         288.15,      None, None, None, 'CH4:5, C2H6:1'),
                         
                         # for turbojet
-                        TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.8, 1, 'GG'   ), 
+                        turbine1,
+                        # TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.8, 1, 'GG'   ), 
                         # for turboshaft
                         # TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.8, 0.99, 'PT'   ), 
                         
@@ -178,6 +184,10 @@ def main():
     os.makedirs(output_directory, exist_ok=True)
     fsys.OutputTable.to_csv(os.path.join(output_directory, 'output.csv'), index=False)
 
+     # Create plots
+    compressor1.map.PlotMap(True, False)
+    turbine1.map.PlotMap(True, False)
+    
     print("end of main program")
 
 # main program start, calls main()

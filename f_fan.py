@@ -24,12 +24,12 @@ class TFan(TTurboComponent):
 
         self.BPRdes = BPRdes
 
-        self.map_core = TCompressorMap(name + '_map_core', MapFileName_core, Ncmapdes_core, Betamapdes_core)
+        self.map_core = TCompressorMap(self, name + '_map_core', MapFileName_core, Ncmapdes_core, Betamapdes_core)
         self.PRdes_core = PRdes_core
         # self.Etades = Etades duct, already in parent class
 
         # duct side map
-        self.map_duct = TCompressorMap(name + '_map_duct', MapFileName_duct, Ncmapdes_duct, Betamapdes_duct)
+        self.map_duct = TCompressorMap(self, name + '_map_duct', MapFileName_duct, Ncmapdes_duct, Betamapdes_duct)
         self.PRdes_duct = PRdes_duct
         self.Etades_duct = Etades_duct
 

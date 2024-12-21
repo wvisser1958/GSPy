@@ -3,8 +3,8 @@ from f_map import TMap
 from scipy.interpolate import RegularGridInterpolator
 
 class TTurboMap(TMap):
-    def __init__(self, name, MapFileName, Ncmapdes, Betamapdes):    # Constructor of the class
-        super().__init__(name, MapFileName)          
+    def __init__(self, host_component, name, MapFileName, Ncmapdes, Betamapdes):    # Constructor of the class
+        super().__init__(host_component, name, MapFileName)          
         self.Ncmapdes = Ncmapdes
         self.Betamapdes = Betamapdes
         self.Betamap = None
@@ -104,15 +104,22 @@ class TTurboMap(TMap):
         Eta = self.SFmap_Eta * etamap
         return Wc, PR, Eta
 
-    # Oscar
-    def GetNcArray(self):
-        return self.nc_values
-    def GetBetaArray(self):
-        return self.beta_values
-    def GetWcValues(self):
-        return self.wc_array
-    def GetEtaValues(self):
-        return self.eta_array
-    def GetPrValues(self):
-        return self.pr_array
-
+    # Map plotting routine
+    def PlotMap(self, use_scaled_map = False, do_plot_series = False):
+        super().PlotMap()
+        # Set map title
+        map_title = self.MapFileName
+        if use_scaled_map:
+            map_title = map_title + ' (scaled to DP)'
+        self.map_figure.suptitle(map_title)
+        
+        if use_scaled_map:
+            self.NcArrayValues = self.nc_values * self.SFmap_Nc
+            self.WcArrayValues = self.wc_array * self.SFmap_Wc
+            self.PRArrayValues = self.pr_array * self.SFmap_PR
+            self.EtaArrayValues = self.eta_array * self.SFmap_Eta
+        else:
+            self.NcArrayValues = self.nc_values
+            self.WcArrayValues = self.wc_array
+            self.PRArrayValues = self.pr_array
+            self.EtaArrayValues = self.eta_array
