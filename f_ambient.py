@@ -26,14 +26,18 @@ class TAmbient(component):
             self.Psa = Psa      # if None then this will override value from standard atmosphere Alt, Machm dTs
             self.Tsa = Tsa      # if None then this will override value from standard atmosphere Alt, Machm dTs
 
-    def Run(self, Mode, PointTime, Gas_Ambient):  
+    def Run(self, Mode, PointTime):  
         if Mode == 'DP':  # alway reset de DP conditions
             self.Altitude = self.Altitude_des 
             self.Macha = self.Macha_des
             self.dTs = self.dTs_des
             self.Psa = self.Psa_des      # if None then this will override value from standard atmosphere Alt, Machm dTs
             self.Tsa = self.Tsa_des      # if None then this will override value from standard atmosphere Alt, Machm dTs
-
+            # create separate Cantera phase object for Ambient, to be used by components if needed
+            # self.Gas_Ambient = ct.Solution('jetsurf.yaml')
+            # create Cantera quantity object for Ambient (mass = 1 per default)
+            self.Gas_Ambient = ct.Quantity(fg.gas)
+            fsys.gaspath_conditions[self.stationnr] = self.Gas_Ambient 
         if self.Tsa == None:
             # Tsa not defined, use standard atmosphere
             self.Tsa = ac.std_atm.alt2temp(self.Altitude, alt_units='m', temp_units='K')
@@ -49,11 +53,9 @@ class TAmbient(component):
 
         self.Tta = self.Tsa * ( 1 + 0.2 * self.Macha**2)
         self.Pta = self.Psa * ((self.Tta/self.Tsa)**3.5)
-        # set values in the GasIn object conditions
-        self.Gas_Ambient = Gas_Ambient
+        # set values in the Gas_Ambient phase object conditions
         self.Gas_Ambient.TPY = self.Tta, self.Pta, fg.s_air_composition_mass
         self.V = self.Macha * ac.std_atm.temp2speed_of_sound(self.Tsa, speed_units = 'm/s', temp_units = 'K')
-        # fsys.gaspath_conditions[self.stationnr] = Gas_Ambient        
 
     def GetOutputTableColumnNames(self):
         return super().GetOutputTableColumnNames() + ["Tsa", "Psa", "Tta", "Pta", "Macha"]

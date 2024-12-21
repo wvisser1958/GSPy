@@ -23,8 +23,6 @@ from f_exhaust import TExhaust
 
 import f_utils as fu
 import os
-
-global q_gas
     
 def main():
     # create Ambient conditions object (to set ambient/inlet/flight conditions)
@@ -85,25 +83,23 @@ def main():
 
     # define the gas model in f_global
     fg.InitializeGas()
-    global q_gas
-    q_gas = ct.Quantity(fg.gas, mass = 1) # initialize quantity
 
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
-    def Do_Run(Mode, PointTime, q_gas, states):
+    def Do_Run(Mode, PointTime, states):
         fsys.states = states.copy()
         fsys.reinit_system()
-        fsys.Ambient.Run(Mode, PointTime, fg.gas)     
+        fsys.Ambient.Run(Mode, PointTime)     
         fsys.Control.Run(Mode, PointTime)
         for comp in fsys.systemmodel:
-            q_gas = comp.Run(Mode, PointTime)
+            comp.Run(Mode, PointTime)
         return fsys.errors
 
     def Do_Output(Mode, PointTime):
         fsys.Ambient.PrintPerformance(Mode, PointTime)     
         fsys.Control.PrintPerformance(Mode, PointTime) 
         for comp in fsys.systemmodel:
-            q_gas = comp.PrintPerformance(Mode, PointTime) 
+            comp.PrintPerformance(Mode, PointTime) 
         fsys.PrintPerformance(Mode, PointTime)   
         
         # table output
@@ -124,7 +120,7 @@ def main():
     fsys.Ambient.SetConditions('DP', 0, 0, 0, None, None)
     # not using states and errors yet for DP, but do this for later when doing DP iterations
     fsys.reinit_states_and_errors()
-    Do_Run(Mode, 0, q_gas, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
+    Do_Run(Mode, 0, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
     Do_Output(Mode, 0)
 
     # run the Off-Design (OD) simulation, using Newton-Raphson to find
@@ -145,7 +141,7 @@ def main():
         # the residuals are the errors returned by Do_Run        
         # test with GSP final performan with 0.3 kg/s fuel at ISA static
         # states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
-        return Do_Run(Mode, inputpoints[ipoint], q_gas, states) 
+        return Do_Run(Mode, inputpoints[ipoint], states) 
         
     # for debug
     # savedstates = np.empty((0, fsys.states.size+2), dtype=float)
@@ -155,7 +151,12 @@ def main():
         fsys.reinit_states_and_errors() 
         for ipoint in inputpoints:
             # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
-            solution = root(residuals, fsys.states, method='krylov') # leave tolerance at default: is fastest and error ususally < 0.00001  
+            options = {
+                # "xtol":1e-4           # this only avoids an initial warning, 
+                                        # leave it: only warning at initial step, but a bit faster 
+                                        # (with automatic min step size)  
+            }
+            solution = root(residuals, fsys.states, method='krylov', options = options) # leave tolerance at default: is fastest and error ususally < 0.00001  
             Do_Output(Mode, inputpoints[ipoint])
             
             # for debug

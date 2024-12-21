@@ -12,7 +12,8 @@ class TInlet(gaspath):
 
     def Run(self, Mode, PointTime):       
         # self.GasIn = ct.Quantity(fsys.gaspath_conditions[self.stationin].phase, mass = self.Wdes) 
-        fsys.gaspath_conditions[self.stationin] = ct.Quantity(fsys.Ambient.Gas_Ambient, mass = self.Wdes) 
+        if Mode == 'DP':
+            fsys.gaspath_conditions[self.stationin].mass = self.Wdes
         super().Run(Mode, PointTime)
         self.GasIn.TP = self.GasIn.T, self.GasIn.P
         if Mode == 'DP':

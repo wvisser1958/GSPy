@@ -50,15 +50,17 @@ class TCombustor(gaspath):
                 # make sure fuel mass flow added to the inlet flow:
                 self.GasOut.mass = self.GasIn.mass + self.Wf
             else:                  # fuel specification based on FuelComposition and Tfuel 
-                fuel = ct.Quantity(fg.gas)
-                fuel.mass = self.Wf
+                if Mode == 'DP':
+                    # create separate fuel quantity for mixing with GasIn
+                    self.fuel = ct.Quantity(fg.gas)
+                self.fuel.mass = self.Wf
                 if self.Tfuel == None:      # assume Tfuel equal to T of air in
                     Tfuelin = self.GasIn.T 
                 else:                       # use user specified Tfuel    
                     Tfuelin = self.Tfuel
-                fuel.TPY = Tfuelin, self.GasIn.P, self.FuelComposition
+                self.fuel.TPY = Tfuelin, self.GasIn.P, self.FuelComposition
                 # fuel.TPY = self.GasIn.T, self.GasIn.P, self.FuelComposition
-                self.GasOut = self.GasIn + fuel
+                self.GasOut = self.GasIn + self.fuel
                 self.GasOut.equilibrate('HP') 
                 # we redefined GasOut, so we must reassing self.GasOut to fsys.gaspath_conditions[self.stationout]
                 fsys.gaspath_conditions[self.stationout] = self.GasOut

@@ -7,6 +7,7 @@ from scipy.optimize import root
 
 import f_global as fg
 import f_system as fsys
+import f_utils as fu
 
 from f_control import TControl
 from f_ambient import TAmbient
@@ -20,11 +21,7 @@ from f_combustor import TCombustor
 from f_turbine import TTurbine
 from f_duct import TDuct
 from f_exhaust import TExhaust
-
-import f_utils as fu
 import os
-
-global q_gas
     
 def main():
     # create Ambient conditions object (to set ambient/inlet/flight conditions)
@@ -97,10 +94,10 @@ def main():
 
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
-    def Do_Run(Mode, PointTime, q_gas, states):
+    def Do_Run(Mode, PointTime, states):
         fsys.states = states.copy()
         fsys.reinit_system()
-        fsys.Ambient.Run(Mode, PointTime, fg.gas)     
+        fsys.Ambient.Run(Mode, PointTime)     
         fsys.Control.Run(Mode, PointTime)
         for comp in fsys.systemmodel:
             # q_gas = comp.Run(Mode, PointTime, q_gas)
@@ -133,11 +130,8 @@ def main():
     fsys.Ambient.SetConditions('DP', 0, 0, 0, None, None)
     # not using states and errors yet for DP, but do this for later when doing DP iterations
     fsys.reinit_states_and_errors()
-    Do_Run(Mode, 0, q_gas, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
+    Do_Run(Mode, 0, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
     Do_Output(Mode, 0)
-
-    # run the Off-Design (OD) simulation, using Newton-Raphson to find
-    # the steady state operating point
 
     # return # uncomment for design point only
 
@@ -155,7 +149,7 @@ def main():
         # the residuals are the errors returned by Do_Run        
         # test with GSP final performan with 0.3 kg/s fuel at ISA static
         # states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
-        return Do_Run(Mode, inputpoints[ipoint], q_gas, states) 
+        return Do_Run(Mode, inputpoints[ipoint], states) 
         
     # for debug
     # savedstates = np.empty((0, fsys.states.size+2), dtype=float)
@@ -163,6 +157,7 @@ def main():
     try:
         # start with all states 1 and errors 0
         fsys.reinit_states_and_errors() 
+        # run the Off-Design (OD) simulation for all points, using root with 'krylov'
         for ipoint in inputpoints:
             # solution returns the residual errors after conversion (should be within the tolerance 'tol')
             options = {

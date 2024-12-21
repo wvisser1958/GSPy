@@ -64,41 +64,41 @@ def GetRotorspeedCorrectionFactor(gas: ct.Quantity):
 def GetFlowCorrectionFactor(gas: ct.Quantity):
     return math.sqrt(gas.T/T_std) / (gas.P/P_std)
 
-def converged():
-    for error in errors:
-        if error > 0.001:
-            return False
-    return True
+# def converged():
+#     for error in errors:
+#         if error > 0.001:
+#             return False
+#     return True
 
-def jacobian(x, residuals_func, epsilon=1e-3):
-    n = x.size
-    J = np.zeros((n, n))
-    f_x = residuals_func(x)
+# def jacobian(x, residuals_func, epsilon=1e-3):
+#     n = x.size
+#     J = np.zeros((n, n))
+#     f_x = residuals_func(x)
     
-    for i in range(n):
-        x_perturbed = x.copy()
-        x_perturbed[i] -= epsilon
-        f_x_perturbed = residuals_func(x_perturbed)
-        J[:, i] = (f_x_perturbed - f_x) / epsilon  # Finite difference approximation
+#     for i in range(n):
+#         x_perturbed = x.copy()
+#         x_perturbed[i] -= epsilon
+#         f_x_perturbed = residuals_func(x_perturbed)
+#         J[:, i] = (f_x_perturbed - f_x) / epsilon  # Finite difference approximation
         
-    return J
+#     return J
 
-def newton_raphson(x0, residuals_func, tol=1e-5, max_iter=100):
-    x = x0
-    for iteration in range(max_iter):
-        f_x = residuals_func(x)
-        if np.linalg.norm(f_x) < tol:
-            print(f"Converged after {iteration} iterations")
-            return x  # Solution found
+# def newton_raphson(x0, residuals_func, tol=1e-5, max_iter=100):
+#     x = x0
+#     for iteration in range(max_iter):
+#         f_x = residuals_func(x)
+#         if np.linalg.norm(f_x) < tol:
+#             print(f"Converged after {iteration} iterations")
+#             return x  # Solution found
 
-        J = jacobian(x, residuals_func)
-        try:
-            delta_x = np.linalg.solve(J, -f_x)
-        except np.linalg.LinAlgError:
-            print("Jacobian is singular; Newton-Raphson cannot proceed.")
-            return None
+#         J = jacobian(x, residuals_func)
+#         try:
+#             delta_x = np.linalg.solve(J, -f_x)
+#         except np.linalg.LinAlgError:
+#             print("Jacobian is singular; Newton-Raphson cannot proceed.")
+#             return None
 
-        x = x + delta_x
+#         x = x + delta_x
 
-    print("Newton-Raphson did not converge within the maximum number of iterations.")
-    return None
+#     print("Newton-Raphson did not converge within the maximum number of iterations.")
+#     return None
