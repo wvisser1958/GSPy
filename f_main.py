@@ -183,8 +183,8 @@ def main():
     fsys.OutputTable.to_csv(os.path.join(output_directory, 'output.csv'), index=False)
 
      # Create plots
-    compressor1.map.PlotMap(True, True)
-    turbine1.map.PlotMap(True, True)
+    compressor1.map.PlotMap()
+    turbine1.map.PlotMap()
 
     print("end of main program")
 

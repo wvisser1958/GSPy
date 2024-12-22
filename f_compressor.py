@@ -10,22 +10,22 @@ from f_compressormap import TCompressorMap
 
 class TCompressor(TTurboComponent):
     def __init__(self, name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes, PRdes, SpeedOption):    # Constructor of the class
-        super().__init__(name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades)   
+        super().__init__(name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades)
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
         self.map = TCompressorMap(self, name + '_map', MapFileName, Ncmapdes, Betamapdes)
 
-    def Run(self, Mode, PointTime):    
+    def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
             self.PW = fu.Compression(self.GasIn, self.GasOut, self.PRdes, self.Etades)
             shaft = fsys.find_shaft_by_number(self.ShaftNr)
-            shaft.PW_sum = shaft.PW_sum - self.PW               
+            shaft.PW_sum = shaft.PW_sum - self.PW
 
             self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
 
-            # add states and errors 
+            # add states and errors
             if self.SpeedOption != 'CS':
                 fsys.states = np.append(fsys.states, 1)
                 self.istate_n = fsys.states.size-1
@@ -34,25 +34,25 @@ class TCompressor(TTurboComponent):
             self.istate_beta = fsys.states.size-1
             # error for equation GasIn.wc = wcmap
             fsys.errors = np.append(fsys.errors, 0)
-            self.ierror_wc = fsys.errors.size-1                     
+            self.ierror_wc = fsys.errors.size-1
             # calculate parameters for output
             self.PR = self.PRdes
         else:
             if self.SpeedOption != 'CS':
                 self.N = fsys.states[self.istate_n] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.GasIn)
-            
+
             self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
-            
+
             self.PW = fu.Compression(self.GasIn, self.GasOut, self.PR, self.Eta)
 
             shaft = fsys.find_shaft_by_number(self.ShaftNr)
-            shaft.PW_sum = shaft.PW_sum - self.PW  
+            shaft.PW_sum = shaft.PW_sum - self.PW
             self.W = self.Wc / fg.GetFlowCorrectionFactor(self.GasIn)
-            fsys.errors[self.ierror_wc ] = (self.W - self.GasIn.mass) / self.Wdes 
-            
-            # set out flow rate to W according to map 
-            # may deviate from self.GasIn.mass during iteration: this is to propagate the effect of mass flow error 
+            fsys.errors[self.ierror_wc ] = (self.W - self.GasIn.mass) / self.Wdes
+
+            # set out flow rate to W according to map
+            # may deviate from self.GasIn.mass during iteration: this is to propagate the effect of mass flow error
             # to downstream components for more stable convergence in the solver (?)
             self.GasOut.mass = self.W
 
