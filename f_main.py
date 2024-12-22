@@ -32,7 +32,7 @@ def main():
 
     # create a control (controlling all inputs to the system model)
     # direct fuel flow input
-    fsys.Control = TControl('Control', '', 0.38, 0.38, 0.11, -0.01)
+    fsys.Control = TControl('Control', '', 0.38, 0.38, 0.06, -0.01)
     # combustor Texit input, with Wf 0.38 as first guess for 1200 K combustor exit temperature
     # fsys.Control = TControl('Control', '', 0.38, 1200, 1000, -20)
 
@@ -61,8 +61,8 @@ def main():
                 #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
     # for turbojet
-    compressor1 = TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'GG')
-    turbine1 = TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.50943, 0.99, 'GG'   )
+    compressor1 = TCompressor('compressor1','compmap.map' , 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG')
+    turbine1 =    TTurbine(   'turbine1'   ,'turbimap.map', 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG')
 
     # for turboshaft, constant speed
     # TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'CS'),
