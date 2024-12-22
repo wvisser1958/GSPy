@@ -62,7 +62,7 @@ def main():
 
     # for turbojet
     compressor1 = TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'GG')
-    turbine1 = TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.8, 1, 'GG'   )
+    turbine1 = TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.50943, 0.99, 'GG'   )
 
     # for turboshaft, constant speed
     # TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'CS'),
