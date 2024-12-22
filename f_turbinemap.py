@@ -68,7 +68,6 @@ class TTurbineMap(TTurboMap):
         # Design point
         if do_plot_design_point:
             self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
-            print(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy())
 
         # Operating line
         if do_plot_series:

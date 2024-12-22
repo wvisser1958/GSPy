@@ -43,6 +43,8 @@ class TTurbine(TTurboComponent):
                 # invert to Phigh/Plow
                 self.PRdes = 1/self.PRdes
                 self.GasOut.HP = Hout, Pout
+                # calculate parameters for output
+                self.PR = self.PRdes
             else:
                 PRdesuntilAmbient = self.GetTotalPRdesUntilAmbient()
                 Pout = fsys.Ambient.Psa / PRdesuntilAmbient
