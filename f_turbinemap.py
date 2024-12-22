@@ -1,5 +1,6 @@
 import numpy as np
 from f_turbomap import TTurboMap
+import f_system as fsys
 
 class TTurbineMap(TTurboMap):
     def __init__(self, host_component, name, MapFileName, Ncmapdes, Betamapdes):
@@ -64,4 +65,10 @@ class TTurbineMap(TTurboMap):
         self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
         self.main_plot_axis.contourf(Wc_grid,PR_grid,np.transpose(Eta_grid), 14 ,cmap='RdYlGn',alpha=0.3)
 
-        self.map_figure.savefig('./output/turb_map.jpg')
+        if do_plot_series:
+            # Plot the operating line
+            # -----------------------
+            # Plotting Wc - PR
+            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
+
+        self.map_figure.savefig(self.map_figure_pathname)

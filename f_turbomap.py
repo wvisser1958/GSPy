@@ -109,10 +109,20 @@ class TTurboMap(TMap):
         super().PlotMap()
         # Set map title
         map_title = self.MapFileName
+        
+        if do_plot_series:
+            use_scaled_map = True
+            
         if use_scaled_map:
             map_title = map_title + ' (scaled to DP)'
+            
         self.map_figure.suptitle(map_title)
+        self.map_figure_pathname = './output/' + self.host_component.name + '_map.jpg'
         
+        # Map paramter naming
+        self.Wc_in_param = 'Wc' + str(self.host_component.stationin)
+        self.PR_comp_param = 'PR_' + str(self.host_component.name)
+                
         if use_scaled_map:
             self.NcArrayValues = self.nc_values * self.SFmap_Nc
             self.WcArrayValues = self.wc_array * self.SFmap_Wc
