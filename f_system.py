@@ -4,6 +4,7 @@ import numpy as np
 # use dictionary for gas path conditions oriented by gas path station number
 gaspath_conditions = {}
 
+system_model = [] # system model component list
 shaft_list = []
 
 states = np.array([], dtype=float)
@@ -17,17 +18,23 @@ WF = 0.0
 OutputColumnNames = None
 OutputTable = None
 
-
-def find_shaft_by_number(ShaftNr):
+def get_shaft(ShaftNr):
     for shaft in shaft_list:
         if shaft.ShaftNr == ShaftNr:
             return shaft
     return None  # Return None if no matching object is found
 
+# find system model component object by name
+def get_comp(component_name):
+    for comp in system_model:
+        if comp.name == component_name:
+            return comp
+    return None  # Return None if no matching object is found
+
 def reinit_states_and_errors():
     global states, errors
     for state in states:
-        state = 1     
+        state = 1
     for error in errors:
         state = 0
 
@@ -52,7 +59,7 @@ def GetOutputTableColumnNames():
     for shaft in shaft_list:
         colnames = colnames + [f"PW{shaft.ShaftNr}"]
     return colnames
-    
+
 def AddOutputToTable(Mode, rownr):
     FN = FG - RD
     OutputTable.loc[rownr, "FG"] = FG

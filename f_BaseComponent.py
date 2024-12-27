@@ -1,43 +1,28 @@
 import numpy as np
 import cantera as ct
-# from scipy.interpolate import RegularGridInterpolator
+from f_map import TMap
+from typing import Optional
 
 class TComponent:
     def __init__(self, name, MapFileName):    # Constructor of the class
         self.name = name
-        self.MapFileName = MapFileName
-        self.mapfile = None
-        self.maptype = None
-        self.maptitle = None
+        # assume in moste case single map in instantiable child classes (add extra map if necessary, e.g. with f_fan)
+        self.map: Optional[TMap] = None
 
-    def ReadMap(self, filename):              # Abstract method, defined by convention only
-        #    raise NotImplementedError("Subclass must implement abstract method")
-        try:
-            amapfile = open(filename, 'r')
-            # Read the first line
-            line = amapfile.readline()
-            line_number = 1  # Initialize line number counter
-            while not '99' in line:
-                line = amapfile.readline()
-            items = line.split()
-            amaptype = items[0]
-            amaptitle = rest_of_items = ' '.join(items[1:])            
-            return amaptype, amaptitle, amapfile
-
-        except FileNotFoundError:   
-            print(f"Map file '{filename}' does not exist.")            
-    
-    # def Run(self, Mode, PointTime, GasIn: ct.Quantity) -> ct.Quantity:    
-    def Run(self, Mode, PointTime):    
+    def Run(self, Mode, PointTime):
         raise NotImplementedError("Subclass must implement Run abstract method")
-    
+
     def PrintPerformance(self, Mode, PointTime):
         print(f"{self.name} ({Mode}) Point/Time:{PointTime}")
+
+    def PlotMaps(self): # Plot performance in map(s)
+        if self.map != None:
+            self.map.PlotMap()
 
     def GetOutputTableColumnNames(self):
         # raise NotImplementedError("Subclass must implement InitOutputTable abstract method")
         return []
-        
+
     def AddOutputToTable(self, Mode, rownr):
         raise NotImplementedError("Subclass must implement AddOutputToTable abstract method")
 

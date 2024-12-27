@@ -77,7 +77,7 @@ def main():
                         duct1,
                         exhaust1]
 
-    # add Ambient (Flight / Ambient operating conditions) output column names
+    # add Ambient (Flight / Ambient operating conditions) and Control compoenent output column names
     fsys.OutputColumnNames = fsys.Ambient.GetOutputTableColumnNames() + fsys.Control.GetOutputTableColumnNames()
     # add Component models
     for comp in fsys.systemmodel:
@@ -183,11 +183,11 @@ def main():
     os.makedirs(output_directory, exist_ok=True)
     fsys.OutputTable.to_csv(os.path.join(output_directory, 'output.csv'), index=False)
 
-     # Create plots
-    compressor1.map.PlotMap()
-    turbine1.map.PlotMap()
+     # Create plots with operating lines if available
+    for comp in fsys.systemmodel:
+        comp.PlotMaps()
 
-    print("end of main program")
+    print("end of running turbojet simulation")
 
 # main program start, calls main()
 if __name__ == "__main__":

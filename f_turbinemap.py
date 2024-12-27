@@ -3,8 +3,8 @@ from f_turbomap import TTurboMap
 import f_system as fsys
 
 class TTurbineMap(TTurboMap):
-    def __init__(self, host_component, name, MapFileName, Ncmapdes, Betamapdes):
-        super().__init__(host_component, name, MapFileName, Ncmapdes, Betamapdes)
+    def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, Ncmapdes, Betamapdes):
+        super().__init__(host_component, name, MapFileName, OL_xcol, OL_Ycol, Ncmapdes, Betamapdes)
 
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         amaptype, amaptitle, amapfile = super().ReadMap(filename)

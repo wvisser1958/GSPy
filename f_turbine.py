@@ -14,7 +14,7 @@ class TTurbine(TTurboComponent):
         self.TurbineType = TurbineType  # gas generator turbine providing all power required by compressor(s)
         # TurbineType = 'PT'  # heavy duty single spool or power turbine, providing power to external loads
         # only call SetDPparameters in instantiable classes in init creator
-        self.map = TTurbineMap(self, name + '_map', MapFileName, Ncmapdes, Betamapdes)
+        self.map = TTurbineMap(self, name + '_map', MapFileName, '', '', Ncmapdes, Betamapdes)
 
     def GetTotalPRdesUntilAmbient(self):
         # always at least one gas path component downstream a turbine (if only one: exhaust)
@@ -29,14 +29,13 @@ class TTurbine(TTurboComponent):
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
-        shaft = fsys.find_shaft_by_number(self.ShaftNr)
         Sin = self.GasIn.entropy_mass
         Pin = self.GasIn.P
         if Mode == 'DP':
             if self.TurbineType == 'GG':    # gas generator turbine, providing all power required by compressor(s)
                 # this turbine is providing all the power required by the shaft
-                self.PW = -shaft.PW_sum /  self.Etamechdes
-                shaft.PW_sum = 0
+                self.PW = -self.shaft.PW_sum /  self.Etamechdes
+                self.shaft.PW_sum = 0
                 # start with guessed PR
                 # pressure_ratio = t444.isentropic_pressure_ratio_for_enthalpy_drop(GasIn.phase, GasIn.P, self.PW / self.GasIn.mass)
                 self.PRdes, Hout, Pout = fu.pressure_ratio_for_enthalpy_drop(self.GasOut.phase, self.GasIn.P, self.PW/self.GasIn.mass, self.Etades)
@@ -51,7 +50,7 @@ class TTurbine(TTurboComponent):
                 self.PRdes = self.GasIn.P/Pout
 
                 self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PRdes, self.Etades)
-                shaft.PW_sum = shaft.PW_sum + self.PW * self.Etamechdes
+                self.shaft.PW_sum = self.shaft.PW_sum + self.PW * self.Etamechdes
 
             self.PWdes = self.PW
 
@@ -72,7 +71,7 @@ class TTurbine(TTurboComponent):
             self.N = self.Nc * fg.GetRotorspeedCorrectionFactor(self.GasIn)
         else:
             if self.TurbineType == 'GG':
-                self.N = fsys.states[shaft.istate] * self.Ndes
+                self.N = fsys.states[self.shaft.istate] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.GasIn)
 
             self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
@@ -80,9 +79,9 @@ class TTurbine(TTurboComponent):
             fsys.errors[self.ierror_wc ] = (self.W - self.GasOut.mass) / self.Wdes
 
             self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PR, self.Eta)
-            shaft.PW_sum = shaft.PW_sum + self.PW * self.Etamechdes
+            self.shaft.PW_sum = self.shaft.PW_sum + self.PW * self.Etamechdes
             if self.TurbineType == 'GG':
-                fsys.errors[self.ierror_shaftpw] = shaft.PW_sum / self.PWdes
+                fsys.errors[self.ierror_shaftpw] = self.shaft.PW_sum / self.PWdes
 
             # set out flow rate to W according to map
             # may deviate from self.GasIn.mass during iteration: this is to propagate the effect of mass flow error

@@ -5,16 +5,16 @@ import f_system as fsys
 import f_shaft as fshaft
 import f_turbomap as tmap
 from f_gaspath import TGaspath as gaspath
-        
+
 class TTurboComponent(gaspath):
-    def __init__(self, name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades):   
-        super().__init__(name, MapFileName, stationin, stationout)    
+    def __init__(self, name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades):
+        super().__init__(name, MapFileName, stationin, stationout)
         self.GasIn = None
         self.GasOut = None
         self.ShaftNr = ShaftNr
-        
-        self.Ndes = Ndes  
-        self.N = Ndes   
+
+        self.Ndes = Ndes
+        self.N = Ndes
         self.Nc = None
 
         self.W = None # W is mass flow of component, e.g. according to map
@@ -24,17 +24,17 @@ class TTurboComponent(gaspath):
 
         self.PW = None
 
-        self.map = None
-
         if all(shaft.ShaftNr != ShaftNr for shaft in fsys.shaft_list):
             fsys.shaft_list.append(fshaft.TShaft(ShaftNr, name + ' shaft ' + str(ShaftNr)) )
 
-    def Run(self, Mode, PointTime):    
+    def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
-            self.Ncdes = self.Ndes / fg.GetRotorspeedCorrectionFactor(self.GasIn) 
+            self.Ncdes = self.Ndes / fg.GetRotorspeedCorrectionFactor(self.GasIn)
             self.Nc = self.Ncdes
             self.Eta = self.Etades
+            self.shaft = fsys.get_shaft(self.ShaftNr)
+
 
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
@@ -60,9 +60,9 @@ class TTurboComponent(gaspath):
         print(f"\tPW : {self.PW:.1f}")
 
     def GetOutputTableColumnNames(self):
-        return super().GetOutputTableColumnNames() + [f"N{self.ShaftNr}", f"Nc{self.ShaftNr}", 
+        return super().GetOutputTableColumnNames() + [f"N{self.ShaftNr}", f"Nc{self.ShaftNr}",
                                                       "Eta_is_"+self.name, "PW_"+self.name]
-         
+
     def AddOutputToTable(self, Mode, rownr):
         super().AddOutputToTable(Mode, rownr)
         fsys.OutputTable.loc[rownr, f"N{self.ShaftNr}"] = self.N

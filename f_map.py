@@ -5,7 +5,7 @@ from scipy.interpolate import griddata
 from scipy.ndimage import gaussian_filter
 
 class TMap:
-    def __init__(self, host_component, name, MapFileName):    # Constructor of the class
+    def __init__(self, host_component, name, MapFileName, OL_xcol, OL_ycol):    # Constructor of the class
         self.name = name
         self.MapFileName = MapFileName
         self.mapfile = None
@@ -20,11 +20,11 @@ class TMap:
         # Axis of the plot
         self.main_plot_axis = None
 
-        # mapxopoints = np.array([], dtype=float)
-        # mapyopoints = np.array([], dtype=float)        
+        # output par names for map operating line
+        self.OL_xcol = OL_xcol
+        self.OL_ycol = OL_ycol
 
     def ReadMap(self, filename):              # Abstract method, defined by convention only
-        #    raise NotImplementedError("Subclass must implement abstract method")
         try:
             self.mapfile = open(filename, 'r')
             # Read the first line
@@ -34,12 +34,12 @@ class TMap:
                 line = self.mapfile.readline()
             items = line.split()
             self.maptype = items[0]
-            self.maptitle = rest_of_items = ' '.join(items[1:])            
+            self.maptitle = rest_of_items = ' '.join(items[1:])
             return self.maptype, self.maptitle, self.mapfile
 
-        except FileNotFoundError:   
-            print(f"Map file '{filename}' does not exist.")            
-   
+        except FileNotFoundError:
+            print(f"Map file '{filename}' does not exist.")
+
     # Map plotting routine
     def PlotMap(self):
         self.map_figure = plt.figure(num=self.name, figsize = self.map_size)

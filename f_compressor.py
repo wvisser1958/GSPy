@@ -14,14 +14,13 @@ class TCompressor(TTurboComponent):
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
-        self.map = TCompressorMap(self, name + '_map', MapFileName, Ncmapdes, Betamapdes)
+        self.map = TCompressorMap(self, name + '_map', MapFileName, '', '', Ncmapdes, Betamapdes)
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
             self.PW = fu.Compression(self.GasIn, self.GasOut, self.PRdes, self.Etades)
-            shaft = fsys.find_shaft_by_number(self.ShaftNr)
-            shaft.PW_sum = shaft.PW_sum - self.PW
+            self.shaft.PW_sum = self.shaft.PW_sum - self.PW
 
             self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
 
@@ -29,7 +28,7 @@ class TCompressor(TTurboComponent):
             if self.SpeedOption != 'CS':
                 fsys.states = np.append(fsys.states, 1)
                 self.istate_n = fsys.states.size-1
-                shaft.istate = self.istate_n
+                self.shaft.istate = self.istate_n
             fsys.states = np.append(fsys.states, 1)
             self.istate_beta = fsys.states.size-1
             # error for equation GasIn.wc = wcmap
@@ -46,8 +45,7 @@ class TCompressor(TTurboComponent):
 
             self.PW = fu.Compression(self.GasIn, self.GasOut, self.PR, self.Eta)
 
-            shaft = fsys.find_shaft_by_number(self.ShaftNr)
-            shaft.PW_sum = shaft.PW_sum - self.PW
+            self.shaft.PW_sum = self.shaft.PW_sum - self.PW
             self.W = self.Wc / fg.GetFlowCorrectionFactor(self.GasIn)
             fsys.errors[self.ierror_wc ] = (self.W - self.GasIn.mass) / self.Wdes
 

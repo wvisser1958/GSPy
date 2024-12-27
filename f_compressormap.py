@@ -3,13 +3,8 @@ from f_turbomap import TTurboMap
 import f_system as fsys
 
 class TCompressorMap(TTurboMap):
-    def __init__(self, host_component, name, MapFileName, Ncmapdes, Betamapdes):
-        super().__init__(host_component, name, MapFileName, Ncmapdes, Betamapdes)
-
-    def ReadMap(self, filename):              # Abstract method, defined by convention only
-        amaptype, amaptitle, amapfile = super().ReadMap(filename)
-        # tbd : read stall line
-        return amaptype, amaptitle, amapfile
+    def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, Ncmapdes, Betamapdes):
+        super().__init__(host_component, name, MapFileName, OL_xcol, OL_Ycol, Ncmapdes, Betamapdes)
 
     def GetSlWcValues(self):
         return self.sl_wc_array
@@ -23,10 +18,6 @@ class TCompressorMap(TTurboMap):
         self.nc_values, self.beta_values, self.eta_array = self.ReadNcBetaCrossTable(self.mapfile, 'EFFICIENCY')
         self.nc_values, self.beta_values, self.pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'PRESSURE RATIO')
         dummy_value, self.sl_wc_array, self.sl_pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'SURGE LINE')
-        # define the interpolation functions allow extrapolation (i.e. fill value = None)
-        # self.get_map_wc = RegularGridInterpolator((self.nc_values, self.beta_values), self.wc_array, bounds_error=False, fill_value=None, method = 'cubic')
-        # self.get_map_eta = RegularGridInterpolator((self.nc_values, self.beta_values), self.eta_array, bounds_error=False, fill_value=None, method = 'cubic')
-        # self.get_map_pr = RegularGridInterpolator((self.nc_values, self.beta_values), self.pr_array, bounds_error=False, fill_value=None, method = 'cubic')
         self.DefineInterpolationFunctions()
 
     def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
@@ -34,7 +25,9 @@ class TCompressorMap(TTurboMap):
 
         if use_scaled_map:
             self.compSlWcArrayValues = self.sl_wc_array * self.SFmap_Wc
-            self.compSlPRArrayValues = self.sl_pr_array * self.SFmap_PR
+            # must scale around PR = 1
+            # self.compSlPRArrayValues = self.sl_pr_array * self.SFmap_PR
+            self.compSlPRArrayValues = (self.sl_pr_array - 1) * self.SFmap_PR + 1
         else:
             self.compSlWcArrayValues = self.sl_wc_array
             self.compSlPRArrayValues = self.sl_pr_array
@@ -57,11 +50,16 @@ class TCompressorMap(TTurboMap):
 
         # Design point
         if do_plot_design_point:
-            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(),
+                                     fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(),
+                                     markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow',
+                                     markeredgecolor='black')
 
         # Operating line
         if do_plot_series:
             # Plotting Wc - PR
-            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
+            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),
+                                     fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(),
+                                     linewidth=1.5, linestyle='solid', color='navy')
 
         self.map_figure.savefig(self.map_figure_pathname)

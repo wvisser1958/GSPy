@@ -3,8 +3,8 @@ from f_map import TMap
 from scipy.interpolate import RegularGridInterpolator
 
 class TTurboMap(TMap):
-    def __init__(self, host_component, name, MapFileName, Ncmapdes, Betamapdes):    # Constructor of the class
-        super().__init__(host_component, name, MapFileName)
+    def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, Ncmapdes, Betamapdes):    # Constructor of the class
+        super().__init__(host_component, name, MapFileName, OL_xcol, OL_Ycol)
         self.Ncmapdes = Ncmapdes
         self.Betamapdes = Betamapdes
         self.Betamap = None
@@ -19,6 +19,16 @@ class TTurboMap(TMap):
         self.SFmap_Wc  = 1
         self.SFmap_PR  = 1
         self.SFmap_Eta = 1
+
+        # Map paramter naming
+        if self.OL_xcol != '':
+            self.Wc_in_param = self.OL_xcol
+        else:
+            self.Wc_in_param = 'Wc' + str(self.host_component.stationin)
+        if self.OL_ycol != '':
+            self.PR_comp_param = self.OL_ycol
+        else:
+            self.PR_comp_param = 'PR_' + str(self.host_component.name)
 
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         amaptype, amaptitle, amapfile = super().ReadMap(filename)
@@ -117,16 +127,19 @@ class TTurboMap(TMap):
             map_title = map_title + ' (scaled to DP)'
 
         self.map_figure.suptitle(map_title)
-        self.map_figure_pathname = './output/' + self.host_component.name + '_map.jpg'
+        # self.map_figure_pathname = './output/' + self.host_component.name + '_map.jpg'
+        self.map_figure_pathname = './output/' + self.name + '.jpg'
 
         # Map paramter naming
-        self.Wc_in_param = 'Wc' + str(self.host_component.stationin)
-        self.PR_comp_param = 'PR_' + str(self.host_component.name)
+        # self.Wc_in_param = 'Wc' + str(self.host_component.stationin)
+        # self.PR_comp_param = 'PR_' + str(self.host_component.name)
 
         if use_scaled_map:
             self.NcArrayValues = self.nc_values * self.SFmap_Nc
             self.WcArrayValues = self.wc_array * self.SFmap_Wc
-            self.PRArrayValues = self.pr_array * self.SFmap_PR
+            # must scale around PR = 1
+            # self.PRArrayValues = self.pr_array * self.SFmap_PR
+            self.PRArrayValues = (self.pr_array - 1) * self.SFmap_PR + 1
             self.EtaArrayValues = self.eta_array * self.SFmap_Eta
         else:
             self.NcArrayValues = self.nc_values
