@@ -30,8 +30,8 @@ def main():
     # None for Ps0 and Ts0 means values are calculated from standard atmosphere
     fsys.Ambient = TAmbient('Ambient', 0, 0, 0,   0,   None,   None)
 
-    # create a control (controlling all inputs to the system model)
-    # direct fuel flow input
+    # create a control (controlling inputs to the system model)
+    # components like the combustor retrieve inputs like fuel flow input or combustor exit temperature
     fsys.Control = TControl('Control', '', 0.38, 0.38, 0.06, -0.01)
     # combustor Texit input, with Wf 0.38 as first guess for 1200 K combustor exit temperature
     # fsys.Control = TControl('Control', '', 0.38, 1200, 1000, -20)
