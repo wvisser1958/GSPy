@@ -142,8 +142,8 @@ def main():
     fsys.Ambient.SetConditions('OD', 0, 0, 0, None, None)
 
     def residuals(states):
-        # residuals will return residuals of system conservation equations, schedules, limiters etc.
-        # the residuals are the errors returned by Do_Run
+        # residuals will return residuals of system conservation equations,
+        # schedules, limiters etc. the residuals are the errors returned by Do_Run
         # test with GSP final performan with 0.3 kg/s fuel at ISA static
         # states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
         return Do_Run(Mode, inputpoints[ipoint], states)

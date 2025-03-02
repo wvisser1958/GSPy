@@ -1,11 +1,13 @@
-import math 
+import math
 import numpy as np
 import cantera as ct
 import pandas as pd
 
-# Create a gas object for air and products using gri30.yaml (or another suitable mechanism)
+# Create a gas object for air and products using the standardr gri30.yaml,
+# or another suitable mechanism
 # gas = ct.Solution('gri30.yaml')
-# jetsurf has kerosine subsitute species like PXC12H25, fur user specified fuel composition
+# We are using jetsurf.yaml instead, which has kerosine subsitute
+# species like PXC12H25, for user specified fuel composition
 gas = ct.Solution('jetsurf.yaml')
 
 C_atom_weight = gas.atomic_weight(gas.element_index('C'))
@@ -29,10 +31,10 @@ for species, massfraction, molefraction, O2_norm_molefraction in Air_composition
     # m_total = m_total + massfraction            should be 1.0 !
     if s_air_composition_mass != '' :
         s_air_composition_mass = s_air_composition_mass + ', '
-    s_air_composition_mass = s_air_composition_mass + species + ':' + str(massfraction)    
+    s_air_composition_mass = s_air_composition_mass + species + ':' + str(massfraction)
     # if air_composition_moles != '' :
     #     air_composition_moles = air_composition_moles + ', '
-    # air_composition_moles = air_composition_moles + species + ':' + str(O2_norm_molefraction)    
+    # air_composition_moles = air_composition_moles + species + ':' + str(O2_norm_molefraction)
 # Accessing the tuple for 'O2' (finding the tuple by its first element)
 O2_tuple = next(item for item in Air_composition if item[0] == 'O2')
 CO2_tuple = next(item for item in Air_composition if item[0] == 'CO2')
@@ -47,7 +49,7 @@ air_N2_fraction_mass = N2_tuple[1]
 
 # standard atmosphere sea level conditions
 T_std = 288.15
-P_std = 101325 
+P_std = 101325
 
 # Standard temperature for chemical gas model calculations
 T_standard_ref = 298.15 # (25°C)
@@ -74,13 +76,13 @@ def GetFlowCorrectionFactor(gas: ct.Quantity):
 #     n = x.size
 #     J = np.zeros((n, n))
 #     f_x = residuals_func(x)
-    
+
 #     for i in range(n):
 #         x_perturbed = x.copy()
 #         x_perturbed[i] -= epsilon
 #         f_x_perturbed = residuals_func(x_perturbed)
 #         J[:, i] = (f_x_perturbed - f_x) / epsilon  # Finite difference approximation
-        
+
 #     return J
 
 # def newton_raphson(x0, residuals_func, tol=1e-5, max_iter=100):
