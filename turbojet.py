@@ -1,6 +1,3 @@
-import numpy as np
-import cantera as ct
-
 from scipy.optimize import root
 
 import f_global as fg
@@ -13,7 +10,6 @@ from f_shaft import TShaft
 
 from f_inlet import TInlet
 from f_compressor import TCompressor
-from f_fan import TFan
 from f_combustor import TCombustor
 from f_turbine import TTurbine
 from f_duct import TDuct
@@ -90,34 +86,6 @@ def main():
     # define the gas model in f_global
     fg.InitializeGas()
 
-    # # method running component model simulations/calculations
-    # # from inlet(s) through exhaust(s)
-    # def Do_Run(Mode, PointTime, states):
-    #     fsys.states = states.copy()
-    #     fsys.reinit_system()
-    #     fsys.Ambient.Run(Mode, PointTime)
-    #     fsys.Control.Run(Mode, PointTime)
-    #     for comp in fsys.system_model:
-    #         comp.Run(Mode, PointTime)
-    #     return fsys.errors
-
-    # def Do_Output(Mode, PointTime):
-    #     fsys.Ambient.PrintPerformance(Mode, PointTime)
-    #     fsys.Control.PrintPerformance(Mode, PointTime)
-    #     for comp in fsys.system_model:
-    #         comp.PrintPerformance(Mode, PointTime)
-    #     fsys.PrintPerformance(Mode, PointTime)
-
-    #     # table output
-    #     newrownumber = len(fsys.OutputTable)
-    #     fsys.OutputTable.loc[newrownumber, 'Point/Time'] = PointTime
-    #     fsys.OutputTable.loc[newrownumber, 'Mode'] = Mode
-    #     fsys.Ambient.AddOutputToTable(Mode, newrownumber)
-    #     fsys.Control.AddOutputToTable(Mode, newrownumber)
-    #     for comp in fsys.system_model:
-    #         comp.AddOutputToTable(Mode, newrownumber)
-    #     fsys.AddOutputToTable(Mode, newrownumber)
-
     # run the system model Design Point (DP) calculation
     Mode = 'DP'
     print("Design point (DP) results")
@@ -185,8 +153,8 @@ def main():
      # Create plots with operating lines if available
     for comp in fsys.system_model:
         comp.PlotMaps()
-        if comp.map != None:
-            print(comp.name + " map with operating curve saved in " + comp.map.map_figure_pathname)
+        # if comp.map != None:
+        #     print(comp.name + " map with operating curve saved in " + comp.map.map_figure_pathname)
 
     print("end of running turbojet simulation")
 

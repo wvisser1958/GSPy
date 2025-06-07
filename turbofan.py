@@ -36,7 +36,7 @@ def main():
     fsys.Control = TControl('Control', '', 0.50, 1600, 1100, -50)
 
     # create a turbojet system model
-    fsys.systemmodel = [TInlet('Inlet1',          '',            0,2,   100, .9    ),
+    fsys.system_model = [TInlet('Inlet1',          '',            0,2,   100, .9    ),
 
                         # for turbofan, note that fan has 2 GasOut outputs
                         TFan('FAN_BST','bigfanc.map', 2, 25, 21,   1,   4400, 0.825, 5, 1, 0.8, 2,
@@ -78,46 +78,10 @@ def main():
                         TExhaust('ColdNozzle',      '',            23,18,19, 1, 1, 1, 1           )]
 
 
-    # add Ambient (Flight / Ambient operating conditions) output column names
-    fsys.OutputColumnNames = fsys.Ambient.GetOutputTableColumnNames() + fsys.Control.GetOutputTableColumnNames()
-    # add Component models
-    for comp in fsys.systemmodel:
-        fsys.OutputColumnNames = fsys.OutputColumnNames + comp.GetOutputTableColumnNames()
-    # add system performance output
-    fsys.OutputColumnNames = fsys.OutputColumnNames + fsys.GetOutputTableColumnNames()
-    fsys.OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + fsys.OutputColumnNames)
+    fsys.InitializeOutputTable()
 
     # define the gas model in f_global
     fg.InitializeGas()
-
-    # method running component model simulations/calculations
-    # from inlet(s) through exhaust(s)
-    def Do_Run(Mode, PointTime, states):
-        fsys.states = states.copy()
-        fsys.reinit_system()
-        fsys.Ambient.Run(Mode, PointTime)
-        fsys.Control.Run(Mode, PointTime)
-        for comp in fsys.systemmodel:
-            # q_gas = comp.Run(Mode, PointTime, q_gas)
-            comp.Run(Mode, PointTime)
-        return fsys.errors
-
-    def Do_Output(Mode, PointTime):
-        fsys.Ambient.PrintPerformance(Mode, PointTime)
-        fsys.Control.PrintPerformance(Mode, PointTime)
-        for comp in fsys.systemmodel:
-            comp.PrintPerformance(Mode, PointTime)
-        fsys.PrintPerformance(Mode, PointTime)
-
-        # table output
-        newrownumber = len(fsys.OutputTable)
-        fsys.OutputTable.loc[newrownumber, 'Point/Time'] = PointTime
-        fsys.OutputTable.loc[newrownumber, 'Mode'] = Mode
-        fsys.Ambient.AddOutputToTable(Mode, newrownumber)
-        fsys.Control.AddOutputToTable(Mode, newrownumber)
-        for comp in fsys.systemmodel:
-            comp.AddOutputToTable(Mode, newrownumber)
-        fsys.AddOutputToTable(Mode, newrownumber)
 
     # run the system model Design Point (DP) calculation
     Mode = 'DP'
@@ -127,8 +91,8 @@ def main():
     fsys.Ambient.SetConditions('DP', 0, 0, 0, None, None)
     # not using states and errors yet for DP, but do this for later when doing DP iterations
     fsys.reinit_states_and_errors()
-    Do_Run(Mode, 0, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
-    Do_Output(Mode, 0)
+    fsys.Do_Run(Mode, 0, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
+    fsys.Do_Output(Mode, 0)
 
     # return # uncomment for design point only
 
@@ -146,7 +110,7 @@ def main():
         # the residuals are the errors returned by Do_Run
         # test with GSP final performan with 0.3 kg/s fuel at ISA static
         # states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
-        return Do_Run(Mode, inputpoints[ipoint], states)
+        return fsys.Do_Run(Mode, inputpoints[ipoint], states)
 
     # for debug
     # savedstates = np.empty((0, fsys.states.size+2), dtype=float)
@@ -163,7 +127,7 @@ def main():
                                         # (with automatic min step size)
             }
             solution = root(residuals, fsys.states, method='krylov', options=options) # leave tolerance at default: is fastest and error ususally < 0.00001
-            Do_Output(Mode, inputpoints[ipoint])
+            fsys.Do_Output(Mode, inputpoints[ipoint])
 
             # for debug
             # wf = fu.get_component_object_by_name(turbojet, 'combustor1').Wf
@@ -175,17 +139,13 @@ def main():
     except Exception as e:
         print(f"An error occurred: {e}")
 
-    # print(savedstates)
-
-    # print(fsys.OutputTable)
-
     # Export to Excel
     output_directory = 'output'
     os.makedirs(output_directory, exist_ok=True)
     fsys.OutputTable.to_csv(os.path.join(output_directory, 'output.csv'), index=False)
 
      # Create plots with operating lines if available
-    for comp in fsys.systemmodel:
+    for comp in fsys.system_model:
         comp.PlotMaps()
 
     print("end of running turbofan simulation")

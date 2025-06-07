@@ -18,6 +18,7 @@ class TComponent:
     def PlotMaps(self): # Plot performance in map(s)
         if self.map != None:
             self.map.PlotMap()
+            print(self.name + " map with operating curve saved in " + self.map.map_figure_pathname)
 
     def GetOutputTableColumnNames(self):
         # raise NotImplementedError("Subclass must implement InitOutputTable abstract method")

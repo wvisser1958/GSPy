@@ -183,5 +183,7 @@ class TFan(TTurboComponent):
     def PlotMaps(self): # Plot performance in map(s)
         if self.map_core != None:
             self.map_core.PlotMap()
+            print(self.name + " core map with operating curve saved in " + self.map_core.map_figure_pathname)
         if self.map_duct != None:
             self.map_duct.PlotMap()
+            print(self.name + " duct map with operating curve saved in " + self.map_duct.map_figure_pathname)
