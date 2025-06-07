@@ -1,5 +1,6 @@
 
 import numpy as np
+import pandas as pd
 
 # use dictionary for gas path conditions oriented by gas path station number
 gaspath_conditions = {}
@@ -17,6 +18,8 @@ WF = 0.0
 
 OutputColumnNames = None
 OutputTable = None
+Ambient = None
+Control = None
 
 def get_shaft(ShaftNr):
     for shaft in shaft_list:
@@ -68,3 +71,45 @@ def AddOutputToTable(Mode, rownr):
     OutputTable.loc[rownr, "WF"] = WF
     for shaft in shaft_list:
         OutputTable.loc[rownr, f"PW{shaft.ShaftNr}"] = shaft.PW_sum/1000
+
+def InitializeOutputTable():
+    global system_model,  OutputColumnNames, OutputTable, Ambient, Control
+    # add Ambient (Flight / Ambient operating conditions) and Control compoenent output column names
+    OutputColumnNames = Ambient.GetOutputTableColumnNames() + Control.GetOutputTableColumnNames()
+    # add Component models
+    for comp in system_model:
+        OutputColumnNames = OutputColumnNames + comp.GetOutputTableColumnNames()
+    # add system performance output
+    OutputColumnNames = OutputColumnNames + GetOutputTableColumnNames()
+    OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + OutputColumnNames)
+
+# method running component model simulations/calculations
+# from inlet(s) through exhaust(s)
+def Do_Run(Mode, PointTime, states_par):
+    global system_model, states, errors, Ambient, Control
+    states = states_par.copy()
+    reinit_system()
+    Ambient.Run(Mode, PointTime)
+    Control.Run(Mode, PointTime)
+    for comp in system_model:
+        comp.Run(Mode, PointTime)
+    return errors
+
+def Do_Output(Mode, PointTime):
+    # output to terminal
+    global system_model,  OutputColumnNames, OutputTable, Ambient, Control
+    Ambient.PrintPerformance(Mode, PointTime)
+    Control.PrintPerformance(Mode, PointTime)
+    for comp in system_model:
+        comp.PrintPerformance(Mode, PointTime)
+    PrintPerformance(Mode, PointTime)
+
+    # table output
+    newrownumber = len(OutputTable)
+    OutputTable.loc[newrownumber, 'Point/Time'] = PointTime
+    OutputTable.loc[newrownumber, 'Mode'] = Mode
+    Ambient.AddOutputToTable(Mode, newrownumber)
+    Control.AddOutputToTable(Mode, newrownumber)
+    for comp in system_model:
+        comp.AddOutputToTable(Mode, newrownumber)
+    AddOutputToTable(Mode, newrownumber)

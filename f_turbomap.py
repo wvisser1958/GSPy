@@ -128,7 +128,8 @@ class TTurboMap(TMap):
 
         self.map_figure.suptitle(map_title)
         # self.map_figure_pathname = './output/' + self.host_component.name + '_map.jpg'
-        self.map_figure_pathname = './output/' + self.name + '.jpg'
+        # to abstract map class... (Wilfried)
+        # self.map_figure_pathname = './output/' + self.name + '.jpg'
 
         # Map paramter naming
         # self.Wc_in_param = 'Wc' + str(self.host_component.stationin)
