@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from f_map import TMap
 from scipy.interpolate import RegularGridInterpolator
 
@@ -14,11 +15,16 @@ class TTurboMap(TMap):
         self.Wcmap = None
         self.PRmap = None
 
-        # Oscar
+        # Map scaling
         self.SFmap_Nc  = 1
         self.SFmap_Wc  = 1
         self.SFmap_PR  = 1
         self.SFmap_Eta = 1
+
+        # Dual plot axis
+        self.secondary_plot_axis = None
+        # The map figure object
+        self.dual_map_figure = None
 
         # Map paramter naming
         if self.OL_xcol != '':
@@ -134,6 +140,41 @@ class TTurboMap(TMap):
         # Map paramter naming
         # self.Wc_in_param = 'Wc' + str(self.host_component.stationin)
         # self.PR_comp_param = 'PR_' + str(self.host_component.name)
+
+        if use_scaled_map:
+            self.NcArrayValues = self.nc_values * self.SFmap_Nc
+            self.WcArrayValues = self.wc_array * self.SFmap_Wc
+            # must scale around PR = 1
+            # self.PRArrayValues = self.pr_array * self.SFmap_PR
+            self.PRArrayValues = (self.pr_array - 1) * self.SFmap_PR + 1
+            self.EtaArrayValues = self.eta_array * self.SFmap_Eta
+        else:
+            self.NcArrayValues = self.nc_values
+            self.WcArrayValues = self.wc_array
+            self.PRArrayValues = self.pr_array
+            self.EtaArrayValues = self.eta_array
+
+    # This plot consists of two subplots
+    def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+        # Store under a different name
+        self.map_figure_pathname = './output/' + self.name + '_dual' + '.jpg'
+        self.dual_map_figure, (self.main_plot_axis, self.secondary_plot_axis) = plt.subplots(
+            2, 1,                # two rows, one column
+            sharex=True,         # both panels share the same x-ticks
+            # constrained_layout=True,
+            figsize = self.map_size
+        )
+
+        # Set map title
+        map_title = self.MapFileName
+
+        if do_plot_series or do_plot_design_point:
+            use_scaled_map = True
+
+        if use_scaled_map:
+            map_title = map_title + ' (scaled to DP)'
+
+        self.map_figure.suptitle(map_title)
 
         if use_scaled_map:
             self.NcArrayValues = self.nc_values * self.SFmap_Nc

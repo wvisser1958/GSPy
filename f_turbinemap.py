@@ -75,3 +75,39 @@ class TTurbineMap(TTurboMap):
             self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
 
         self.map_figure.savefig(self.map_figure_pathname)
+
+    def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+        super().PlotDualMap(use_scaled_map, do_plot_series)
+
+        # Plot Pr-Eta top subplot
+        for index, NcValue in enumerate(self.NcArrayValues):
+            self.main_plot_axis.plot(self.PRArrayValues[index], self.EtaArrayValues[index], linewidth=0.25, linestyle='dashed', color='black', label=str(round(NcValue)))
+            self.main_plot_axis.text(8, np.sin(8), "sin(x)", fontsize=12, color="blue")
+        self.main_plot_axis.set_ylabel('Efficiency')
+        # self.main_plot_axis.set_xlabel('Pressure Ratio')
+
+        # Plot Pr-Eta bottom subplot
+        for index, NcValue in enumerate(self.NcArrayValues):
+            self.secondary_plot_axis.plot(self.PRArrayValues[index], self.WcArrayValues[index], linewidth=0.25, linestyle='dashed', color='black', label=str(round(NcValue)))
+        self.secondary_plot_axis.set_ylabel('Corected mass flow')
+        self.secondary_plot_axis.set_xlabel('Pressure Ratio')
+
+        # # Contours
+        # PR_grid, Wc_grid, Eta_grid = self.CalcMapEtaTopology(self.WcArrayValues,self.PRArrayValues,self.EtaArrayValues,False)
+        # CS = self.main_plot_axis.contour(Wc_grid,PR_grid,np.transpose(Eta_grid),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
+        # self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
+        # self.main_plot_axis.contourf(Wc_grid,PR_grid,np.transpose(Eta_grid), 14 ,cmap='RdYlGn',alpha=0.3)
+
+        # Design point
+        if do_plot_design_point:
+            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')]['Eta_is_' + str(self.host_component.name)].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+            self.secondary_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+
+        # Operating line
+        if do_plot_series:
+            # Plotting PR - Wc
+            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')]['Eta_is_' + str(self.host_component.name)].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
+            self.secondary_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
+
+        # self.dual_map_figure.tight_layout()
+        self.dual_map_figure.savefig(self.map_figure_pathname)

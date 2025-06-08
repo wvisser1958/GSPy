@@ -185,7 +185,9 @@ def main():
 
      # Create plots
     compressor1.map.PlotMap()
+    compressor1.map.PlotDualMap()
     turbine1.map.PlotMap()
+    turbine1.map.PlotDualMap()
 
     print("end of main program")
 

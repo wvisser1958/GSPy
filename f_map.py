@@ -24,7 +24,7 @@ class TMap:
         self.OL_xcol = OL_xcol
         self.OL_ycol = OL_ycol
 
-        # Wilfried
+        # Mapnaming, override or extend in child classes
         self.map_figure_pathname = './output/' + self.name + '.jpg'
 
     def ReadMap(self, filename):              # Abstract method, defined by convention only
