@@ -148,18 +148,7 @@ class TTurboMap(TMap):
 
         self.map_figure.suptitle(map_title)
 
-        if use_scaled_map:
-            self.NcArrayValues = self.nc_values * self.SFmap_Nc
-            self.WcArrayValues = self.wc_array * self.SFmap_Wc
-            # must scale around PR = 1
-            # self.PRArrayValues = self.pr_array * self.SFmap_PR
-            self.PRArrayValues = (self.pr_array - 1) * self.SFmap_PR + 1
-            self.EtaArrayValues = self.eta_array * self.SFmap_Eta
-        else:
-            self.NcArrayValues = self.nc_values
-            self.WcArrayValues = self.wc_array
-            self.PRArrayValues = self.pr_array
-            self.EtaArrayValues = self.eta_array
+        self.set_scaled_arrays(use_scaled_map)
 
     # This plot consists of two subplots
     def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):

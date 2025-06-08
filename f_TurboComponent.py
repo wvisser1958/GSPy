@@ -27,11 +27,11 @@ class TTurboComponent(gaspath):
         if all(shaft.ShaftNr != ShaftNr for shaft in fsys.shaft_list):
             fsys.shaft_list.append(fshaft.TShaft(ShaftNr, name + ' shaft ' + str(ShaftNr)) )
 
-    def PlotMaps(self): # Plot performance in map(s)
+    def PlotMaps(self): # Plot performance in map(s) override to add dual plotting option
         super().PlotMaps()
         if self.map != None:
             self.map.PlotDualMap()
-            print(self.name + " map with operating curve saved in " + self.map.map_figure_pathname)
+            print(self.name + " map (dual) with operating curve saved in " + self.map.map_figure_pathname)
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
