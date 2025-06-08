@@ -27,6 +27,12 @@ class TTurboComponent(gaspath):
         if all(shaft.ShaftNr != ShaftNr for shaft in fsys.shaft_list):
             fsys.shaft_list.append(fshaft.TShaft(ShaftNr, name + ' shaft ' + str(ShaftNr)) )
 
+    def PlotMaps(self): # Plot performance in map(s)
+        super().PlotMaps()
+        if self.map != None:
+            self.map.PlotDualMap()
+            print(self.name + " map with operating curve saved in " + self.map.map_figure_pathname)
+
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
@@ -34,7 +40,6 @@ class TTurboComponent(gaspath):
             self.Nc = self.Ncdes
             self.Eta = self.Etades
             self.shaft = fsys.get_shaft(self.ShaftNr)
-
 
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)

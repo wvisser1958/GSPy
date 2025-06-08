@@ -120,6 +120,20 @@ class TTurboMap(TMap):
         Eta = self.SFmap_Eta * etamap
         return Wc, PR, Eta
 
+    # Determine plot arrays, scaled or not
+    def set_scaled_arrays(self, do_use_scaled_map = False):
+        if do_use_scaled_map:
+            self.NcArrayValues = self.nc_values * self.SFmap_Nc
+            self.WcArrayValues = self.wc_array * self.SFmap_Wc
+            # must scale around PR = 1
+            self.PRArrayValues = (self.pr_array - 1) * self.SFmap_PR + 1
+            self.EtaArrayValues = self.eta_array * self.SFmap_Eta
+        else:
+            self.NcArrayValues = self.nc_values
+            self.WcArrayValues = self.wc_array
+            self.PRArrayValues = self.pr_array
+            self.EtaArrayValues = self.eta_array
+
     # Map plotting routine
     def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
         super().PlotMap()
@@ -133,13 +147,6 @@ class TTurboMap(TMap):
             map_title = map_title + ' (scaled to DP)'
 
         self.map_figure.suptitle(map_title)
-        # self.map_figure_pathname = './output/' + self.host_component.name + '_map.jpg'
-        # to abstract map class... (Wilfried)
-        # self.map_figure_pathname = './output/' + self.name + '.jpg'
-
-        # Map paramter naming
-        # self.Wc_in_param = 'Wc' + str(self.host_component.stationin)
-        # self.PR_comp_param = 'PR_' + str(self.host_component.name)
 
         if use_scaled_map:
             self.NcArrayValues = self.nc_values * self.SFmap_Nc
@@ -156,12 +163,14 @@ class TTurboMap(TMap):
 
     # This plot consists of two subplots
     def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
-        # Store under a different name
+        # Store plot under a different name, override map file name
+        # reuse the map_figure_pathname and map size class parameters
         self.map_figure_pathname = './output/' + self.name + '_dual' + '.jpg'
+
+        # Create the subplot graph for a split turbomachinary plot
         self.dual_map_figure, (self.main_plot_axis, self.secondary_plot_axis) = plt.subplots(
             2, 1,                # two rows, one column
             sharex=True,         # both panels share the same x-ticks
-            # constrained_layout=True,
             figsize = self.map_size
         )
 
@@ -174,17 +183,8 @@ class TTurboMap(TMap):
         if use_scaled_map:
             map_title = map_title + ' (scaled to DP)'
 
-        self.map_figure.suptitle(map_title)
+        self.dual_map_figure.suptitle(map_title)
 
-        if use_scaled_map:
-            self.NcArrayValues = self.nc_values * self.SFmap_Nc
-            self.WcArrayValues = self.wc_array * self.SFmap_Wc
-            # must scale around PR = 1
-            # self.PRArrayValues = self.pr_array * self.SFmap_PR
-            self.PRArrayValues = (self.pr_array - 1) * self.SFmap_PR + 1
-            self.EtaArrayValues = self.eta_array * self.SFmap_Eta
-        else:
-            self.NcArrayValues = self.nc_values
-            self.WcArrayValues = self.wc_array
-            self.PRArrayValues = self.pr_array
-            self.EtaArrayValues = self.eta_array
+        self.set_scaled_arrays(use_scaled_map)
+
+
