@@ -4,9 +4,9 @@ import f_global as fg
 import f_system as fsys
 import f_shaft as fshaft
 import f_turbomap as tmap
-from f_gaspath import TGaspath as gaspath
+from f_gaspath import TGaspath
 
-class TTurboComponent(gaspath):
+class TTurboComponent(TGaspath):
     def __init__(self, name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades):
         super().__init__(name, MapFileName, stationin, stationout)
         self.GasIn = None
