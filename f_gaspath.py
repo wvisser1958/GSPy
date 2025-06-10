@@ -1,6 +1,6 @@
 import numpy as np
 import cantera as ct
-from f_BaseComponent import TComponent
+from f_base_component import TComponent
 import f_global as fg
 import f_system as fsys
 
