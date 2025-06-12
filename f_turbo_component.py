@@ -3,7 +3,7 @@ import cantera as ct
 import f_global as fg
 import f_system as fsys
 import f_shaft as fshaft
-import f_turbomap as tmap
+import f_turbomap as TMap
 from f_gaspath import TGaspath
 
 class TTurboComponent(TGaspath):

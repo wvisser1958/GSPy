@@ -2,9 +2,9 @@ import numpy as np
 import cantera as ct
 import f_global as fg
 import f_system as fsys
-from f_base_component import TComponent as component
+from f_base_component import TComponent
 
-class TControl(component):
+class TControl(TComponent):
     def __init__(self, name, MapFileName, DP_inputvalue, OD_startvalue, OD_endvalue, OD_pointstepvalue):
         super().__init__(name, MapFileName)
         self.DP_inputvalue = DP_inputvalue
