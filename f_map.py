@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator
 from scipy.interpolate import griddata
 from scipy.ndimage import gaussian_filter
+import os
 
 class TMap:
     def __init__(self, host_component, name, MapFileName, OL_xcol, OL_ycol):    # Constructor of the class
@@ -36,8 +37,15 @@ class TMap:
         self.OL_xcol = OL_xcol
         self.OL_ycol = OL_ycol
 
+        # Output folder
+        output_dir = './output/'
+
         # Mapnaming, override or extend in child classes
-        self.map_figure_pathname = './output/' + self.name + '.jpg'
+        self.map_figure_pathname = output_dir + self.name + '.jpg'
+
+        # Create the directory if it doesn't exist
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
 
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         try:
