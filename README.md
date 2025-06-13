@@ -1,6 +1,5 @@
 # gsppysim
-Python propulsion and power system performance modelling and simulation tool
-TUDELFT GAS TURBINE SIMULATION PROGRAM GSP for MS-WINDOWS          RELEASE NOTES
+GSPy Python propulsion and power system performance modelling and simulation tool
 --------------------------------------------------------------------------------
 CONTENTS:
 ---------------------------------
