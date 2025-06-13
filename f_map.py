@@ -57,6 +57,9 @@ class TMap:
 
     # Map plotting routine
     def PlotMap(self):
+        # Note; images are plotted in an output folder, if you use Windows, mind that a Windows Explorer feature treats this folder
+        #       as a pictures folder, this means is doesnt update the cahnged date when images are overwritten!
+        #       https://stackoverflow.com/questions/49039581/matplotlib-savefig-will-not-overwrite-old-files
         self.map_figure = plt.figure(num=self.name, figsize = self.map_size)
         self.main_plot_axis = self.map_figure.gca()
 
