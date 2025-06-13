@@ -4,27 +4,35 @@ TUDELFT GAS TURBINE SIMULATION PROGRAM GSP for MS-WINDOWS          RELEASE NOTES
 --------------------------------------------------------------------------------
 CONTENTS:
 ---------------------------------
-1. Version history
-2. Hints
-3. Known issues
-4. Other
+1. License
+2. Version history
+3. Hints
+4. Known issues
+5. Other
 ---------------------------------
 
 ********************************************************************************
-1. VERSION HISTORY
+1. LICENSE
 ********************************************************************************
-gsppysim v1.0.0.0                                                    25-11-2024
+
+This project is licensed under the Apache License 2.0
+See the [LICENSE](LICENSE) file for details.
+
+********************************************************************************
+2. VERSION HISTORY
+********************************************************************************
+GSPy v1.0.0.0        (first release)                                  14-06-2025
 --------------------------------------------------------------------------------
 Fixed
 --------------------------------------------------------------------------------
-* 
+*
 
 --------------------------------------------------------------------------------
 Improvements
 --------------------------------------------------------------------------------
-* 
+*
 
-GSPpysim Development Team
+GSPy Development Team
 Wilfried Visser
 wvisser@xs4all.nl
 Faculty of Aerospace Engineering / Propulsion and Power
@@ -35,8 +43,8 @@ The Netherlands
 
 Oscar Kogenhop
 oscar.kogenhop@epcor.nl
-EPCOR B.V. 
+EPCOR B.V.
 Bellsingel 41
 1119 NT Schiphol-Rijk
-The Netherlands 
+The Netherlands
 
