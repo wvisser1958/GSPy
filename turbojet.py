@@ -135,6 +135,7 @@ def main():
     try:
         # start with all states 1 and errors 0
         fsys.reinit_states_and_errors()
+        maxiter=50
         for ipoint in inputpoints:
             # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
             options = {
@@ -142,9 +143,13 @@ def main():
                                         # leave it: only warning at initial step, but a bit faster
                                         # (with automatic min step size)
             }
-            solution = root(residuals, fsys.states, method='krylov', options = options) # leave tolerance at default: is fastest and error ususally < 0.00001
-            fsys.Do_Output(Mode, inputpoints[ipoint])
-
+            # solution = root(residuals, fsys.states, method='krylov', options = options) # leave tolerance at default: is fastest and error ususally < 0.00001
+            # fsys.Do_Output(Mode, inputpoints[ipoint])
+            solution = root(residuals, fsys.states, method='krylov', options={'maxiter': maxiter}) # leave tolerance at default: is fastest and error ususally < 0.00001
+            if solution.success:
+                fsys.Do_Output(Mode, inputpoints[ipoint])
+            else:
+                print(f"Could not find a solution for point {ipoint} with max {maxiter} iterations")
             # for debug
             # wf = fu.get_component_object_by_name(turbojet, 'combustor1').Wf
             # wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)

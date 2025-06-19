@@ -45,17 +45,17 @@ def main():
     # direct fuel flow input
     # fsys.Control = TControl('Control', '', 0.48, 0.48, 0.08, -0.01)
     # combustor Texit input, with Wf 0.48 as first guess for 1200 K combustor exit temperature
-    fsys.Control = TControl('Control', '', 0.50, 1600, 1100, -50)
+    fsys.Control = TControl('Control', '', 0.50, 1600, 1200, -50)
 
     # create a turbojet system model
     fsys.system_model = [TInlet('Inlet1',          '',            0,2,   100, .9    ),
 
                         # for turbofan, note that fan has 2 GasOut outputs
-                        TFan('FAN_BST','bigfanc.map', 2, 25, 21,   1,   4400, 0.825, 5, 1, 0.8, 2,
-                                       'bigfand.map', 1, 0.8, 1.3,            0.8),
+                        TFan('FAN_BST','bigfanc.map', 2, 25, 21,   1,   4880, 0.8696, 5.3, 0.95, 0.7, 2.33,
+                                       'bigfand.map', 0.95, 0.7, 1.65,            0.8606),
 
                         # always start with the components following the 1st GasOut object
-                        TCompressor('HPC','compmap.map', 25,3,   2,   16540, 0.825, 1, 0.8, 6.92, 'GG'),
+                        TCompressor('HPC','compmap.map', 25,3,   2,   14000, 0.8433, 1, 0.8, 10.9, 'GG'),
 
                         # ***************** Combustor ******************************************************
                         # fuel input
@@ -77,9 +77,9 @@ def main():
                                                     # fuel specified by Fuel temperature and Fuel composition (by mass)
                                                     # 288.15,      None, None, None, 'CH4:5, C2H6:1'),
 
-                        TTurbine('HPT',      'turbimap.map',4,45,   2,   16540, 0.88,       1, 0.8, 1, 'GG'   ),
+                        TTurbine('HPT',      'turbimap.map',4,45,   2,   14000, 0.8732,       1, 0.65, 1, 'GG'   ),
 
-                        TTurbine('LPT',      'turbimap.map',45,5,   1,   4400, 0.88,       1, 0.8, 1, 'GG'   ),
+                        TTurbine('LPT',      'turbimap.map',45,5,   1,   4480, 0.8682,       1, 0.7, 1, 'GG'   ),
 
 
                         TDuct('Exhduct_hot',      '',                5,7,   1.0                 ),
@@ -131,6 +131,7 @@ def main():
         # start with all states 1 and errors 0
         fsys.reinit_states_and_errors()
         # run the Off-Design (OD) simulation for all points, using root with 'krylov'
+        maxiter = 100
         for ipoint in inputpoints:
             # solution returns the residual errors after conversion (should be within the tolerance 'tol')
             options = {
@@ -138,9 +139,12 @@ def main():
                                         # leave it: only warning at initial step, but a bit faster
                                         # (with automatic min step size)
             }
-            solution = root(residuals, fsys.states, method='krylov', options=options) # leave tolerance at default: is fastest and error ususally < 0.00001
-            fsys.Do_Output(Mode, inputpoints[ipoint])
-
+            # solution = root(residuals, fsys.states, method='krylov', options={'xtol': 1e-4, 'maxiter': 50}) # leave tolerance at default: is fastest and error ususally < 0.00001
+            solution = root(residuals, fsys.states, method='krylov', options={'maxiter': maxiter}) # leave tolerance at default: is fastest and error ususally < 0.00001
+            if solution.success:
+                fsys.Do_Output(Mode, inputpoints[ipoint])
+            else:
+                print(f"Could not find a solution for point {ipoint} with max {maxiter} iterations")
             # for debug
             # wf = fu.get_component_object_by_name(turbojet, 'combustor1').Wf
             # wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
