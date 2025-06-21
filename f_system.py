@@ -92,7 +92,9 @@ def InitializeOutputTable():
         OutputColumnNames = OutputColumnNames + comp.GetOutputTableColumnNames()
     # add system performance output
     OutputColumnNames = OutputColumnNames + GetOutputTableColumnNames()
-    OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + OutputColumnNames)
+    # Now remove duplicate columns, like "N1", "Nc1", etc.
+    UniqueOutputColumnNames = list(dict.fromkeys(OutputColumnNames))
+    OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + UniqueOutputColumnNames)
 
 # method running component model simulations/calculations
 # from inlet(s) through exhaust(s)

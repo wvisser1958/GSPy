@@ -16,7 +16,7 @@ from f_map import TMap
 from scipy.interpolate import RegularGridInterpolator
 
 class TTurboMap(TMap):
-    def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, Ncmapdes, Betamapdes):    # Constructor of the class
+    def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, ShaftString, Ncmapdes, Betamapdes):    # Constructor of the class
         super().__init__(host_component, name, MapFileName, OL_xcol, OL_Ycol)
         self.Ncmapdes = Ncmapdes
         self.Betamapdes = Betamapdes
@@ -26,6 +26,7 @@ class TTurboMap(TMap):
         self.Wcmapdes = None
         self.Wcmap = None
         self.PRmap = None
+        self.ShaftString = ShaftString
 
         # Map scaling
         self.SFmap_Nc  = 1
@@ -39,6 +40,7 @@ class TTurboMap(TMap):
         self.dual_map_figure = None
 
         # Map paramter naming
+        self.Nc_comp_param = f"Nc{self.ShaftString}"
         if self.OL_xcol != '':
             self.Wc_in_param = self.OL_xcol
         else:
