@@ -126,3 +126,6 @@ def Do_Output(Mode, PointTime):
     for comp in system_model:
         comp.AddOutputToTable(Mode, newrownumber)
     AddOutputToTable(Mode, newrownumber)
+
+def print_states_and_errors():
+    print(f"Nr. of states: {len(states)}\nNr. of errors: {len(errors)}")
