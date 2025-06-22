@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator
 from scipy.interpolate import griddata
+from scipy.interpolate import SmoothBivariateSpline
 from scipy.ndimage import gaussian_filter
 import os
 
@@ -71,27 +72,58 @@ class TMap:
         self.map_figure = plt.figure(num=self.name, figsize = self.map_size)
         self.main_plot_axis = self.map_figure.gca()
 
-    def CalcMapEtaTopology(self, WcArrayValues, PRArrayValues, EtaArrayValues, doSmooth=True):
-        # Flatten the data for interpolation
-        Wc_flat = WcArrayValues.flatten()
-        PR_flat = PRArrayValues.flatten()
-        Eta_flat = EtaArrayValues.flatten()
+    def CalcMapEtaTopology(self, XArrayValues, YArrayValues, FArrayValues, doSmooth=True):
+        """
+        Interpolates efficiency data onto a regular grid for contour plotting.
 
-        # Create a grid for corrected mass flow (Wc) and pressure ratio (PR)
-        Wc_grid = np.linspace(WcArrayValues.min(), WcArrayValues.max(), 100)
-        PR_grid = np.linspace(PRArrayValues.min(), PRArrayValues.max(), 100)
-        Wc_mesh, PR_mesh = np.meshgrid(Wc_grid, PR_grid)
+        Parameters:
+        ----------
+        XArrayValues : ndarray
+            X-axis data (e.g., corrected mass flow, Wc) — can be scaled if needed.
+        YArrayValues : ndarray
+            Y-axis data (e.g., pressure ratio, PR).
+        FArrayValues : ndarray
+            Function values (e.g., efficiency or Eta).
+        doSmooth : bool, optional
+            If True, applies Gaussian smoothing to the result.
 
-        # Interpolate efficiency data onto the grid
-        Eta_grid = griddata(
-            (Wc_flat, PR_flat),  # Original data points
-            Eta_flat,            # Efficiency values
-            (Wc_mesh, PR_mesh),  # Target grid
-            method='linear'      # Interpolation method
+        Returns:
+        -------
+        X_mesh : ndarray
+            2D meshgrid for X-axis (shape: [n_points, n_points]).
+        Y_mesh : ndarray
+            2D meshgrid for Y-axis (shape: [n_points, n_points]).
+        F_grid : ndarray
+            Interpolated F-values (shape: [n_points, n_points]).
+        """
+
+        # Flatten input arrays for interpolation
+        x_flat = XArrayValues.flatten()
+        y_flat = YArrayValues.flatten()
+        f_flat = FArrayValues.flatten()
+
+        # Create uniform grid in X and Y
+        x_lin = np.linspace(XArrayValues.min(), XArrayValues.max(), 100)
+        y_lin = np.linspace(YArrayValues.min(), YArrayValues.max(), 100)
+        X_mesh, Y_mesh = np.meshgrid(x_lin, y_lin)
+
+        # Interpolate F-values onto the grid
+        F_grid = griddata(
+            (x_flat, y_flat),   # Known data points
+            f_flat,             # Function values at data points
+            (X_mesh, Y_mesh),   # Target grid
+            method='linear'     # Interpolation method
         )
-        # Apply Gaussian smoothing
-        if doSmooth:
-            Eta_grid = gaussian_filter(Eta_grid, sigma=0.8)  # Adjust sigma for more or less smoothing
 
-        return Wc_grid, PR_grid, Eta_grid
+        # Optionally smooth the interpolated surface
+        if doSmooth:
+            # F_grid = gaussian_filter(F_grid, sigma=0.8)
+                # Fit smooth spline to the data
+            spline = SmoothBivariateSpline(x_flat, y_flat, f_flat, s=0.001)  # s controls smoothing
+
+            # Evaluate spline on grid
+            F_grid = spline.ev(X_mesh.ravel(), Y_mesh.ravel()).reshape(X_mesh.shape)
+
+        return X_mesh, Y_mesh, F_grid
+
 

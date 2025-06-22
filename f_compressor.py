@@ -26,7 +26,7 @@ class TCompressor(TTurboComponent):
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
-        self.map = TCompressorMap(self, name + '_map', MapFileName, '', '', Ncmapdes, Betamapdes)
+        self.map = TCompressorMap(self, name + '_map', MapFileName, '', '', ShaftNr, Ncmapdes, Betamapdes)
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)

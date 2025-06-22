@@ -92,7 +92,9 @@ def InitializeOutputTable():
         OutputColumnNames = OutputColumnNames + comp.GetOutputTableColumnNames()
     # add system performance output
     OutputColumnNames = OutputColumnNames + GetOutputTableColumnNames()
-    OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode', 'Comment'] + OutputColumnNames)
+    # Now remove duplicate columns, like "N1", "Nc1", etc.
+    UniqueOutputColumnNames = list(dict.fromkeys(OutputColumnNames))
+    OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + UniqueOutputColumnNames)
 
 # method running component model simulations/calculations
 # from inlet(s) through exhaust(s)
@@ -123,6 +125,7 @@ def Do_Output(Mode, PointTime, Solution):
     Control.AddOutputToTable(Mode, newrownumber)
     for comp in system_model:
         comp.AddOutputToTable(Mode, newrownumber)
-    AddOutputToTable(Mode, newrownumber)
     if (Solution != None) and (not Solution.success):
         OutputTable.loc[newrownumber, "Comment"]  = 'Not converged'
+def print_states_and_errors():
+   	print(f"Nr. of states: {len(states)}\nNr. of errors: {len(errors)}")

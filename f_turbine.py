@@ -26,7 +26,7 @@ class TTurbine(TTurboComponent):
         self.TurbineType = TurbineType  # gas generator turbine providing all power required by compressor(s)
         # TurbineType = 'PT'  # heavy duty single spool or power turbine, providing power to external loads
         # only call SetDPparameters in instantiable classes in init creator
-        self.map = TTurbineMap(self, name + '_map', MapFileName, '', '', Ncmapdes, Betamapdes)
+        self.map = TTurbineMap(self, name + '_map', MapFileName, '', '', ShaftNr, Ncmapdes, Betamapdes)
 
     def GetTotalPRdesUntilAmbient(self):
         # always at least one gas path component downstream a turbine (if only one: exhaust)

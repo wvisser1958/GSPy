@@ -15,8 +15,8 @@ from f_turbomap import TTurboMap
 import f_system as fsys
 
 class TCompressorMap(TTurboMap):
-    def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, Ncmapdes, Betamapdes):
-        super().__init__(host_component, name, MapFileName, OL_xcol, OL_Ycol, Ncmapdes, Betamapdes)
+    def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, ShaftString, Ncmapdes, Betamapdes):
+        super().__init__(host_component, name, MapFileName, OL_xcol, OL_Ycol, ShaftString, Ncmapdes, Betamapdes)
 
     def GetSlWcValues(self):
         return self.sl_wc_array
@@ -46,7 +46,20 @@ class TCompressorMap(TTurboMap):
 
         # Plot Wc-PR top subplot
         for index, NcValue in enumerate(self.NcArrayValues):
-            self.main_plot_axis.plot(self.WcArrayValues[index], self.PRArrayValues[index], linewidth=0.25, linestyle='dashed', color='black', label=str(NcValue))
+            x = self.WcArrayValues[index]
+            y = self.PRArrayValues[index]
+            self.main_plot_axis.plot(x, y, linewidth=0.25, linestyle='dashed', color='black', label=str(NcValue))
+            # Add NcValue text at the last point of the curve
+            ymin, ymax = self.main_plot_axis.get_ylim()
+            # self.main_plot_axis.text(x[-1], y[-1], f'{NcValue:.1f}', fontsize=8, ha='left', va='center')
+            if index == 0:
+                text_label = f'Nc = {NcValue:.1f}'
+            else:
+                text_label = f'{NcValue:.1f}'
+            self.main_plot_axis.text(
+                x[0], y[0], text_label,
+                fontsize=8, ha='left', va='center'
+            )
         self.main_plot_axis.set_xlabel('Corected massflow')
         self.main_plot_axis.set_ylabel('Pressure Ratio')
 
