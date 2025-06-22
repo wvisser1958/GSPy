@@ -125,7 +125,9 @@ def Do_Output(Mode, PointTime, Solution):
     Control.AddOutputToTable(Mode, newrownumber)
     for comp in system_model:
         comp.AddOutputToTable(Mode, newrownumber)
+    AddOutputToTable(Mode, newrownumber)
     if (Solution != None) and (not Solution.success):
         OutputTable.loc[newrownumber, "Comment"]  = 'Not converged'
+
 def print_states_and_errors():
    	print(f"Nr. of states: {len(states)}\nNr. of errors: {len(errors)}")
