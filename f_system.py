@@ -92,7 +92,7 @@ def InitializeOutputTable():
         OutputColumnNames = OutputColumnNames + comp.GetOutputTableColumnNames()
     # add system performance output
     OutputColumnNames = OutputColumnNames + GetOutputTableColumnNames()
-    OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + OutputColumnNames)
+    OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode', 'Comment'] + OutputColumnNames)
 
 # method running component model simulations/calculations
 # from inlet(s) through exhaust(s)
@@ -106,7 +106,7 @@ def Do_Run(Mode, PointTime, states_par):
         comp.Run(Mode, PointTime)
     return errors
 
-def Do_Output(Mode, PointTime):
+def Do_Output(Mode, PointTime, Solution):
     # output to terminal
     global system_model,  OutputColumnNames, OutputTable, Ambient, Control
     Ambient.PrintPerformance(Mode, PointTime)
@@ -124,3 +124,5 @@ def Do_Output(Mode, PointTime):
     for comp in system_model:
         comp.AddOutputToTable(Mode, newrownumber)
     AddOutputToTable(Mode, newrownumber)
+    if (Solution != None) and (not Solution.success):
+        OutputTable.loc[newrownumber, "Comment"]  = 'Not converged'

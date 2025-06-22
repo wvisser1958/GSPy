@@ -107,7 +107,7 @@ def main():
     # not using states and errors yet for DP, but do this for later when doing DP iterations
     fsys.reinit_states_and_errors()
     fsys.Do_Run(Mode, 0, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
-    fsys.Do_Output(Mode, 0)
+    fsys.Do_Output(Mode, 0, None)
 
     # run the Off-Design (OD) simulation, using Newton-Raphson to find
     # the steady state operating point
@@ -136,6 +136,7 @@ def main():
         # start with all states 1 and errors 0
         fsys.reinit_states_and_errors()
         maxiter=50
+        failedcount = 0
         for ipoint in inputpoints:
             # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
             options = {
@@ -146,9 +147,9 @@ def main():
             # solution = root(residuals, fsys.states, method='krylov', options = options) # leave tolerance at default: is fastest and error ususally < 0.00001
             # fsys.Do_Output(Mode, inputpoints[ipoint])
             solution = root(residuals, fsys.states, method='krylov', options={'maxiter': maxiter}) # leave tolerance at default: is fastest and error ususally < 0.00001
-            if solution.success:
-                fsys.Do_Output(Mode, inputpoints[ipoint])
-            else:
+            fsys.Do_Output(Mode, inputpoints[ipoint], solution)
+            if not solution.success:
+                failedcount = failedcount + 1
                 print(f"Could not find a solution for point {ipoint} with max {maxiter} iterations")
             # for debug
             # wf = fu.get_component_object_by_name(turbojet, 'combustor1').Wf
@@ -159,6 +160,8 @@ def main():
         # solution = root(residuals, [ 0.55198737,  0.71696654,  0.76224776,  0.85820746], method='krylov')
     except Exception as e:
         print(f"An error occurred: {e}")
+
+    print(f"{len(inputpoints) - 1 - failedcount} OD points calculated, {failedcount} failed")
 
     # Export to Excel
     output_directory = 'output'

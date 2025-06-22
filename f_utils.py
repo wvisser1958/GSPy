@@ -41,6 +41,8 @@ def pressure_ratio_for_enthalpy_drop(gas, initial_pressure, target_enthalpy_drop
 
     # Define the function to find the root of
     def enthalpy_drop_difference(pressure_ratio):
+        if pressure_ratio<0.00001:
+            pressure_ratio = 0.00001
         final_pressure = initial_pressure * pressure_ratio[0]
         gas.SP = initial_entropy, final_pressure  # Set entropy and pressure (isentropic condition)
         final_enthalpy_is = gas.enthalpy_mass
@@ -50,7 +52,9 @@ def pressure_ratio_for_enthalpy_drop(gas, initial_pressure, target_enthalpy_drop
         return initial_enthalpy - final_enthalpy - target_enthalpy_drop
 
     # Initial guess for pressure ratio
-    initial_guess = [0.5]
+    # assume isentropic expansion
+
+    initial_guess = [0.4]
 
     # Use scipy.optimize.root to find the pressure ratio
     solution = root(enthalpy_drop_difference, initial_guess)
@@ -148,9 +152,11 @@ def Compression(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Etais):
     Pout = GasIn.P*PR
     GasOut.SP = Sin, Pout # get GasOut at constant s and higher P
     Hisout = GasOut.phase.enthalpy_mass # isentropic exit specific enthalpy
-    Hout = GasIn.phase.enthalpy_mass + (Hisout - GasIn.phase.enthalpy_mass) / Etais
+    Hout = GasIn.enthalpy_mass + (Hisout - GasIn.enthalpy_mass) / Etais
     GasOut.HP = Hout, Pout
-    PW = GasOut.H - GasIn.H
+    # bug fix: for Fan, GasOut<>GasIn: use GasOut as the mass being compressed
+    # PW = GasOut.H - GasIn.H
+    PW = GasOut.H - GasOut.mass * GasIn.phase.enthalpy_mass
     return PW
 
 def TurbineExpansion(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Etais):
@@ -160,5 +166,6 @@ def TurbineExpansion(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Etais):
     # eta_is = (initial_enthalpy - final_enthalpy) / (initial_enthalpy - final_enthalpy_is)
     final_enthalpy = GasIn.enthalpy_mass - (GasIn.enthalpy_mass - final_enthalpy_is) * Etais
     GasOut.HP = final_enthalpy, Pout
+    # assume mass flow in = mass flow out here (GasIn.mass = GasOut.mass), so:
     PW = GasIn.H - GasOut.H
     return PW

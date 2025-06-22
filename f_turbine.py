@@ -44,7 +44,7 @@ class TTurbine(TTurboComponent):
         Sin = self.GasIn.entropy_mass
         Pin = self.GasIn.P
         if Mode == 'DP':
-            if self.TurbineType == 'GG':    # gas generator turbine, providing all power required by compressor(s)
+            if self.TurbineType == 'GG':    # gas generator or fan lpt turbine, providing all power required by compressor(s) or fan
                 # this turbine is providing all the power required by the shaft
                 self.PW = -self.shaft.PW_sum /  self.Etamechdes
                 self.shaft.PW_sum = 0
