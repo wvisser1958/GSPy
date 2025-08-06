@@ -19,8 +19,8 @@ import f_turbomap as TMap
 from f_gaspath import TGaspath
 
 class TTurboComponent(TGaspath):
-    def __init__(self, name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades):
-        super().__init__(name, MapFileName, stationin, stationout)
+    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades):
+        super().__init__(name, MapFileName, ControlComponent, stationin, stationout)
         self.GasIn = None
         self.GasOut = None
         self.ShaftNr = ShaftNr
@@ -77,13 +77,18 @@ class TTurboComponent(TGaspath):
         print(f"\tPW : {self.PW:.1f}")
 
     def GetOutputTableColumnNames(self):
-        return super().GetOutputTableColumnNames() + [f"N{self.ShaftNr}", f"Nc{self.ShaftNr}",
-                                                      "Eta_is_"+self.name, "PW_"+self.name]
+        # 1.1 bug fix (Nc must be followed by inlet station nr, and adding % speed output)
+        # return super().GetOutputTableColumnNames() + [f"N{self.ShaftNr}", f"Nc{self.ShaftNr}", f"N%{self.ShaftNr}", f"Nc%{self.ShaftNr}",
+        return super().GetOutputTableColumnNames() + [f"N{self.ShaftNr}", f"Nc{self.stationin}", f"N{self.ShaftNr}%", f"Nc{self.stationin}%",
+                                                      f"Eta_is_"+self.name, "PW_"+self.name]
 
-    def AddOutputToTable(self, Mode, rownr):
-        super().AddOutputToTable(Mode, rownr)
-        fsys.OutputTable.loc[rownr, f"N{self.ShaftNr}"] = self.N
-        fsys.OutputTable.loc[rownr, f"Nc{self.ShaftNr}"] = self.Nc
-        if "Eta_is_"+self.name in fsys.OutputTable.columns:
-            fsys.OutputTable.loc[rownr, "Eta_is_"+self.name] = self.Eta
-        fsys.OutputTable.loc[rownr, "PW_"+self.name] = self.PW
+    #  1.1 WV
+    def AddOutputToDict(self, Mode):
+        super().AddOutputToDict(Mode)
+        fsys.output_dict[f"N{self.ShaftNr}"] = self.N
+        fsys.output_dict[f"Nc{self.stationin}"] = self.Nc
+        fsys.output_dict[f"N{self.ShaftNr}%"] = self.N/self.Ndes*100
+        fsys.output_dict[f"Nc{self.stationin}%"] = self.Nc/self.Ncdes*100
+        #  ??? why if here ???if "Eta_is_"+self.name in fsys.output_dict:
+        fsys.output_dict["Eta_is_"+self.name] = self.Eta
+        fsys.output_dict["PW_"+self.name] = self.PW

@@ -40,7 +40,9 @@ class TTurboMap(TMap):
         self.dual_map_figure = None
 
         # Map paramter naming
-        self.Nc_comp_param = f"Nc{self.ShaftString}"
+        # 1.1 WV bug fix
+        # self.Nc_comp_param = f"Nc{self.ShaftString}"
+        self.Nc_comp_param = f"Nc{self.host_component.stationin}"
         if self.OL_xcol != '':
             self.Wc_in_param = self.OL_xcol
         else:

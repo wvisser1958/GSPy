@@ -17,8 +17,8 @@ import f_system as fsys
 from f_gaspath import TGaspath
 
 class TInlet(TGaspath):
-    def __init__(self, name, MapFileName, stationin, stationout, Wdes, PRdes):  # Constructor of the class
-        super().__init__(name, MapFileName, stationin, stationout)
+    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, Wdes, PRdes):  # Constructor of the class
+        super().__init__(name, MapFileName, ControlComponent, stationin, stationout)
         self.Wdes = Wdes
         self.PRdes = PRdes
 

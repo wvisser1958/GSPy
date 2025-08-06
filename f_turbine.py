@@ -20,8 +20,8 @@ from f_turbo_component import TTurboComponent
 from f_turbinemap import TTurbineMap
 
 class TTurbine(TTurboComponent):
-    def __init__(self, name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes, Etamechdes, TurbineType):    # Constructor of the class
-        super().__init__(name, MapFileName, stationin, stationout, ShaftNr, Ndes, Etades)
+    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes, Etamechdes, TurbineType):    # Constructor of the class
+        super().__init__(name, MapFileName, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades)
         self.Etamechdes = Etamechdes # spool mechanical efficiency
         self.TurbineType = TurbineType  # gas generator turbine providing all power required by compressor(s)
         # TurbineType = 'PT'  # heavy duty single spool or power turbine, providing power to external loads

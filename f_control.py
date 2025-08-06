@@ -17,12 +17,13 @@ import f_system as fsys
 from f_base_component import TComponent
 
 class TControl(TComponent):
-    def __init__(self, name, MapFileName, DP_inputvalue, OD_startvalue, OD_endvalue, OD_pointstepvalue):
-        super().__init__(name, MapFileName)
+    def __init__(self, name, MapFileName, DP_inputvalue, OD_startvalue, OD_endvalue, OD_pointstepvalue, OD_controlledparname):
+        super().__init__(name, MapFileName, '') # no control controlling a control (yet)
         self.DP_inputvalue = DP_inputvalue
         self.OD_startvalue = OD_startvalue
         self.OD_endvalue = OD_endvalue
         self.OD_pointstepvalue = OD_pointstepvalue
+        self.OD_controlledparname = OD_controlledparname
         if (abs(OD_pointstepvalue) == 0) or ((OD_endvalue - OD_startvalue) * OD_pointstepvalue < 0):
             raise Exception("Invalid control variable begin, end and step values")
 
@@ -36,10 +37,36 @@ class TControl(TComponent):
             # in case of DP control
             self.Inputvalue = self.DP_inputvalue
         else:
-            self.Inputvalue = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
+            # 1.1 WV
+            if self.OD_controlledparname == None:
+                # just simple open loop control
+                self.Inputvalue = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
+            else:
+                # input is coming from state, iterating toward value satisfying control equation
+                self.Inputvalue = self.DP_inputvalue * fsys.states[self.istate_control]
+
+    # 1.1 WV PostRun evaluates the equation for controlling parameter named OD_controlledparName to input
+    def PostRun(self, Mode, PointTime):
+        # super().PostRun(Mode, PointTime)
+        if self.OD_controlledparname != None:
+            if Mode == 'DP':
+                fsys.states = np.append(fsys.states, 1)
+                self.istate_control = fsys.states.size-1
+                fsys.errors = np.append(fsys.errors, 0)
+                self.ierror_control = fsys.errors.size-1
+                #  get control parameter DP value
+                self.DP_controlparvalue = fsys.output_dict[self.OD_controlledparname]
+            else:
+                # get control demanded (set point) parameter value from input
+                controlpar_demand = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
+                #  get control parameter current value
+                lastrownumber = len(fsys.OutputTable)
+                controlparvalue = fsys.output_dict[self.OD_controlledparname]
+                fsys.errors[self.ierror_control] = (controlpar_demand - controlparvalue) / self.DP_controlparvalue
 
     def GetOutputTableColumnNames(self):
-        return super().GetOutputTableColumnNames() + ["Wf_"+self.name]
+        return super().GetOutputTableColumnNames() + ["Control_input_"+self.name]
 
-    def AddOutputToTable(self, Mode, rownr):
-        fsys.OutputTable.loc[rownr, "Wf_"+self.name] = self.Inputvalue
+    #  1.1 WV
+    def AddOutputToDict(self, Mode):
+        fsys.output_dict["Control_input_"+self.name] = self.Inputvalue

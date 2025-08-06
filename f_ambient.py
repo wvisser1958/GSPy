@@ -18,7 +18,7 @@ import f_system as fsys
 
 class TAmbient(TComponent):
     def __init__(self, name, stationnr, Altitude, Macha, dTs, Psa, Tsa):    # Constructor of the class
-        super().__init__(name, '')
+        super().__init__(name, '', '')
         self.stationnr = stationnr
         self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa)
 
@@ -66,9 +66,10 @@ class TAmbient(TComponent):
     def GetOutputTableColumnNames(self):
         return super().GetOutputTableColumnNames() + ["Tsa", "Psa", "Tta", "Pta", "Macha"]
 
-    def AddOutputToTable(self, Mode, rownr):
-        fsys.OutputTable.loc[rownr, "Tsa"] = self.Tsa
-        fsys.OutputTable.loc[rownr, "Psa"] = self.Psa
-        fsys.OutputTable.loc[rownr, "Tta"] = self.Tta
-        fsys.OutputTable.loc[rownr, "Pta"] = self.Pta
-        fsys.OutputTable.loc[rownr, "Macha"] = self.Macha
+    #  1.1 WV
+    def AddOutputToDict(self, Mode):
+        fsys.output_dict["Tsa"] = self.Tsa
+        fsys.output_dict["Psa"] = self.Psa
+        fsys.output_dict["Tta"] = self.Tta
+        fsys.output_dict["Pta"] = self.Pta
+        fsys.output_dict["Macha"] = self.Macha

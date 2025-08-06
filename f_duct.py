@@ -16,8 +16,8 @@ import f_global as fg
 from f_gaspath import TGaspath
 
 class TDuct(TGaspath):
-    def __init__(self, name, MapFileName, stationin, stationout, PRdes):    # Constructor of the class
-        super().__init__(name, MapFileName, stationin, stationout)
+    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, PRdes):    # Constructor of the class
+        super().__init__(name, MapFileName, ControlComponent, stationin, stationout)
         self.PRdes = PRdes
 
     def Run(self, Mode, PointTime):

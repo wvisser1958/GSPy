@@ -18,9 +18,9 @@ import f_system as fsys
 from f_gaspath import TGaspath
 
 class TCombustor(TGaspath):
-    def __init__(self, name, MapFileName, stationin, stationout, Wfdes, Texitdes, PRdes, Etades,
+    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, Wfdes, Texitdes, PRdes, Etades,
                  Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes):
-        super().__init__(name, MapFileName, stationin, stationout)
+        super().__init__(name, MapFileName, ControlComponent, stationin, stationout)
         self.Wfdes = Wfdes
         self.Wf = Wfdes
         # Texitdes: set as None, use None or not None to determine input type : Wf or Texit
@@ -86,9 +86,9 @@ class TCombustor(TGaspath):
                 self.Wf = self.Wfdes
         else:
             if self.Texit != None: # calc Wf from Texit
-                self.Texit =  fsys.Control.Inputvalue
+                self.Texit =  self.Control.Inputvalue
             else:
-                self.Wf = fsys.Control.Inputvalue
+                self.Wf = self.Control.Inputvalue
 
         # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
         self.PR = self.PRdes
@@ -138,6 +138,7 @@ class TCombustor(TGaspath):
     def GetOutputTableColumnNames(self):
         return super().GetOutputTableColumnNames() + ["Wf_"+self.name]
 
-    def AddOutputToTable(self, Mode, rownr):
-        super().AddOutputToTable(Mode, rownr)
-        fsys.OutputTable.loc[rownr, "Wf_"+self.name] = self.Wf
+    #  1.1 WV
+    def AddOutputToDict(self, Mode):
+        super().AddOutputToDict(Mode)
+        fsys.output_dict["Wf_"+self.name] = self.Wf

@@ -10,8 +10,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from scipy.optimize import root
-
 import f_global as fg
 import f_system as fsys
 
@@ -38,21 +36,26 @@ def main():
 
     # create a control (controlling inputs to the system model)
     # components like the combustor retrieve inputs like fuel flow
-    # input or combustor exit temperature
-    fsys.Control = TControl('Control', '', 0.38, 0.38, 0.06, -0.01)
+    # input fuel flow or combustor exit temperature
+
+    # create FuelControl for open loop direct control of fuel flow
+    FuelControl = TControl('Control', '', 0.38, 0.38, 0.06, -0.01, None)
+
     # combustor Texit input, with Wf 0.38 as first guess for 1200 K
     # combustor exit temperature
     # fsys.Control = TControl('Control', '', 0.38, 1200, 1000, -20)
 
     # Generic gas turbine components
-    inlet1   = TInlet('Inlet1',      '',            0,2,   19.9, 1    )
-    duct1    = TDuct('exhduct',      '',            5,7,   1.0        )
-    exhaust1 = TExhaust('exhaust1',  '',            7,8,9, 1, 1, 1, 1 )
+    inlet1   = TInlet('Inlet1',      '', None,           0,2,   19.9, 1    )
     # ***************** Combustor ******************************************************
-    # fuel input
-    combustor1 = TCombustor('combustor1', '', 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, '')
+
+    # for turbojet
+    compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG')
+
+    # OD fuel input from FuelControl
+    combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, '')
     # Texit input
-    # TCombustor('combustor1',  '',           3, 4, 0.38, 1200, 1, 1,
+    # TCombustor('combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
                 # fuel specification examples:
                 # fuel specified by LHV, HCratio, OCratio:
                     # None,      43031, 1.9167, 0, ''),
@@ -68,100 +71,46 @@ def main():
                 # fuel specified by Fuel temperature and Fuel composition (by mass)
                 #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
-    # for turbojet
-    compressor1 = TCompressor('compressor1','compmap.map' , 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG')
-    turbine1 =    TTurbine(   'turbine1'   ,'turbimap.map', 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG')
+    turbine1 =    TTurbine(   'turbine1'   ,'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG')
+    duct1    = TDuct('exhduct',      '', None,            5,7,   1.0        )
+    exhaust1 = TExhaust('exhaust1',  '', None,            7,8,9, 1, 1, 1, 1 )
 
     # for turboshaft, constant speed
-    # TCompressor('compressor1','compmap.map', 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'CS'),
+    # TCompressor('compressor1','compmap.map', None, 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'CS'),
     # for turboshaft
-    # TTurbine('turbine1',      'turbimap.map',4,5,   1,   16540, 0.88,       1, 0.8, 0.99, 'PT'   ),
+    # TTurbine('turbine1',      'turbimap.map', None,4,5,   1,   16540, 0.88,       1, 0.8, 0.99, 'PT'   ),
 
     # create a turbojet system model
-    fsys.system_model = [inlet1,
+    fsys.system_model = [fsys.Ambient,
+                         FuelControl,
+                         inlet1,
                          compressor1,
                          combustor1,
                          turbine1,
                          duct1,
                          exhaust1]
 
-    fsys.InitializeOutputTable()
-    # # add Ambient (Flight / Ambient operating conditions) and Control compoenent output column names
-    # fsys.OutputColumnNames = fsys.Ambient.GetOutputTableColumnNames() + fsys.Control.GetOutputTableColumnNames()
-    # # add Component models
-    # for comp in fsys.systemmodel:
-    #     fsys.OutputColumnNames = fsys.OutputColumnNames + comp.GetOutputTableColumnNames()
-    # # add system performance output
-    # fsys.OutputColumnNames = fsys.OutputColumnNames + fsys.GetOutputTableColumnNames()
-    # fsys.OutputTable = pd.DataFrame(columns = ['Point/Time', 'Mode'] + fsys.OutputColumnNames)
-
     # define the gas model in f_global
     fg.InitializeGas()
 
     # run the system model Design Point (DP) calculation
-    Mode = 'DP'
+    fsys.Mode = 'DP'
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
     fsys.Ambient.SetConditions('DP', 0, 0, 0, None, None)
-    # not using states and errors yet for DP, but do this for later when doing DP iterations
-    fsys.reinit_states_and_errors()
-    fsys.Do_Run(Mode, 0, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
-    fsys.Do_Output(Mode, 0, None)
+    fsys.Run_DP_simulation()
 
-    # run the Off-Design (OD) simulation, using Newton-Raphson to find
-    # the steady state operating point
-
-    # return # uncomment for design point only
-
-    Mode = 'OD'
-    inputpoints = fsys.Control.Get_OD_inputpoints()
-    # inputpoints = np.arange(0, 10, 1)
+    # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
+    fsys.Mode = 'OD'
+    fsys.inputpoints = FuelControl.Get_OD_inputpoints()
     print("\nOff-design (OD) results")
     print("=======================")
-    # set OD ambient/flight conditions
+    # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
+    # conditions is desired
     fsys.Ambient.SetConditions('OD', 0, 0, 0, None, None)
-
-    def residuals(states):
-        # residuals will return residuals of system conservation equations, schedules, limiters etc.
-        # the residuals are the errors returned by Do_Run
-        # test with GSP final performan with 0.3 kg/s fuel at ISA static
-        # states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
-        return fsys.Do_Run(Mode, inputpoints[ipoint], states)
-
-    # for debug
-    # savedstates = np.empty((0, fsys.states.size+2), dtype=float)
-
-    try:
-        # start with all states 1 and errors 0
-        fsys.reinit_states_and_errors()
-        maxiter=50
-        failedcount = 0
-        for ipoint in inputpoints:
-            # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
-            options = {
-                # "xtol":1e-4           # this only avoids an initial warning,
-                                        # leave it: only warning at initial step, but a bit faster
-                                        # (with automatic min step size)
-            }
-            # solution = root(residuals, fsys.states, method='krylov', options = options) # leave tolerance at default: is fastest and error ususally < 0.00001
-            # fsys.Do_Output(Mode, inputpoints[ipoint])
-            solution = root(residuals, fsys.states, method='krylov', options={'maxiter': maxiter}) # leave tolerance at default: is fastest and error ususally < 0.00001
-            fsys.Do_Output(Mode, inputpoints[ipoint], solution)
-            if not solution.success:
-                failedcount = failedcount + 1
-                print(f"Could not find a solution for point {ipoint} with max {maxiter} iterations")
-            # for debug
-            # wf = fu.get_component_object_by_name(turbojet, 'combustor1').Wf
-            # wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
-            # point_wf_states_array = np.concatenate((wfpoint, fsys.states))
-            # savedstates = np.vstack([savedstates, point_wf_states_array])
-        # for debug
-        # solution = root(residuals, [ 0.55198737,  0.71696654,  0.76224776,  0.85820746], method='krylov')
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-    print(f"{len(inputpoints) - 1 - failedcount} OD points calculated, {failedcount} failed")
+    # Run OD simulation
+    fsys.Run_OD_simulation()
 
     # Export to Excel
     output_directory = 'output'

@@ -19,12 +19,12 @@ import f_global as fg
 import f_system as fsys
 
 class TExhaust(TGaspath):
-    def __init__(self, name, MapFileName, stationin, stationthroat, stationout, CXdes, CVdes, CDdes, PRdes):    # Constructor of the class
+    def __init__(self, name, MapFileName, ControlComponent, stationin, stationthroat, stationout, CXdes, CVdes, CDdes, PRdes):    # Constructor of the class
         # CXdes, CVdes, CDdes are for propelling nozzle
         # PRdes = diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
         # If PRdes <> None then a divergent diffuser expansion is calculated, with PRdes as the diffuser
         # pressure loss. PRdes must be < 1. Psout then determines the diffuser exit area A9.
-        super().__init__(name, MapFileName, stationin, stationout)
+        super().__init__(name, MapFileName, ControlComponent, stationin, stationout)
         self.stationthroat = stationthroat
         self.CXdes = CXdes
         self.CVdes = CVdes
@@ -116,16 +116,17 @@ class TExhaust(TGaspath):
                f"T{self.stationout}", f"P{self.stationout}",                                                \
                f"{self.Aexitname()}_"+self.name, f"{self.Aexitname()}_geom_" + self.name, "FG_" + self.name]
 
-    def AddOutputToTable(self, Mode, rownr):
-        # fg.OutputTable.loc[rownr, columnname] = getattr(self, columnname)
-        super().AddOutputToTable(Mode, rownr)
-        fsys.OutputTable.loc[rownr, f"T{self.stationthroat}"]  = self.Tthroat
-        fsys.OutputTable.loc[rownr, f"P{self.stationthroat}"]  = self.Pthroat
-        fsys.OutputTable.loc[rownr, f"V{self.stationthroat}"]  = self.Vthroat
-        fsys.OutputTable.loc[rownr, f"Mach{self.stationthroat}"]  = self.Mthroat
-        fsys.OutputTable.loc[rownr, f"T{self.stationout}"]  = self.GasOut.T
-        fsys.OutputTable.loc[rownr, f"P{self.stationout}"]  = self.GasOut.P
-        fsys.OutputTable.loc[rownr, f"{self.Aexitname()}_"+self.name]  = self.Athroat
-        fsys.OutputTable.loc[rownr, f"{self.Aexitname()}_"+self.name]  = self.Athroat_geom
-        fsys.OutputTable.loc[rownr, "FG_"+self.name]  = self.FG
+    #  1.1 WV
+    def AddOutputToDict(self, Mode):
+        super().AddOutputToDict(Mode)
+        fsys.output_dict[f"T{self.stationthroat}"]  = self.Tthroat
+        fsys.output_dict[f"P{self.stationthroat}"]  = self.Pthroat
+        fsys.output_dict[f"V{self.stationthroat}"]  = self.Vthroat
+        fsys.output_dict[f"Mach{self.stationthroat}"]  = self.Mthroat
+        fsys.output_dict[f"T{self.stationout}"]  = self.GasOut.T
+        fsys.output_dict[f"P{self.stationout}"]  = self.GasOut.P
+        fsys.output_dict[f"{self.Aexitname()}_"+self.name]  = self.Athroat
+        fsys.output_dict[f"{self.Aexitname()}_"+self.name]  = self.Athroat_geom
+        fsys.output_dict["FG_"+self.name]  = self.FG
+
 

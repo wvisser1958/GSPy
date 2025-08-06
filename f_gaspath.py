@@ -17,8 +17,8 @@ import f_global as fg
 import f_system as fsys
 
 class TGaspath(TComponent):
-    def __init__(self, name, MapFileName, stationin, stationout):    # Constructor of the class
-        super().__init__(name, MapFileName)
+    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout):    # Constructor of the class
+        super().__init__(name, MapFileName, ControlComponent)
         self.stationin = stationin
         self.stationout = stationout
         # set design properties to None, if still None in PrintPerformance,
@@ -68,14 +68,13 @@ class TGaspath(TComponent):
     def GetOutputTableColumnNames(self):
         return [f"W{self.stationin}", f"Wc{self.stationin}", f"T{self.stationin}", f"P{self.stationin}", "PR_"+self.name]
 
-    def AddOutputToTable(self, Mode, rownr):
-        for columnname in self.GetOutputTableColumnNames():
-            # fg.OutputTable.loc[rownr, columnname] = getattr(self, columnname)
-            fsys.OutputTable.loc[rownr, f"W{self.stationin}"]  = self.GasIn.mass
-            fsys.OutputTable.loc[rownr, f"Wc{self.stationin}"] = self.Wc
-            fsys.OutputTable.loc[rownr, f"T{self.stationin}"]  = self.GasIn.T
-            fsys.OutputTable.loc[rownr, f"P{self.stationin}"]  = self.GasIn.P
-            if self.PR != None:
-                fsys.OutputTable.loc[rownr, "PR_"+self.name] = self.PR
+    #  1.1 WV
+    def AddOutputToDict(self, Mode):
+        fsys.output_dict[f"W{self.stationin}"]  = self.GasIn.mass
+        fsys.output_dict[f"Wc{self.stationin}"] = self.Wc
+        fsys.output_dict[f"T{self.stationin}"]  = self.GasIn.T
+        fsys.output_dict[f"P{self.stationin}"]  = self.GasIn.P
+        if self.PR != None:
+            fsys.output_dict["PR_"+self.name] = self.PR
 
 

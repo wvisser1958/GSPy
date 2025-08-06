@@ -16,13 +16,19 @@ from f_map import TMap
 from typing import Optional
 
 class TComponent:
-    def __init__(self, name, MapFileName):    # Constructor of the class
+    def __init__(self, name, MapFileName, ControlComponent):    # Constructor of the class
         self.name = name
         # assume in moste case single map in instantiable child classes (add extra map if necessary, e.g. with f_fan)
         self.map: Optional[TMap] = None
+        # 1.1 WV
+        self.Control = ControlComponent
 
     def Run(self, Mode, PointTime):
         raise NotImplementedError("Subclass must implement Run abstract method")
+
+    def PostRun(self, Mode, PointTime):
+        # raise NotImplementedError("Subclass must implement Run abstract method")
+        pass
 
     def PrintPerformance(self, Mode, PointTime):
         print(f"{self.name} ({Mode}) Point/Time:{PointTime}")
@@ -36,6 +42,8 @@ class TComponent:
         # raise NotImplementedError("Subclass must implement InitOutputTable abstract method")
         return []
 
-    def AddOutputToTable(self, Mode, rownr):
-        raise NotImplementedError("Subclass must implement AddOutputToTable abstract method")
+    #  1.1 WV
+    def AddOutputToDict(self, Mode):
+        raise NotImplementedError("Subclass must implement AddOutputToDict abstract method")
+
 

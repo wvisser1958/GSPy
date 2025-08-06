@@ -29,8 +29,8 @@ class TFan(TTurboComponent):
                  MapFileName_duct,
                  Ncmapdes_duct, Betamapdes_duct, PRdes_duct, Etades_duct):
 
-        # TTurboComponent parent class creator
-        super().__init__(name, MapFileName_core, stationin, stationout_core, ShaftNr, Ndes_core, Etades_core)
+        # TTurboComponent parent class creator    no control link
+        super().__init__(name, MapFileName_core, '', stationin, stationout_core, ShaftNr, Ndes_core, Etades_core)
 
         self.stationout_duct = stationout_duct
 
@@ -179,18 +179,18 @@ class TFan(TTurboComponent):
         column_list = column_list + ["BPR_"+self.name, "PR_core_"+self.name, "PR_duct_"+self.name,
                                      "Wc_core_"+self.name, "Wc_duct_"+self.name,
                                      "Eta_is_core_"+self.name, "Eta_is_duct_"+self.name]
-
         return column_list
 
-    def AddOutputToTable(self, Mode, rownr):
-        super().AddOutputToTable(Mode, rownr)
-        fsys.OutputTable.loc[rownr, "BPR_"+self.name] = self.BPR
-        fsys.OutputTable.loc[rownr, "PR_core_"+self.name] = self.PR_core
-        fsys.OutputTable.loc[rownr, "PR_duct_"+self.name] = self.PR_duct
-        fsys.OutputTable.loc[rownr, "Wc_core_"+self.name] = self.Wc_core
-        fsys.OutputTable.loc[rownr, "Wc_duct_"+self.name] = self.Wc_duct
-        fsys.OutputTable.loc[rownr, "Eta_is_core_"+self.name] = self.Eta_core
-        fsys.OutputTable.loc[rownr, "Eta_is_duct_"+self.name] = self.Eta_duct
+    #  1.1 WV
+    def AddOutputToDict(self, Mode):
+        super().AddOutputToDict(Mode)
+        fsys.output_dict["BPR_"+self.name] = self.BPR
+        fsys.output_dict["PR_core_"+self.name] = self.PR_core
+        fsys.output_dict["PR_duct_"+self.name] = self.PR_duct
+        fsys.output_dict["Wc_core_"+self.name] = self.Wc_core
+        fsys.output_dict["Wc_duct_"+self.name] = self.Wc_duct
+        fsys.output_dict["Eta_is_core_"+self.name] = self.Eta_core
+        fsys.output_dict["Eta_is_duct_"+self.name] = self.Eta_duct
 
     # override PlotMaps, to now plot the self.map_core and self.map_duct
     def PlotMaps(self): # Plot performance in map(s)

@@ -15,7 +15,6 @@ import cantera as ct
 
 # import matplotlib as mpl
 import pandas as pd
-from scipy.optimize import root
 
 import f_global as fg
 import f_system as fsys
@@ -45,24 +44,28 @@ def main():
     # direct fuel flow input
     # fsys.Control = TControl('Control', '', 0.48, 0.48, 0.08, -0.01)
     # combustor Texit input, with Wf 0.48 as first guess for 1200 K combustor exit temperature
-    fsys.Control = TControl('Control', '', 0.30, 1600, 1100, -50)
+    FuelControl = TControl('Control', '', 0.30, 1600, 1100, -50, None)
     # fsys.Control = TControl('Control', '', 0.36, 0.31, 0.04, -0.025)
 
     # create a turbojet system model
-    fsys.system_model = [TInlet('Inlet1',          '',            0,2,   337, 1    ),
+    fsys.system_model = [fsys.Ambient,
+
+                         FuelControl,
+
+                         TInlet('Inlet1',          '', None,           0,2,   337, 1    ),
 
                         # for turbofan, note that fan has 2 GasOut outputs
                         TFan('FAN_BST','bigfanc.map', 2, 25, 21,   1,   4880, 0.8696, 5.3, 0.95, 0.7, 2.33,
                                        'bigfand.map', 0.95, 0.7, 1.65,            0.8606),
 
                         # always start with the components following the 1st GasOut object
-                        TCompressor('HPC','compmap.map', 25,3,   2,   14000, 0.8433, 1, 0.8, 10.9, 'GG'),
+                        TCompressor('HPC','compmap.map', None, 25,3,   2,   14000, 0.8433, 1, 0.8, 10.9, 'GG'),
 
                         # ***************** Combustor ******************************************************
                         # fuel input
                         # TCombustor('combustor1',  '',            3,4,   0.36, None,    1, 1,
                         # Texit input
-                        TCombustor('combustor1',  '',            3,4,   0.3, 1500,    1, 1,
+                        TCombustor('combustor1',  '',  FuelControl,           3,4,   0.3, 1500,    1, 1,
                                                     # fuel specification examples:
                                                     # fuel specified by LHV, HCratio, OCratio:
                                                     None,      43031, 1.9167, 0, ''),
@@ -77,87 +80,40 @@ def main():
                                                     # fuel specified by Fuel temperature and Fuel composition (by mass)
                                                     # 288.15,      None, None, None, 'CH4:5, C2H6:1'),
 
-                        TTurbine('HPT',      'turbimap.map',4,45,   2,   14000, 0.8732,       1, 0.65, 1, 'GG'   ),
+                        TTurbine('HPT',      'turbimap.map', None, 4,45,   2,   14000, 0.8732,       1, 0.65, 1, 'GG'   ),
 
-                        TTurbine('LPT',      'turbimap.map',45,5,   1,   4480, 0.8682,       1, 0.7, 1, 'GG'   ),
+                        TTurbine('LPT',      'turbimap.map', None, 45,5,   1,   4480, 0.8682,       1, 0.7, 1, 'GG'   ),
 
 
-                        TDuct('Exhduct_hot',      '',                5,7,   1.0                 ),
-                        TExhaust('HotNozzle',      '',            7,8,9, 1, 1, 1, 1           ),
+                        TDuct('Exhduct_hot',      '', None,               5,7,   1.0                 ),
+                        TExhaust('HotNozzle',     '', None,           7,8,9, 1, 1, 1, 1           ),
 
                         # now add the list with components following the 2nd fan GasOut (i.e. the bypass duct)
-                        TDuct('Exhduct_cold',      '',                21,23,   1.0                 ),
-                        TExhaust('ColdNozzle',      '',            23,18,19, 1, 1, 1, 1           )]
-
-
-    fsys.InitializeOutputTable()
+                        TDuct('Exhduct_cold',      '', None,               21,23,   1.0                 ),
+                        TExhaust('ColdNozzle',      '', None,           23,18,19, 1, 1, 1, 1           )]
 
     # define the gas model in f_global
     fg.InitializeGas()
 
     # run the system model Design Point (DP) calculation
-    Mode = 'DP'
+    fsys.Mode = 'DP'
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
     fsys.Ambient.SetConditions('DP', 0, 0, 0, None, None)
-    # not using states and errors yet for DP, but do this for later when doing DP iterations
-    fsys.reinit_states_and_errors()
-    fsys.Do_Run(Mode, 0, fsys.states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
-    fsys.Do_Output(Mode, 0, None)
+    fsys.Run_DP_simulation()
 
-    # return # uncomment for design point only
-
-    Mode = 'OD'
-    inputpoints = fsys.Control.Get_OD_inputpoints()
-    # inputpoints = np.arange(0, 10, 1)
-    ipoint = 0
+    # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
+    fsys.Mode = 'OD'
+    fsys.inputpoints = FuelControl.Get_OD_inputpoints()
     print("\nOff-design (OD) results")
     print("=======================")
-    # set OD ambient/flight conditions
+    # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
+    # conditions is desired
+    # typical cruise conditions:
     fsys.Ambient.SetConditions('OD', 10000, 0.8, 0, None, None)
-
-    def residuals(states):
-        # residuals will return residuals of system conservation equations, schedules, limiters etc.
-        # the residuals are the errors returned by Do_Run
-        # test with GSP final performan with 0.3 kg/s fuel at ISA static
-        # states = [+9.278E-01,  +9.438E-01,  +8.958E-01,  +1.008E+00]
-        return fsys.Do_Run(Mode, inputpoints[ipoint], states)
-
-    # for debug
-    # savedstates = np.empty((0, fsys.states.size+2), dtype=float)
-
-    try:
-        # start with all states 1 and errors 0
-        fsys.reinit_states_and_errors()
-        # run the Off-Design (OD) simulation for all points, using root with 'krylov'
-        maxiter = 100
-        failedcount = 0
-        for ipoint in inputpoints:
-            # solution returns the residual errors after conversion (should be within the tolerance 'tol')
-            options = {
-                # "xtol":1e-4           # this only avoids an initial warning,
-                                        # leave it: only warning at initial step, but a bit faster
-                                        # (with automatic min step size)
-            }
-            # solution = root(residuals, fsys.states, method='krylov', options={'xtol': 1e-4, 'maxiter': 50}) # leave tolerance at default: is fastest and error ususally < 0.00001
-            solution = root(residuals, fsys.states, method='krylov', options={'maxiter': maxiter}) # leave tolerance at default: is fastest and error ususally < 0.00001
-            fsys.Do_Output(Mode, inputpoints[ipoint], solution)
-            if not solution.success:
-                failedcount = failedcount + 1
-                print(f"Could not find a solution for point {ipoint} with max {maxiter} iterations")
-            # for debug
-            # wf = fu.get_component_object_by_name(turbojet, 'combustor1').Wf
-            # wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
-            # point_wf_states_array = np.concatenate((wfpoint, fsys.states))
-            # savedstates = np.vstack([savedstates, point_wf_states_array])
-        # for debug
-        # solution = root(residuals, [ 0.55198737,  0.71696654,  0.76224776,  0.85820746], method='krylov')
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-    print(f"{len(inputpoints) - 1 - failedcount} OD points calculated, {failedcount} failed")
-
+    # Run OD simulation
+    fsys.Run_OD_simulation()
     # Export to Excel
     output_directory = 'output'
     os.makedirs(output_directory, exist_ok=True)
