@@ -20,7 +20,6 @@ See the LICENSE file for details.
 ********************************************************************************
 2. VERSION HISTORY
 ********************************************************************************
-<<<<<<< HEAD
 GSPy v1.2.0.0                                                         18-10-2025
 --------------------------------------------------------------------------------
 Improvements
@@ -36,7 +35,13 @@ Improvements
 * FDuct component model class (f_duct.py) now scales off-design point
   pressure loss (1-PR) with (Wc/Wcdes)^2 relative to design pressure loss
   (1-PRdes)
-* demo 2-spool turboshaft engine added
+* demo turbojet model added with rotor speed control ("turbojet_Ncontrol.py")
+* demo turbofan model added ("turbofan.py"), OD simulation at cruise
+  conditions
+* demo turbofan model with N1 control added ("turbofan_N1control.py")
+* demo 2-spool turboshaft engine model added (turboshaft_2spool.py)
+* demo 2-spool turboshaft engine model with compressor bleeds and
+  turbine cooling added (turboshaft_2spool_TurbineCooling.py)
 * Compressor bleed class added, to be linked to compressor model. Bleed flows
   inherit from TGasPath and therby have there own unique entry and exit
   station numbers. Bleed flows are extracted from the gas path at user
@@ -54,21 +59,15 @@ Improvements
   plotting n Y parameters to a single X axis parameter.
 * Generic routine for exporting output table dataframe to CVS file.
 
-=======
->>>>>>> 97dd501afc0c66471b034f3e3c7e1d1a9b9cc80d
 GSPy v1.1.0.0                                                         14-07-2025
 --------------------------------------------------------------------------------
 Improvements
 --------------------------------------------------------------------------------
-<<<<<<< HEAD
 * provisions for scheduling specific parameters during OD simulation
   via TControl component class (f_control.py) using extra equations. The
   equation component added to the component using the schedule and adding the
   equation (e.g. TCombustor). The parameter to be scheduled is specified in the
   TControl component instantiation (creation) call.
-=======
-* provisions for scheduling using extra equations added
->>>>>>> 97dd501afc0c66471b034f3e3c7e1d1a9b9cc80d
 
 GSPy v1.0.0.0        (first release)                                  14-06-2025
 --------------------------------------------------------------------------------
