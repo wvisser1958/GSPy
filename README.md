@@ -28,7 +28,7 @@ Improvements
   (f_exhaustnozzle.py) for propelling nozzles (jet engines and turboprops)
   and a TExhaustDiffuser class
   (f_exhaustdiffuser) for diffusers for turboshaft engines with a diffuser
-  exhaust (and a diffuser design pressure ratio (1 - rel. ploss) defined;
+  exhaust and a diffuser design pressure ratio (1 - rel. ploss) defined;
   off-design the pressure loss is scaled with (Wc/Wcdes)^2 (constant friction
   factor * 0.5*rho*v^2)
 * provisions for turboshaft modelling  added
