@@ -21,18 +21,22 @@ from f_turbo_component import TTurboComponent
 from f_compressormap import TCompressorMap
 
 class TCompressor(TTurboComponent):
-    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes, PRdes, SpeedOption):    # Constructor of the class
+    def __init__(self, name, MapFileName, ControlComponent,
+                 stationin, stationout, ShaftNr,
+                 Ndes, Etades, Ncmapdes, Betamapdes, PRdes,
+                 SpeedOption,
+                 Bleeds):    # Constructor of the class
         super().__init__(name, MapFileName, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades)
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
         self.map = TCompressorMap(self, name + '_map', MapFileName, '', '', ShaftNr, Ncmapdes, Betamapdes)
+        self.Bleeds = Bleeds
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
             self.PW = fu.Compression(self.GasIn, self.GasOut, self.PRdes, self.Etades)
-            self.shaft.PW_sum = self.shaft.PW_sum - self.PW
 
             self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
 
@@ -57,7 +61,6 @@ class TCompressor(TTurboComponent):
 
             self.PW = fu.Compression(self.GasIn, self.GasOut, self.PR, self.Eta)
 
-            self.shaft.PW_sum = self.shaft.PW_sum - self.PW
             self.W = self.Wc / fg.GetFlowCorrectionFactor(self.GasIn)
             fsys.errors[self.ierror_wc ] = (self.W - self.GasIn.mass) / self.Wdes
 
@@ -66,4 +69,48 @@ class TCompressor(TTurboComponent):
             # to downstream components for more stable convergence in the solver (?)
             self.GasOut.mass = self.W
 
+        # v1.2 correction for bleed flows
+        dW = 0
+        dHW_bleeds_total = 0
+        dH = self.GasOut.enthalpy_mass - self.GasIn.enthalpy_mass
+        dP = self.GasOut.P - self.GasIn.P
+        if self.Bleeds != None:
+            for bleed in self.Bleeds:
+                Wbleed = bleed.bleedfraction * self.W
+                dW = dW + Wbleed
+                # dHW = dHW + (1 - bleed.dPfactor) * dH * Wbleed
+                if bleed.GasIn == None:
+                    #  define bleed inflow GasIn conditions
+                    bleed.GasIn = ct.Quantity(self.GasIn.phase, Wbleed)
+                else:
+                    bleed.GasIn.TPY = self.GasIn.T, self.GasIn.P, self.GasIn.Y
+                    bleed.GasIn.mass = Wbleed
+                #  add to station conditions dictionary
+                fsys.gaspath_conditions[bleed.stationin] = bleed.GasIn
+
+                # Compress Wbleed to bleed point
+                dHW1 = fu.Compression(self.GasIn, bleed.GasIn, (self.GasIn.P+dP*bleed.dPfactor)/self.GasIn.P, self.Eta)
+                # now delta of compression power due to the bleed is
+                dHW2 = dH * Wbleed  - dHW1
+                dHW_bleeds_total = dHW_bleeds_total + dHW2
+                # run the bleed flow run code (default is simply the TGasPath method, sets bleed.GasOut to bleed.GasIn)
+                bleed.Run(Mode, PointTime)
+            self.GasOut.mass = self.GasOut.mass - dW
+            self.PW = self.PW - dHW_bleeds_total
+
+        self.shaft.PW_sum = self.shaft.PW_sum - self.PW
+
         return self.GasOut
+
+    # v1.2
+    def PrintPerformance(self, Mode, PointTime):
+        super().PrintPerformance(Mode, PointTime)
+        if self.Bleeds != None:
+            for bleed in self.Bleeds:
+                bleed.PrintPerformance(Mode, PointTime)
+
+    def AddOutputToDict(self, Mode):
+        super().AddOutputToDict(Mode)
+        if self.Bleeds != None:
+            for bleed in self.Bleeds:
+                bleed.AddOutputToDict(Mode)

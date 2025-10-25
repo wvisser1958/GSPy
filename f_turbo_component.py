@@ -76,12 +76,6 @@ class TTurboComponent(TGaspath):
 
         print(f"\tPW : {self.PW:.1f}")
 
-    def GetOutputTableColumnNames(self):
-        # 1.1 bug fix (Nc must be followed by inlet station nr, and adding % speed output)
-        # return super().GetOutputTableColumnNames() + [f"N{self.ShaftNr}", f"Nc{self.ShaftNr}", f"N%{self.ShaftNr}", f"Nc%{self.ShaftNr}",
-        return super().GetOutputTableColumnNames() + [f"N{self.ShaftNr}", f"Nc{self.stationin}", f"N{self.ShaftNr}%", f"Nc{self.stationin}%",
-                                                      f"Eta_is_"+self.name, "PW_"+self.name]
-
     #  1.1 WV
     def AddOutputToDict(self, Mode):
         super().AddOutputToDict(Mode)

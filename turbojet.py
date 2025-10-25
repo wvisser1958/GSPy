@@ -23,10 +23,18 @@ from f_compressor import TCompressor
 from f_combustor import TCombustor
 from f_turbine import TTurbine
 from f_duct import TDuct
-from f_exhaust import TExhaust
+from f_exhaustnozzle import TExhaustNozzle
 
 import f_utils as fu
 import os
+import matplotlib.pyplot as plt
+
+    # IMPORTANT NOTE TO THIS MODEL FILE
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # note that this model is only to serve as example and does rougly  represent the GE J85
+    # note that low thrust off design performance is unrealistic due to the absence of variable bleed
+    # control to maintain low speed stall margin
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
     # create Ambient conditions object (to set ambient/inlet/flight conditions)
@@ -35,22 +43,23 @@ def main():
     fsys.Ambient = TAmbient('Ambient', 0, 0, 0,   0,   None,   None)
 
     # create a control (controlling inputs to the system model)
-    # components like the combustor retrieve inputs like fuel flow
-    # input fuel flow or combustor exit temperature
+    # components like the combustor retrieve inputs like fuel flow or combustor exit temperature
 
-    # create FuelControl for open loop direct control of fuel flow
-    FuelControl = TControl('Control', '', 0.38, 0.38, 0.06, -0.01, None)
+# Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
+    # FuelControl for open loop direct control of fuel flow
+    FuelControl = TControl('Fcontrol', '', 0.38, 0.38, 0.08, -0.01, None)
 
-    # combustor Texit input, with Wf 0.38 as first guess for 1200 K
-    # combustor exit temperature
-    # fsys.Control = TControl('Control', '', 0.38, 1200, 1000, -20)
+    # N1 rotor speed control
+    # FuelControl = TControl('Ncontrol', '', 0.38, 100, 60, -5, 'N1%')
+
+    # EGT (T5) control : instable at lower power setting due to multiple solutions at same T5
+    # FuelControl = TControl('EGTcontrol', '', 0.38, 1020, 820, -50, 'T5')
+
 
     # Generic gas turbine components
     inlet1   = TInlet('Inlet1',      '', None,           0,2,   19.9, 1    )
-    # ***************** Combustor ******************************************************
 
-    # for turbojet
-    compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG')
+    compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
 
     # OD fuel input from FuelControl
     combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, '')
@@ -71,14 +80,9 @@ def main():
                 # fuel specified by Fuel temperature and Fuel composition (by mass)
                 #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
-    turbine1 =    TTurbine(   'turbine1'   ,'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG')
+    turbine1 =    TTurbine(   'turbine1'   ,'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
     duct1    = TDuct('exhduct',      '', None,            5,7,   1.0        )
-    exhaust1 = TExhaust('exhaust1',  '', None,            7,8,9, 1, 1, 1, 1 )
-
-    # for turboshaft, constant speed
-    # TCompressor('compressor1','compmap.map', None, 2,3,   1,   16540, 0.825, 1, 0.8, 6.92, 'CS'),
-    # for turboshaft
-    # TTurbine('turbine1',      'turbimap.map', None,4,5,   1,   16540, 0.88,       1, 0.8, 0.99, 'PT'   ),
+    exhaustnozzle = TExhaustNozzle('exhaustnozzle',  '', None,            7,8,9, 1, 1, 1)
 
     # create a turbojet system model
     fsys.system_model = [fsys.Ambient,
@@ -88,10 +92,11 @@ def main():
                          combustor1,
                          turbine1,
                          duct1,
-                         exhaust1]
+                         exhaustnozzle]
 
     # define the gas model in f_global
     fg.InitializeGas()
+    fsys.ErrorTolerance = 0.0001
 
     # run the system model Design Point (DP) calculation
     fsys.Mode = 'DP'
@@ -112,14 +117,24 @@ def main():
     # Run OD simulation
     fsys.Run_OD_simulation()
 
-    # Export to Excel
-    output_directory = 'output'
-    os.makedirs(output_directory, exist_ok=True)
-    outputcsvfilename = os.path.join(output_directory, 'output.csv')
-    fsys.OutputTable.to_csv(outputcsvfilename, index=False)
-    print("output saved in "+outputcsvfilename)
+    outputbasename = os.path.splitext(os.path.basename(__file__))[0]
 
-     # Create plots with operating lines if available
+    # export OutputTable to CSV
+    fsys.OutputToCSV('output', outputbasename + ".csv")
+
+    # plot nY vs X parameter
+    fsys.Plot_X_nY_graph('Engine performance vs. N [%]',
+                            os.path.join('output', outputbasename + "_1.jpg"),
+                            # common X parameter column name with label
+                            ("N1%",           "Rotor speed [%]"),
+                            # 4 Y paramaeter column names with labels and color
+                            [   ("T4",              "TIT [K]",                  "blue"),
+                                ("T5",              "EGT [K]",                  "blue"),
+                                ("W2",              "Inlet mass flow [kg/s]",   "blue"),
+                                ("Wf_combustor1",   "Fuel flow [kg/s]",         "blue"),
+                                ("FN",              "Net thrust [kN]",          "blue")            ])
+
+     # Create component map plots with operating lines if available
     for comp in fsys.system_model:
         comp.PlotMaps()
         # if comp.map != None:

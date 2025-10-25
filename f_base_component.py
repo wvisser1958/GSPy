@@ -38,10 +38,6 @@ class TComponent:
             self.map.PlotMap()
             print(self.name + " map with operating curve saved in " + self.map.map_figure_pathname)
 
-    def GetOutputTableColumnNames(self):
-        # raise NotImplementedError("Subclass must implement InitOutputTable abstract method")
-        return []
-
     #  1.1 WV
     def AddOutputToDict(self, Mode):
         raise NotImplementedError("Subclass must implement AddOutputToDict abstract method")

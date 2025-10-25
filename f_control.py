@@ -17,7 +17,15 @@ import f_system as fsys
 from f_base_component import TComponent
 
 class TControl(TComponent):
-    def __init__(self, name, MapFileName, DP_inputvalue, OD_startvalue, OD_endvalue, OD_pointstepvalue, OD_controlledparname):
+    def __init__(self, name, MapFileName,
+                 DP_inputvalue,
+                 OD_startvalue, OD_endvalue, OD_pointstepvalue,
+                 OD_controlledparname):
+        # note that, if OD_controlledparname != None:
+        #    OD_startvalue, OD_endvalue, OD_pointstepvalue represent the values of the OD_controlledparname
+        # else:
+        #    they are the direct input values of the component using this control (like fuel flow for a combustor for example)
+        # DP_inputvalue always is direct input values of the component using this control
         super().__init__(name, MapFileName, '') # no control controlling a control (yet)
         self.DP_inputvalue = DP_inputvalue
         self.OD_startvalue = OD_startvalue
@@ -48,6 +56,7 @@ class TControl(TComponent):
     # 1.1 WV PostRun evaluates the equation for controlling parameter named OD_controlledparName to input
     def PostRun(self, Mode, PointTime):
         # super().PostRun(Mode, PointTime)
+        self.controlpar_demand = None
         if self.OD_controlledparname != None:
             if Mode == 'DP':
                 fsys.states = np.append(fsys.states, 1)
@@ -58,15 +67,17 @@ class TControl(TComponent):
                 self.DP_controlparvalue = fsys.output_dict[self.OD_controlledparname]
             else:
                 # get control demanded (set point) parameter value from input
-                controlpar_demand = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
+                self.controlpar_demand = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
                 #  get control parameter current value
                 lastrownumber = len(fsys.OutputTable)
                 controlparvalue = fsys.output_dict[self.OD_controlledparname]
-                fsys.errors[self.ierror_control] = (controlpar_demand - controlparvalue) / self.DP_controlparvalue
-
-    def GetOutputTableColumnNames(self):
-        return super().GetOutputTableColumnNames() + ["Control_input_"+self.name]
+                fsys.errors[self.ierror_control] = (self.controlpar_demand - controlparvalue) / self.DP_controlparvalue
 
     #  1.1 WV
     def AddOutputToDict(self, Mode):
-        fsys.output_dict["Control_input_"+self.name] = self.Inputvalue
+        if Mode == 'DP':
+            fsys.output_dict["Control_input_"+self.name] = None
+            fsys.output_dict["Control_output_"+self.name] = None
+        else:
+            fsys.output_dict["Control_input_"+self.name] = self.controlpar_demand
+            fsys.output_dict["Control_output_"+self.name] = self.Inputvalue

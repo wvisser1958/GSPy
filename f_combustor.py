@@ -36,9 +36,35 @@ class TCombustor(TGaspath):
         # with 'NC12H26:5, C2H6:1' mole ratio if 5:1 if TPX is used, mass ratio if TPY is used, see Cantera documentation
         self.FuelCompositiondes = FuelCompositiondes
 
+    # 1.2 this routine is not actively used during simulation, but may be used separately
+    #     to determine/compare LHV values or comparing values with vs without specified FuelComposion specified
+    def GetLHV(self):
+        # Stoichiometric combustion of methane (CH4 + 2 O2 + 7.52 N2)
+        gas_reactants = ct.Solution('gri30.yaml')
+        gas_reactants.TPX = 298.15, ct.one_atm, {'CH4':1, 'O2':2, 'N2':7.52}
+
+        # Compute enthalpy of reactants
+        h_react = gas_reactants.enthalpy_mass
+
+        # Define products for *complete combustion* (CO2 + 2 H2O + 7.52 N2)
+        gas_products = ct.Solution('gri30.yaml')
+        gas_products.TPX = 298.15, ct.one_atm, {'CO2':1, 'H2O':2, 'N2':7.52}
+
+        # Enthalpy of products (H2O as vapor)
+        h_prod = gas_products.enthalpy_mass
+
+        # LHV (kJ/kg fuel)
+        # Compute mass fraction of CH4 in the reactant mixture
+        Y_CH4 = gas_reactants.Y[gas_reactants.species_index('CH4')]
+        LHV = -(h_prod - h_react) / Y_CH4 / 1e3  # convert J/kg → kJ/kg
+
+        print(f"LHV of CH4 (H2O vapor): {LHV:.2f} kJ/kg")
+
+
     def Run(self, Mode, PointTime):
         def CalcEndConditions(PointTime):
-            if self.FuelComposition == '':  # fuel specification based on LHV, HC and OC mole ratio
+            # self.GetLHV()
+            if (self.FuelComposition == '') or (self.FuelComposition == None):  # fuel specification based on LHV, HC and OC mole ratio
                 # combustion product mass fractions, assuming complete combustion and air/fuel equivalence ratio >= 1
                 O2_exit_mass = w_air * fg.air_O2_fraction_mass + self.Wf/CHyOzMoleMass * (self.OCratio/2 - 1 - self.HCratio/4) * fg.O2_molar_mass
                 CO2_exit_mass = fg.CO2_molar_mass * self.Wf/CHyOzMoleMass + w_air*fg.air_CO2_fraction_mass
@@ -59,8 +85,12 @@ class TCombustor(TGaspath):
 
                 # now set exit GasOut H to h_prod_final, this will calculate GasOut.T
                 self.GasOut.HP = h_prod_final, Pout
+
                 # make sure fuel mass flow added to the inlet flow:
                 self.GasOut.mass = self.GasIn.mass + self.Wf
+
+                # v 1.2 go to chemical equilibrium
+                self.GasOut.equilibrate('HP')
             else:                  # fuel specification based on FuelComposition and Tfuel
                 if Mode == 'DP':
                     # create separate fuel quantity for mixing with GasIn
@@ -70,18 +100,28 @@ class TCombustor(TGaspath):
                     Tfuelin = self.GasIn.T
                 else:                       # use user specified Tfuel
                     Tfuelin = self.Tfuel
-                self.fuel.TPY = Tfuelin, self.GasIn.P, self.FuelComposition
+                # v1.2 set P fuel to Pout, otherwise (using GasIn.P, which is before the pressure loss)
+                #  the fuel pressure will increase the combustor pressure again with the TPY assignment
+                # self.fuel.TPY = Tfuelin, self.GasIn.P, self.FuelComposition
+                self.fuel.TPY = Tfuelin, Pout, self.FuelComposition
                 # fuel.TPY = self.GasIn.T, self.GasIn.P, self.FuelComposition
                 self.GasOut = self.GasIn + self.fuel
+
+                # v1.2
+                self.GasOut.HP = self.GasOut.enthalpy_mass, Pout
+
                 self.GasOut.equilibrate('HP')
-                # we redefined GasOut, so we must reassing self.GasOut to fsys.gaspath_conditions[self.stationout]
-                fsys.gaspath_conditions[self.stationout] = self.GasOut
+            # we redefined GasOut, so we must reassing self.GasOut to fsys.gaspath_conditions[self.stationout]
+            fsys.gaspath_conditions[self.stationout] = self.GasOut
             return self.GasOut.T
 
         super().Run(Mode, PointTime)
+
+        # self.GetLHV()
+
         if Mode == 'DP':
             if self.Texitdes  != None: # calc Wf from Texit, use Wfdes as Wf first guess
-                self.Texit = self.Texitdes
+                self.Texit = self.Texitdes  # now self.Wfdes is 1st guess for iteration to Text
             else:
                 self.Wf = self.Wfdes
         else:
@@ -89,6 +129,8 @@ class TCombustor(TGaspath):
                 self.Texit =  self.Control.Inputvalue
             else:
                 self.Wf = self.Control.Inputvalue
+                if self.Wf < 0:
+                    self.Wf = 0
 
         # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
         self.PR = self.PRdes
@@ -105,7 +147,7 @@ class TCombustor(TGaspath):
         self.HCratio = self.HCratiodes  # H/C ratio for the virtual fuel
         self.OCratio = self.OCratiodes  # O/C ratio for the virtual fuel
         self.FuelComposition = self.FuelCompositiondes
-        if self.FuelComposition == '':
+        if (self.FuelComposition == '') or (self.FuelComposition == None):
             CHyOzMoleMass = fg.C_atom_weight + fg.H_atom_weight * self.HCratio + fg.O_atom_weight * self.OCratio
 
         Wf0 = self.Wf
@@ -122,9 +164,6 @@ class TCombustor(TGaspath):
         else: # just calculate Texit from Wf
             CalcEndConditions(PointTime)
 
-        # calculate parameters for output
-        self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(self.GasIn)
-
         #  add fuel to system level total fuel flow
         fsys.WF = fsys.WF + self.Wf
 
@@ -134,9 +173,6 @@ class TCombustor(TGaspath):
         super().PrintPerformance(Mode, PointTime)
         print(f"\tFuel flow                 : {self.Wf:.4f} kg/s")
         print(f"\tCombustion End Temperature: {self.GasOut.T:.2f} K")
-
-    def GetOutputTableColumnNames(self):
-        return super().GetOutputTableColumnNames() + ["Wf_"+self.name]
 
     #  1.1 WV
     def AddOutputToDict(self, Mode):

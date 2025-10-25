@@ -38,8 +38,13 @@ class TGaspath(TComponent):
             self.GasOut = ct.Quantity(self.GasIn.phase, mass = self.GasIn.mass)
             self.Wdes = self.GasInDes.mass
             self.Wcdes = self.Wdes * fg.GetFlowCorrectionFactor(self.GasInDes)
+            self.W = self.Wdes
             self.Wc = self.Wcdes
         else:
+            # v1.2
+            self.W = self.GasIn.mass
+            self.Wc = self.W * fg.GetFlowCorrectionFactor(self.GasIn)
+
             self.GasOut.TPY = self.GasIn.TPY
             self.GasOut.mass = self.GasIn.mass
 
@@ -49,24 +54,20 @@ class TGaspath(TComponent):
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
         print(f"\tInlet conditions:")
-        print(f"\t\tMass flow  : {self.GasIn.mass:.2f} kg/s")
+        print(f"\t\tMass flow  : {self.W:.2f} kg/s")
         print(f"\t\tTemperature: {self.GasIn.T:.1f} K")
         print(f"\t\tPressure   : {self.GasIn.P:.0f} Pa")
-        print(f"\tExit conditions:")
-        print(f"\t\tMass flow  : {self.GasOut.mass:.2f} kg/s")
         if self.Wcdes != None:
-            print(f"\t\tDP Corr.Mass flow  : {self.Wcdes:.2f} kg/s")
+            print(f"\tDP Corr.Mass flow  : {self.Wcdes:.2f} kg/s")
         if self.Wc != None:
-            print(f"\t\tCorr.Mass flow  : {self.Wc:.2f} kg/s")
+            print(f"\tCorr.Mass flow  : {self.Wc:.2f} kg/s")
+        if self.PRdes != None:
+            print(f"\tDP Pressure ratio  : {self.PRdes:.4f}")
+        if self.PR != None:
+            print(f"\tPressure ratio  : {self.PR:.4f}")
+        print(f"\tExit conditions:")
         print(f"\t\tTemperature: {self.GasOut.T:.1f} K")
         print(f"\t\tPressure   : {self.GasOut.P:.0f} Pa")
-        if self.PR != None:
-            print(f"\t\tPressure ratio  : {self.PR:.4f}")
-        if self.PRdes != None:
-            print(f"\t\tDP Pressure ratio  : {self.PRdes:.4f}")
-
-    def GetOutputTableColumnNames(self):
-        return [f"W{self.stationin}", f"Wc{self.stationin}", f"T{self.stationin}", f"P{self.stationin}", "PR_"+self.name]
 
     #  1.1 WV
     def AddOutputToDict(self, Mode):

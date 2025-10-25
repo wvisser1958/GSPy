@@ -22,12 +22,8 @@ class TDuct(TGaspath):
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
-        if Mode == 'DP':
-            self.PR = self.PRdes
-        else:
-            # this duct has constant PR, no OD PR yet (use manual input in code here, or make PR map)
-            self.PR = self.PRdes
+        # v1.2 dprel proportional to Wc^2
+        dprel = (1 - self.PRdes) * np.square(self.Wc/self.Wcdes)
+        self.PR = 1 - dprel
         self.GasOut.TP = self.GasIn.T, self.GasIn.P*self.PR
-        # calculate parameters for output
-        self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(self.GasIn)
         return self.GasOut
