@@ -10,6 +10,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Authors
+#   Wilfried Visser
+
 import numpy as np
 
 class TShaft:

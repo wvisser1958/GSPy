@@ -10,8 +10,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Authors
+#   Wilfried Visser
+
 import numpy as np
-from scipy.optimize import root
+from math import log, exp
+from scipy.optimize import root, root_scalar
 import cantera as ct
 from f_gaspath import TGaspath as gaspath
 
@@ -126,6 +130,212 @@ def Compression(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Etais):
     # PW = GasOut.H - GasIn.H
     PW = GasOut.H - GasOut.mass * GasIn.phase.enthalpy_mass
     return PW
+
+def stagnation_pressure_from_quantity(q, V):
+    # Stagnation pressure p0 for a ct.Quantity state with speed V.
+    # Uses h0 = h + V^2/2 and finds p0 so s(T0,p0,Y) = s(T,P,Y).
+    # No clones: saves/restores the underlying phase state.
+    ph = q.phase
+    # Save phase state
+    try:
+        # Prefer explicit save (compatible across Cantera versions)
+        T_save, P_save = ph.TP
+        Y_save = ph.Y.copy()
+
+        # Base static state (ensure phase matches quantity)
+        ph.TPY = q.T, q.P, q.Y
+        h = ph.enthalpy_mass      # J/kg
+        s = ph.entropy_mass       # J/(kg·K)
+
+        # Stagnation enthalpy and T0 at same pressure
+        h0 = h + 0.5 * V * V
+        ph.HP = h0, q.P           # sets T0 (composition fixed)
+        T0 = ph.T
+
+        # Root find p0 so that s(T0, p0, Y) = s
+        def s_at_p(p):
+            ph.TPY = T0, p, q.Y
+            return ph.entropy_mass
+
+        s_target = s
+
+        # Bracket pressure in log-space
+        P_ref = q.P
+        p_lo = max(1.0, 0.02 * P_ref)
+        p_hi = 50.0 * P_ref
+        s_lo = s_at_p(p_lo)
+        s_hi = s_at_p(p_hi)
+
+        tries = 0
+        while (s_lo - s_target) * (s_hi - s_target) > 0.0 and tries < 6:
+            p_lo *= 0.2
+            p_hi *= 5.0
+            s_lo = s_at_p(p_lo)
+            s_hi = s_at_p(p_hi)
+            tries += 1
+
+        if (s_lo - s_target) * (s_hi - s_target) > 0.0:
+            # Couldn’t bracket: fall back to static pressure (conservative)
+            return q.P
+
+        # Bisection in ln(p)
+        ln_lo, ln_hi = log(p_lo), log(p_hi)
+        for _ in range(40):
+            ln_mid = 0.5 * (ln_lo + ln_hi)
+            p_mid = exp(ln_mid)
+            s_mid = s_at_p(p_mid)
+            if (s_lo - s_target) * (s_mid - s_target) <= 0.0:
+                ln_hi, s_hi = ln_mid, s_mid
+            else:
+                ln_lo, s_lo = ln_mid, s_mid
+
+        p0 = exp(0.5 * (ln_lo + ln_hi))
+        return p0
+
+    finally:
+        # Restore original phase state
+        ph.TPY = T_save, P_save, Y_save
+
+#  under development ?
+# def static_from_total(q_tot, A=None,
+#                       p_lo_fac=0.05, p_hi_fac=0.999999, rtol=1e-8):
+#     """
+#     Map total (T0, p0, Y) to static (T, P, rho, V, M) using a 1D root solve in P.
+#     Uses SciPy's root_scalar (Brent) for robustness and brevity.
+#     - q_tot: ct.Quantity or ct.Solution with .T,.P as TOTAL (your convention), composition set
+#     - Provide either (A & mdot) or mass_flux (G = mdot/A). If neither, returns low-Mach fallback.
+#     """
+#     ph = q_tot.phase
+#     T0, p0 = float(q_tot.T), float(q_tot.P)
+#     Y = q_tot.Y.copy()
+
+#     # Low-Mach fallback if no velocity info
+#     if A is None:
+#         # return {"T": T0, "P": p0, "rho": q_tot.density, "V": 0.0, "Mach": 0.0,
+#         #         "T0": T0, "p0": p0, "h0": q_tot.enthalpy_mass, "s0": q_tot.entropy_mass}
+#         # return T, P, V, Mach
+#         return T0, p0, 0.0, 0.0
+
+#     # Mass flux
+#     G = float(q_tot.mass) / float(A)
+
+#     # Save/restore
+#     T_s, P_s = ph.TP
+#     Y_s = ph.Y.copy()
+#     try:
+#         # Total (frozen comp) properties
+#         ph.TPY = T0, p0, Y
+#         h0 = ph.enthalpy_mass
+#         s0 = ph.entropy_mass
+
+#         # Residual f(P) at fixed s=s0 (composition frozen)
+#         def residual(P):
+#             P = max(1.0, float(P))
+#             ph.SP = s0, P                  # set static T via isentropic map
+#             ph.set_unnormalized_mass_fractions(Y)
+#             rho = ph.density
+#             h = ph.enthalpy_mass
+#             V = G / rho
+#             return (h + 0.5 * V * V) - h0
+
+#         # Bracket and solve in log(P) for stability
+#         P_lo = max(1.0, p0 * p_lo_fac)
+#         P_hi = max(1.0, p0 * p_hi_fac)
+
+#         # If signs don't differ, gently widen the lower bound a few times
+#         f_lo = residual(P_lo)
+#         f_hi = residual(P_hi)
+#         tries = 0
+#         while f_lo * f_hi > 0.0 and tries < 8:
+#             P_lo *= 0.5
+#             f_lo = residual(P_lo)
+#             tries += 1
+
+#         if f_lo * f_hi > 0.0:
+#             # Couldn’t bracket → very low Mach; return near-total values
+#             ph.SP = s0, p0
+#             ph.set_unnormalized_mass_fractions(Y)
+#             rho = ph.density
+#             V = G / rho
+#             M = (V / ph.sound_speed)
+#             # return {"T": ph.T, "P": p0, "rho": rho, "V": V, "Mach": M,
+#             #         "T0": T0, "p0": p0, "h0": h0, "s0": s0}
+#             # return T, P, V, Mach
+#             return ph.T, p0, V, M
+
+#         # Solve f(P)=0 (Brent)
+#         sol = root_scalar(lambda lnP: residual(exp(lnP)),
+#                           bracket=(log(P_lo), log(P_hi)), rtol=rtol, method="brentq")
+#         P_star = exp(sol.root)
+
+#         # Final static state at P_star, s=s0
+#         ph.SP = s0, P_star
+#         ph.set_unnormalized_mass_fractions(Y)
+#         T_star = ph.T
+#         rho_star = ph.density
+#         V_star = G / rho_star
+#         M_star = (V_star / ph.sound_speed)
+
+#         # return {"T": T_star, "P": P_star, "rho": rho_star, "V": V_star, "Mach": M_star,
+#         #         "T0": T0, "p0": p0, "h0": h0, "s0": s0}
+#         return T_star, P_star, V_star, M_star
+
+#     finally:
+#         ph.TPY = T_s, P_s, Y_s
+
+# def p0_out_isentropic(q_in, q_out, V_out=0.0):
+#     """
+#     Isentropic reference at constant static P:
+#     - Keep inlet entropy and inlet (frozen) composition Y_in
+#     - Use outlet stagnation temperature T0_out(real)
+#     - Solve for p0_iso: s(T0_out, p0_iso, Y_in) = s_in
+#     """
+#     ph = q_out.phase
+#     # Save state
+#     T_s, P_s = ph.TP
+#     Y_s = ph.Y.copy()
+#     try:
+#         # Inlet entropy with inlet composition
+#         ph.TPY = q_in.T, q_in.P, q_in.Y
+#         s_in = ph.entropy_mass
+#         Y_in = q_in.Y.copy()
+
+#         # Real outlet stagnation temperature (you may set V_out=0.0 if desired)
+#         ph.TPY = q_out.T, q_out.P, q_out.Y
+#         h_out = ph.enthalpy_mass
+#         h0_out = h_out + 0.5 * V_out * V_out
+#         ph.HP = h0_out, q_out.P
+#         T0_out = ph.T
+
+#         # Root for p0_iso with frozen inlet composition
+#         def s_at_p(p):
+#             ph.TPY = T0_out, p, Y_in
+#             return ph.entropy_mass
+
+#         P_ref = q_out.P
+#         p_lo, p_hi = max(1.0, 0.02*P_ref), 50.0*P_ref
+#         s_lo, s_hi = s_at_p(p_lo), s_at_p(p_hi)
+#         tries = 0
+#         while (s_lo - s_in)*(s_hi - s_in) > 0.0 and tries < 6:
+#             p_lo *= 0.2; p_hi *= 5.0
+#             s_lo, s_hi = s_at_p(p_lo), s_at_p(p_hi)
+#             tries += 1
+#         if (s_lo - s_in)*(s_hi - s_in) > 0.0:
+#             return q_out.P  # conservative fallback
+
+#         import math
+#         ln_lo, ln_hi = math.log(p_lo), math.log(p_hi)
+#         for _ in range(40):
+#             ln_mid = 0.5*(ln_lo+ln_hi)
+#             p_mid = math.exp(ln_mid)
+#             s_mid = s_at_p(p_mid)
+#             if (s_lo - s_in)*(s_mid - s_in) <= 0.0:
+#                 ln_hi, s_hi = ln_mid, s_mid
+#             else:
+#                 ln_lo, s_lo = ln_mid, s_mid
+#         return math.exp(0.5*(ln_lo+ln_hi))
+#     finally:
+#         ph.TPY = T_s, P_s, Y_s
 
 def TurbineExpansion(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Etais, Wexp):
     Pout = GasIn.P / PR

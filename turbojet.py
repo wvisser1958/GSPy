@@ -10,6 +10,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Authors
+#   Wilfried Visser
+#   Oscar Kogenhop
+
 import f_global as fg
 import f_system as fsys
 
@@ -62,7 +66,7 @@ def main():
     compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
 
     # OD fuel input from FuelControl
-    combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, '')
+    combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, None, None)
     # Texit input
     # TCombustor('combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
                 # fuel specification examples:

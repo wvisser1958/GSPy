@@ -10,6 +10,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Authors
+#   Wilfried Visser
+#   Oscar Kogenhop
+
 import numpy as np
 import pandas as pd
 from scipy.optimize import root
@@ -93,12 +97,10 @@ def Do_Run(PointTime, states_par):
     for comp in system_model:
         comp.Run(Mode, PointTime)
         comp.AddOutputToDict(Mode)
+    # v1.3 moved to BEFORE PostRun calls
     AddSystemOutputToDict(Mode)
     for comp in system_model:
         comp.PostRun(Mode, PointTime)
-
-    # 1.1 WV PostRun to evaluate equations
-    # Control.PostRun(Mode, PointTime)
     return errors
 
 def Run_DP_simulation():

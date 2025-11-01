@@ -10,13 +10,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Authors
-#   Wilfried Visser
+# Author: Wilfried Visser 1-11-2025
 
 import f_global as fg
 import f_system as fsys
 
 from f_control import TControl
+from f_AMcontrol import TAMcontrol
 from f_ambient import TAmbient
 
 from f_shaft import TShaft
@@ -27,10 +27,12 @@ from f_combustor import TCombustor
 from f_turbine import TTurbine
 from f_duct import TDuct
 from f_exhaustnozzle import TExhaustNozzle
+from f_turbomap import TTurboMap
 
 import f_utils as fu
 import os
 import matplotlib.pyplot as plt
+
 
     # IMPORTANT NOTE TO THIS MODEL FILE
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -50,10 +52,13 @@ def main():
 
 # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # FuelControl for open loop direct control of fuel flow
-    # FuelControl = TControl('Fcontrol', '', 0.38, 0.38, 0.08, -0.01, None)
+    # FuelControl = TControl('Fcontrol', '', 0.38, 0.38, 0.38, -0.01, None)
 
     # N1 rotor speed control
-    FuelControl = TControl('Ncontrol', '', 1.11, 100, 60, -5, 'N1%')
+    # FuelControl = TControl('Ncontrol', '', 0.38, 100, 60, -5, 'N1%')
+
+    # EGT (T5) control : instable at lower power setting due to multiple solutions at same T5
+    # FuelControl = TControl('EGTcontrol', '', 0.38, 1020, 820, -50, 'T5')
 
     # Generic gas turbine components
     inlet1   = TInlet('Inlet1',      '', None,           0,2,   19.9, 1    )
@@ -61,15 +66,51 @@ def main():
     compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
 
     # OD fuel input from FuelControl
-    combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, '', None)
+    # combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, '', None)
+    combustor1 = TCombustor('combustor1', '',  None, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, '', None)
+    # Texit input
+    # TCombustor('combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
+                # fuel specification examples:
+                # fuel specified by LHV, HCratio, OCratio:
+                    # None,      43031, 1.9167, 0, ''),
+
+                # fuel specified by Fuel composition (by mass)
+                    # NC12H26 = Dodecane ~ jet fuel, CH4 for hydrogen
+
+                # None,      None, None, None, 'NC12H26:1'),
+                # fuel specified by Fuel temperature and Fuel composition (by mass)
+                    # 288.15,      None, None, None, 'CH4:1'),
+
+                # fuel mixtures
+                # fuel specified by Fuel temperature and Fuel composition (by mass)
+                #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
     turbine1 =    TTurbine(   'turbine1'   ,'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
     duct1    = TDuct('exhduct',      '', None,            5,7,   1.0        )
     exhaustnozzle = TExhaustNozzle('exhaustnozzle',  '', None,            7,8,9, 1, 1, 1)
 
+    AMcontrol = TAMcontrol('AMcontrol',
+                        # input data file
+                        "input/Turbojet_AMinput.csv",
+                        (combustor1, "Wf"),
+                        ['Alt', 'dTs', 'Macha'],
+                        ['T3',
+                         'P3',
+                         'T5',
+                         'N1%'],
+                        [
+                            (compressor1.map, "SF_eta_deter"),
+                            (compressor1.map, "SF_wc_deter"),
+                            (turbine1.map, "SF_eta_deter"),
+                            (turbine1.map, "SF_wc_deter")
+                        ])
+
+
     # create a turbojet system model
-    fsys.system_model = [fsys.Ambient,
-                         FuelControl,
+    fsys.system_model = [AMcontrol,  # AMcontrol first as it also reads data to set the Ambient conditions....
+
+                        fsys.Ambient,
+
                          inlet1,
                          compressor1,
                          combustor1,
@@ -91,7 +132,7 @@ def main():
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     fsys.Mode = 'OD'
-    fsys.inputpoints = FuelControl.Get_OD_inputpoints()
+    fsys.inputpoints = AMcontrol.Get_OD_inputpoints()
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
@@ -117,13 +158,11 @@ def main():
                                 ("Wf_combustor1",   "Fuel flow [kg/s]",         "blue"),
                                 ("FN",              "Net thrust [kN]",          "blue")            ])
 
-     # Create component map plots with operating lines if available
+    # Create component map plots with operating lines if available
     for comp in fsys.system_model:
         comp.PlotMaps()
-        # if comp.map != None:
-        #     print(comp.name + " map with operating curve saved in " + comp.map.map_figure_pathname)
 
-    print("end of running turbojet simulation")
+    print("end of running AM Adaptive modeling turbojet simulation")
 
 # main program start, calls main()
 if __name__ == "__main__":

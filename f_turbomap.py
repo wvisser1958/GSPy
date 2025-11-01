@@ -10,6 +10,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Authors
+#   Oscar Kogenhop
+
 import numpy as np
 import matplotlib.pyplot as plt
 from f_map import TMap
@@ -33,6 +36,11 @@ class TTurboMap(TMap):
         self.SFmap_Wc  = 1
         self.SFmap_PR  = 1
         self.SFmap_Eta = 1
+
+        # v1.3 deterioration effects
+        self.SF_wc_deter = 1
+        self.SF_eta_deter = 1
+        self.SF_pr_deter = 1
 
         # Dual plot axis
         self.secondary_plot_axis = None
@@ -131,9 +139,10 @@ class TTurboMap(TMap):
         wcmap = self.get_map_wc((self.Ncmap, self.Betamap))
         etamap = self.get_map_eta((self.Ncmap, self.Betamap))
         prmap = self.get_map_pr((self.Ncmap, self.Betamap))
-        Wc = self.SFmap_Wc * wcmap
-        PR = self.SFmap_PR * (prmap - 1) + 1
-        Eta = self.SFmap_Eta * etamap
+        # v1.3 add % deltas for deterioration
+        Wc = self.SFmap_Wc * wcmap          * self.SF_wc_deter
+        Eta = self.SFmap_Eta * etamap       * self.SF_eta_deter
+        PR = self.SFmap_PR * (prmap - 1)    * self.SF_pr_deter + 1
         return Wc, PR, Eta
 
     # Determine plot arrays, scaled or not

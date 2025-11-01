@@ -10,6 +10,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Authors
+#   Wilfried Visser
+
 import f_global as fg
 import f_system as fsys
 
@@ -71,8 +74,8 @@ def main():
     compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, '_gg', 4780, 0.915, 1, 0.8 , 20, 'GG', compressor1bleeds)
 
     # OD fuel input from EGTFuelControl
-    combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 2.5, None, 0.95, 0.9998, 458.15,      50025, 4, 0, 'CH4:1')
-    # combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 2.5, None, 0.95, 0.9998, 298.15,      50025, 4, 0, None)
+    combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 2.5, None, 0.95, 0.9998, 458.15,      50025, 4, 0, 'CH4:1', None)
+    # combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 2.5, None, 0.95, 0.9998, 298.15,      50025, 4, 0, None, None)
 
     # GGT cooling flows
     GGTcoolingflows = [TCoolingFlow('GGTcooling1', None, None,

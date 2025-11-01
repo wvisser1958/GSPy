@@ -10,6 +10,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Authors
+#   Wilfried Visser
+#   Oscar Kogenhop
+
 import numpy as np
 import cantera as ct
 
@@ -68,22 +72,21 @@ def main():
 
                         # ***************** Combustor ******************************************************
                         # fuel input
-                        # TCombustor('combustor1',  '',            3,4,   0.36, None,    1, 1,
                         # Texit input, Wf guess for 1500 K is 1.1 kg/s
                         TCombustor('combustor1',  '',  FuelControl,           3,4,   1.1 , 1500,    1, 1,
                                                     # fuel specification examples:
                                                     # fuel specified by LHV, HCratio, OCratio:
-                                                    None,      43031, 1.9167, 0, ''),
+                                                    None,      43031, 1.9167, 0, '', None),
 
                                                     # fuel specified by Fuel composition (by mass)
                                                         # NC12H26 = Dodecane ~ jet fuel, CH4 for hydrogen
                                                     # None,      None, None, None, 'NC12H26:1'),
                                                     # fuel specified by Fuel temperature and Fuel composition (by mass)
-                                                        # 288.15,      None, None, None, 'CH4:1'),
+                                                        # 288.15,      None, None, None, 'CH4:1', None),
 
                                                     # fuel mixtures
                                                     # fuel specified by Fuel temperature and Fuel composition (by mass)
-                                                    # 288.15,      None, None, None, 'CH4:5, C2H6:1'),
+                                                    # 288.15,      None, None, None, 'CH4:5, C2H6:1', None),
 
                         TTurbine('HPT',      'turbimap.map', None, 4,45,   2,   14000, 0.8732,       1, 0.65, 1, 'GG', None),
 

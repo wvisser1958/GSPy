@@ -1,5 +1,10 @@
 # gsppysim
 GSPy Python propulsion and power system performance modelling and simulation tool
+
+Authors
+  Wilfried Visser
+  Oscar Kogenhop
+
 --------------------------------------------------------------------------------
 CONTENTS:
 ---------------------------------
@@ -20,6 +25,38 @@ See the LICENSE file for details.
 ********************************************************************************
 2. VERSION HISTORY
 ********************************************************************************
+GSPy v1.3.0.0                                                         01-11-2025
+--------------------------------------------------------------------------------
+Improvements
+--------------------------------------------------------------------------------
+* Map modifier scaling factors "SF.." added to the TTurboMap class used in the
+  TTurbo_Component model class, to modify the map output (Eta, Wc and/or PR).
+* Adaptive modelling component class TAMcontrol (f_AMcontrol.py), inheriting
+  from TControl. Allows the specification of measurement data with column
+  names corresponding to GSPy output names and a number of map modifier scaling
+  factors (SF...), the values of which are to be determined by solving the
+  thermodynamic model equations together with the measurement value match
+  equations. Note that careful attention much be given to the selection of
+  measurement parameters and corresponding number of map modifiers as one
+  easily creates a system for which there is no solution. multiple solution
+  or severe instability problem arise.
+  The Measurement data table also is used to set measured ambient conditions
+  and power setting variable such as fuel flow Wf.
+  Resulting factor are output in the outputdata table. SF.. values 1 mean no
+  deviation. See code in TTurboMap for further details.
+  Important:
+  ==========================================================================
+  Note that for professional application, a lot of additional improvements
+  considering measurement uncertainty, scatter, solver stability, parameter
+  selection, numerical methods will be required.
+  ==========================================================================
+* The turbojet_AM.py model demonstrates the use of TAMcontrol determining
+  all 4 turbomachinery scaling factors possible for adapting the model to
+  P3, T3, T5 and N1% values at varying operating conditions (Alt, dTs, Mach
+  and fuel flow Wf). Input file is Turbojet_AMinput.csv located on the
+  input subfolder.
+  Have fun :) with it!
+
 GSPy v1.2.0.0                                                         18-10-2025
 --------------------------------------------------------------------------------
 Improvements

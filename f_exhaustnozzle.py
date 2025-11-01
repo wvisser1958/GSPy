@@ -10,6 +10,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Authors
+#   Wilfried Visser
+
 # v1.2 Propelling exhaust nozzle
 import numpy as np
 import cantera as ct

@@ -10,6 +10,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Authors
+#   Oscar Kogenhop
+
 import numpy as np
 from f_turbomap import TTurboMap
 import f_system as fsys
