@@ -71,13 +71,13 @@ class TExhaustNozzle(TGaspath):
                 rootresult = root_scalar(mach_number_difference, x0=P0, method='newton')
 
                 self.Pthroat = rootresult.root
-                # 1.31 bug fix do not multiply with CVdes here. CXV is not supposed to affect Athroat and mass flow
+                # 1.301 bug fix do not multiply with CVdes here. CXV is not supposed to affect Athroat and mass flow
                 # self.Vthroat = self.GasThroat.phase.sound_speed * self.CVdes
                 self.Vthroat = self.GasThroat.phase.sound_speed
             else:
                 self.Pthroat = Pout
-                # 1.31
-                    # self.Vthroat = Vthroat_is * self.CVdes
+                # 1.301
+                # self.Vthroat = Vthroat_is * self.CVdes
                 self.Vthroat = Vthroat_is
             self.Tthroat = self.GasThroat.T
             # exit flow error
@@ -88,7 +88,7 @@ class TExhaustNozzle(TGaspath):
                                     # very large exhaust area
             self.Athroat_des = self.GasThroat.mass / self.GasThroat.phase.density / self.Vthroat
             self.Athroat = self.Athroat_des
-            # 1.31 now apply CV
+            # 1.301 now apply CV
             self.Vthroat = self.Vthroat * self.CVdes
         else:
             # Off-design calculation
@@ -97,7 +97,7 @@ class TExhaustNozzle(TGaspath):
             self.GasThroat.TP = self.Tthroat, self.Pthroat
             self.Vthroat = Vthroat_is * self.CVdes
             fsys.errors[self.ierror_w] = (self.GasIn.mass - massflow) / self.GasInDes.mass
-            # 1.31 use Vthroat_is for Mach number
+            # 1.301 use Vthroat_is for Mach number
             # self.Mthroat = self.Vthroat / self.GasThroat.phase.sound_speed
             self.Mthroat = Vthroat_is / self.GasThroat.phase.sound_speed
         self.GasOut.TP = self.Tthroat, Pout # assume no further expansion

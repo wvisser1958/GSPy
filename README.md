@@ -25,6 +25,16 @@ See the LICENSE file for details.
 ********************************************************************************
 2. VERSION HISTORY
 ********************************************************************************
+GSPy v1.3.0.1                                                         12-11-2025
+--------------------------------------------------------------------------------
+Bug fixes
+--------------------------------------------------------------------------------
+exhaust nozzle model CV affected A throat and thus mass flow capacity of the
+nozzle. Although may be an model option (but requires more code and equations)
+CV is set to only affect thrust which in most cases is more consistent. It is
+advised to use CD instead to control flow capacity (effective vs. geometric
+A throat) which now is not yet implemented.
+
 GSPy v1.3.0.0                                                         01-11-2025
 --------------------------------------------------------------------------------
 Improvements
