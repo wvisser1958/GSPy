@@ -58,7 +58,7 @@ class TAMcontrol(TComponent):
                 # fsys.states = np.append(fsys.states, 1)
                 # fsys.errors = np.append(fsys.errors, 0)
             # read input (points to perform AM analysis on)
-            self.am_input = pd.read_csv("input/Turbojet_AMinput.csv")
+            self.am_input = pd.read_csv(self.measdatafilename)
             self.am_input.set_index('Point')
         else:
             # set ambient conditions
