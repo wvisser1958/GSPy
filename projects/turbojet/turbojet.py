@@ -14,22 +14,22 @@
 #   Wilfried Visser
 #   Oscar Kogenhop
 
-import f_global as fg
-import f_system as fsys
+import gspy.core.sys_global as fg
+import gspy.core.system as fsys
 
-from f_control import TControl
-from f_ambient import TAmbient
+from gspy.core.control import TControl
+from gspy.core.ambient import TAmbient
 
-from f_shaft import TShaft
+from gspy.core.shaft import TShaft
 
-from f_inlet import TInlet
-from f_compressor import TCompressor
-from f_combustor import TCombustor
-from f_turbine import TTurbine
-from f_duct import TDuct
-from f_exhaustnozzle import TExhaustNozzle
+from gspy.core.inlet import TInlet
+from gspy.core.compressor import TCompressor
+from gspy.core.combustor import TCombustor
+from gspy.core.turbine import TTurbine
+from gspy.core.duct import TDuct
+from gspy.core.exhaustnozzle import TExhaustNozzle
 
-import f_utils as fu
+import gspy.core.utils as fu
 import os
 import matplotlib.pyplot as plt
 

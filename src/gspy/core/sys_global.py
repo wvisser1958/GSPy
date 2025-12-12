@@ -23,7 +23,7 @@ import pandas as pd
 # gas = ct.Solution('gri30.yaml')
 # We are using jetsurf.yaml instead, which has kerosine subsitute
 # species like PXC12H25, for user specified fuel composition
-gas = ct.Solution('jetsurf.yaml')
+gas = ct.Solution('data/fluid_props/jetsurf.yaml')
 
 C_atom_weight = gas.atomic_weight(gas.element_index('C'))
 O_atom_weight = gas.atomic_weight(gas.element_index('O'))

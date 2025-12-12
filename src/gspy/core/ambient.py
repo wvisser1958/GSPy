@@ -15,9 +15,9 @@
 
 import cantera as ct
 import aerocalc as ac     # !!!! install with "pip install aero-calc", see https://www.kilohotel.com/python/aerocalc/html/
-from f_base_component import TComponent
-import f_global as fg
-import f_system as fsys
+from gspy.core.base_component import TComponent
+import gspy.core.sys_global as fg
+import gspy.core.system as fsys
 
 class TAmbient(TComponent):
     def __init__(self, name, stationnr, Altitude, Macha, dTs, Psa, Tsa):    # Constructor of the class

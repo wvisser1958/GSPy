@@ -15,11 +15,11 @@
 
 import numpy as np
 import cantera as ct
-import f_utils as fu
+import gspy.core.utils as fu
 from scipy.optimize import root_scalar
-from f_gaspath import TGaspath
-import f_global as fg
-import f_system as fsys
+from gspy.core.gaspath import TGaspath
+import gspy.core.sys_global as fg
+import gspy.core.system as fsys
 
 class TExhaustDiffuser(TGaspath):
     def __init__(self, name, MapFileName, ControlComponent, stationin, stationthroat, stationout, CXdes, CVdes, CDdes, PRdes):    # Constructor of the class

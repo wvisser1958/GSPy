@@ -17,7 +17,7 @@ import numpy as np
 from math import log, exp
 from scipy.optimize import root, root_scalar
 import cantera as ct
-from f_gaspath import TGaspath as gaspath
+from gspy.core.gaspath import TGaspath as gaspath
 
 atomweightC = 12.010914
 molemassCO2 = 44.0098

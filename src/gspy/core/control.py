@@ -15,9 +15,9 @@
 
 import numpy as np
 import cantera as ct
-import f_global as fg
-import f_system as fsys
-from f_base_component import TComponent
+import gspy.core.sys_global as fg
+import gspy.core.system as fsys
+from gspy.core.base_component import TComponent
 
 class TControl(TComponent):
     def __init__(self, name, MapFileName,

@@ -16,10 +16,10 @@
 import numpy as np
 from scipy.optimize import root, root_scalar
 import cantera as ct
-import f_global as fg
-import f_system as fsys
-from f_gaspath import TGaspath
-import f_utils as fu
+import gspy.core.sys_global as fg
+import gspy.core.system as fsys
+from gspy.core.gaspath import TGaspath
+import gspy.core.utils as fu
 
 class TCombustor(TGaspath):
     def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, Wfdes, Texitdes, PRdes, Etades,

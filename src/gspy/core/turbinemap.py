@@ -14,8 +14,8 @@
 #   Oscar Kogenhop
 
 import numpy as np
-from f_turbomap import TTurboMap
-import f_system as fsys
+from gspy.core.turbomap import TTurboMap
+import gspy.core.system as fsys
 
 class TTurbineMap(TTurboMap):
     def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, ShaftString, Ncmapdes, Betamapdes):

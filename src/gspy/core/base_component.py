@@ -15,7 +15,7 @@
 
 import numpy as np
 import cantera as ct
-from f_map import TMap
+from gspy.core.map import TMap
 from typing import Optional
 
 class TComponent:

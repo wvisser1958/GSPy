@@ -17,11 +17,11 @@ import math
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 import cantera as ct
-import f_global as fg
-import f_system as fsys
-import f_utils as fu
-from f_turbo_component import TTurboComponent
-from f_compressormap import TCompressorMap
+import gspy.core.sys_global as fg
+import gspy.core.system as fsys
+import gspy.core.utils as fu
+from gspy.core.turbo_component import TTurboComponent
+from gspy.core.compressormap import TCompressorMap
 
 class TCompressor(TTurboComponent):
     def __init__(self, name, MapFileName, ControlComponent,

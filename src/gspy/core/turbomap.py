@@ -15,7 +15,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from f_map import TMap
+from gspy.core.map import TMap
 from scipy.interpolate import RegularGridInterpolator
 
 class TTurboMap(TMap):

@@ -25,6 +25,16 @@ See the LICENSE file for details.
 ********************************************************************************
 2. VERSION HISTORY
 ********************************************************************************
+GSPy v1.4.0.0                                                         15-11-2025
+--------------------------------------------------------------------------------
+New features
+--------------------------------------------------------------------------------
+* Entirely new folder structure more compliant to Python common practice.
+  Changes is the import and other paths.
+* Option to treat DP and/or map turbomachinery efficiency eta as either isentropic
+  (default so far) or polytropic (new) using turbomachinery component
+  Polytropic_Eta flag. Set Polytropic_Eta to 1 to treat as polytropic.
+
 GSPy v1.3.0.1                                                         12-11-2025
 --------------------------------------------------------------------------------
 Bug fixes

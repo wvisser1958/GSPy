@@ -15,11 +15,11 @@
 
 import numpy as np
 import cantera as ct
-import f_global as fg
-import f_system as fsys
-import f_shaft as fshaft
-import f_turbomap as TMap
-from f_gaspath import TGaspath
+import gspy.core.sys_global as fg
+import gspy.core.system as fsys
+import gspy.core.shaft as fshaft
+import gspy.core.turbomap as TMap
+from gspy.core.gaspath import TGaspath
 
 class TTurboComponent(TGaspath):
     def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades):

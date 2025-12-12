@@ -15,9 +15,9 @@
 
 import numpy as np
 import cantera as ct
-from f_gaspath import TGaspath
-import f_global as fg
-import f_system as fsys
+from gspy.core.gaspath import TGaspath
+import gspy.core.sys_global as fg
+import gspy.core.system as fsys
 
 class TCoolingFlow(TGaspath):
     def __init__(self, name, MapFileName, ControlComponent, stationin, stationout,

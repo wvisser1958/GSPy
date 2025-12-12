@@ -16,11 +16,11 @@
 import numpy as np
 import cantera as ct
 from scipy.optimize import root
-import f_global as fg
-import f_system as fsys
-import f_utils as fu
-from f_turbo_component import TTurboComponent
-from f_turbinemap import TTurbineMap
+import gspy.core.sys_global as fg
+import gspy.core.system as fsys
+import gspy.core.utils as fu
+from gspy.core.turbo_component import TTurboComponent
+from gspy.core.turbinemap import TTurbineMap
 
 class TTurbine(TTurboComponent):
     def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, ShaftNr,

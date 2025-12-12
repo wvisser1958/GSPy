@@ -15,8 +15,8 @@
 
 import numpy as np
 import cantera as ct
-import f_global as fg
-from f_gaspath import TGaspath
+import gspy.core.sys_global as fg
+from gspy.core.gaspath import TGaspath
 
 class TDuct(TGaspath):
     def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, PRdes):    # Constructor of the class
