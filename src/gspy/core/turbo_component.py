@@ -36,6 +36,8 @@ class TTurboComponent(TGaspath):
 
         self.Etades = Etades
         self.Eta = None
+        # v1.4
+        self.Polytropic_Eta = 0  # default eta is assumed isentropic, if self.Polytropic_Eta == 1, polytropic
 
         self.PW = None
 

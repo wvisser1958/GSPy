@@ -39,7 +39,7 @@ class TCompressor(TTurboComponent):
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
-            self.PW = fu.Compression(self.GasIn, self.GasOut, self.PRdes, self.Etades)
+            self.PW = fu.Compression(self.GasIn, self.GasOut, self.PRdes, self.Etades, self.Polytropic_Eta)
 
             self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
 
@@ -62,7 +62,7 @@ class TCompressor(TTurboComponent):
 
             self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
 
-            self.PW = fu.Compression(self.GasIn, self.GasOut, self.PR, self.Eta)
+            self.PW = fu.Compression(self.GasIn, self.GasOut, self.PR, self.Eta, self.Polytropic_Eta)
 
             self.W = self.Wc / fg.GetFlowCorrectionFactor(self.GasIn)
             fsys.errors[self.ierror_wc ] = (self.W - self.GasIn.mass) / self.Wdes
@@ -92,7 +92,7 @@ class TCompressor(TTurboComponent):
                 fsys.gaspath_conditions[bleed.stationin] = bleed.GasIn
 
                 # Compress Wbleed to bleed point
-                dHW1 = fu.Compression(self.GasIn, bleed.GasIn, (self.GasIn.P+dP*bleed.dPfactor)/self.GasIn.P, self.Eta)
+                dHW1 = fu.Compression(self.GasIn, bleed.GasIn, (self.GasIn.P+dP*bleed.dPfactor)/self.GasIn.P, self.Eta, self.Polytropic_Eta)
                 # now delta of compression power due to the bleed is
                 dHW2 = dH * Wbleed  - dHW1
                 dHW_bleeds_total = dHW_bleeds_total + dHW2

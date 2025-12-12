@@ -182,6 +182,11 @@ def AddSystemOutputToDict(Mode):
 def Do_Output(PointTime, ErrorCode):
     # output to terminal
     global system_model,  OutputTable, Ambient
+
+    # 1.4
+    print(f"")
+    print(f"Point {PointTime}:")
+
     for comp in system_model:
         comp.PrintPerformance(Mode, PointTime)
     PrintPerformance(Mode, PointTime)

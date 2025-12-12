@@ -64,6 +64,8 @@ def main():
     inlet1   = TInlet('Inlet1',      '', None,           0,2,   19.9, 1    )
 
     compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
+    # option for polytropic efficiency, uncomment next line
+    # compressor1.Polytropic_Eta = 1
 
     # OD fuel input from FuelControl
     combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, None, None)
@@ -85,6 +87,9 @@ def main():
                 #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
     turbine1 =    TTurbine(   'turbine1'   ,'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
+    # option for polytropic efficiency, uncomment next line
+    # turbine1.Polytropic_Eta = 1
+
     duct1    = TDuct('exhduct',      '', None,            5,7,   1.0        )
     exhaustnozzle = TExhaustNozzle('exhaustnozzle',  '', None,            7,8,9, 1, 1, 1)
 

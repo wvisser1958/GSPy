@@ -45,6 +45,19 @@ class TCombustor(TGaspath):
         # with 'NC12H26:5, C2H6:1' mole ratio if 5:1 if TPX is used, mass ratio if TPY is used, see Cantera documentation
         self.FuelCompositiondes = FuelCompositiondes
 
+        # 1.4 set Fuel
+        self.fuel = None  # initialize fuel quantity for later testing if None or already assigned
+        self.SetFuel(Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes)
+
+    #  1.4 use separate routine, for allowing change of fuel for OD simulation cases
+    def SetFuel(self, aTfuel, aLHV, aHCratio, aOCratio, aFuelComposition):
+        self.Tfuel = aTfuel
+        self.LHV = aLHV          # Lower Heating Value in kJ/kg
+        self.HCratio = aHCratio  # H/C ratio for the virtual fuel
+        self.OCratio = aOCratio  # O/C ratio for the virtual fuel
+        self.FuelComposition = aFuelComposition
+        return
+
     # 1.2 this routine is not actively used during simulation, but may be used separately
     #     to determine/compare LHV values or comparing values with vs without specified FuelComposion specified
     def GetLHV(self):
@@ -235,7 +248,9 @@ class TCombustor(TGaspath):
                 # v 1.2 go to chemical equilibrium
                 self.GasOut.equilibrate('HP')
             else:                  # fuel specification based on FuelComposition and Tfuel
-                if Mode == 'DP':
+                #  1.4 test if fuel exists (DP may be virtual flow, and OD composition specified, so....)
+                # if Mode == 'DP':
+                if self.fuel == None:
                     # create separate fuel quantity for mixing with GasIn
                     self.fuel = ct.Quantity(fg.gas)
                 self.fuel.mass = self.Wf
@@ -306,13 +321,15 @@ class TCombustor(TGaspath):
         else:
             # v1.3
             if self.Control != None:
-                if self.Texit != None: # calc Wf from Texit
+                # 1.4
+                # if self.Texit != None: # calc Wf from Texit
+                if (self.Control.OD_controlledparname == None) and  (self.Texit != None): # calc Wf from Texit
                     self.Texit =  self.Control.Inputvalue
                 else:
                     self.Wf = self.Control.Inputvalue
                     if self.Wf < 0:
                         self.Wf = 0
-            #  else Wf or Texit determined from outside by SetAttr
+            #  else Wf or Texit determined from outside by Control SetAttr
 
         # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
         self.PR = self.PRdes
@@ -323,18 +340,22 @@ class TCombustor(TGaspath):
         w_air = self.GasIn.mass
         h_air_initial = self.GasIn.enthalpy_mass
 
-        # Given parameters for the virtual fuel
-        # virtual fuel molecule with singe C atom
-        self.Tfuel = self.Tfueldes
-        self.LHV = self.LHVdes          # Lower Heating Value in kJ/kg
-        self.HCratio = self.HCratiodes  # H/C ratio for the virtual fuel
-        self.OCratio = self.OCratiodes  # O/C ratio for the virtual fuel
-        self.FuelComposition = self.FuelCompositiondes
+        # 1.4 use separate routine, for allowing change of fuel for OD simulation cases
+        # # Given parameters for the virtual fuel
+        # # virtual fuel molecule with singe C atom
+        # self.Tfuel = self.Tfueldes
+        # self.LHV = self.LHVdes          # Lower Heating Value in kJ/kg
+        # self.HCratio = self.HCratiodes  # H/C ratio for the virtual fuel
+        # self.OCratio = self.OCratiodes  # O/C ratio for the virtual fuel
+        # self.FuelComposition = self.FuelCompositiondes
+
         if (self.FuelComposition == '') or (self.FuelComposition == None):
             CHyOzMoleMass = fg.C_atom_weight + fg.H_atom_weight * self.HCratio + fg.O_atom_weight * self.OCratio
 
         Wf0 = self.Wf
-        if self.Texit != None:
+        #  1.4
+        # if self.Texit != None:
+        if (self.Control.OD_controlledparname == None) and  (self.Texit != None): # calc Wf from Texit
             #  calculate Wf for given Texit, using scipy root function
             def equation(Wfiter):
                 self.Wf=Wfiter[0]

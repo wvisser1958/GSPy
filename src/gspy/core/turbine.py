@@ -80,7 +80,7 @@ class TTurbine(TTurboComponent):
                 dPexp = (cf.GasInjected.P - self.GasOut.P) * cf.dPfraction
                 if dPexp > 0:
                     PRexp = (self.GasOut.P + dPexp) / self.GasOut.P
-                    cf.PWexp = fu.TurbineExpansion(cf.GasInjected, cf.GasOut, PRexp, self.Eta, cf.W)
+                    cf.PWexp = fu.TurbineExpansion(cf.GasInjected, cf.GasOut, PRexp, self.Eta, cf.W, self.Polytropic_Eta)
                     self.PW_cl_exp = self.PW_cl_exp + cf.PWexp
                 else:
                     cf.PWexp = 0
@@ -108,7 +108,7 @@ class TTurbine(TTurboComponent):
             self.GasOut.mass = self.GasIn.mass
 
             # power without cooling:
-            PW_PR = fu.TurbineExpansion(self.GasIn, self.GasOut, PR_iter, self.Eta, None)
+            PW_PR = fu.TurbineExpansion(self.GasIn, self.GasOut, PR_iter, self.Eta, None, self.Polytropic_Eta)
 
             # cooling flow effects
             if self.CoolingFlows != None:
@@ -148,7 +148,7 @@ class TTurbine(TTurboComponent):
                 self.PRdes = self.GasIn.P/Pout
                 self.PR = self.PRdes
 
-                self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PRdes, self.Etades, None)
+                self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PRdes, self.Etades, None, self.Polytropic_Eta)
 
                 # v1.2
                 # cooling flow effects
@@ -194,7 +194,7 @@ class TTurbine(TTurboComponent):
             self.W = self.Wc / fg.GetFlowCorrectionFactor(self.GasIn)
             # fsys.errors[self.ierror_wc ] = (self.W - self.GasOut.mass) / self.Wdes
 
-            self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PR, self.Eta, None)
+            self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PR, self.Eta, None, self.Polytropic_Eta)
 
             # v1.2
             if self.CoolingFlows != None:

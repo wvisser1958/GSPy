@@ -119,16 +119,50 @@ def get_component_object_by_name(component_objects, aname):
 def get_gaspathcomponent_object_inlet_stationnr(component_objects, astationnr):
     return next((obj for obj in component_objects if (isinstance(obj, gaspath)) and (obj.stationin == astationnr)), None)
 
-def Compression(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Etais):
-    Sin = GasIn.s
-    Pout = GasIn.P*PR
-    GasOut.SP = Sin, Pout # get GasOut at constant s and higher P
-    Hisout = GasOut.enthalpy_mass # isentropic exit specific enthalpy
-    Hout = GasIn.enthalpy_mass + (Hisout - GasIn.enthalpy_mass) / Etais
-    GasOut.HP = Hout, Pout
-    # bug fix: for Fan, GasOut<>GasIn: use GasOut as the mass being compressed
-    # PW = GasOut.H - GasIn.H
+def Compression(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Eta, Polytropic_Eta = 0):
+    # v1.4 polytropic efficiency option
+    if Polytropic_Eta == 1:
+        R = ct.gas_constant / GasIn.phase.mean_molecular_weight
+        Sout = GasIn.s + R*log(PR)*(1/Eta-1)
+        Pout = GasIn.P*PR
+        GasOut.SP = Sout, Pout # get GasOut at constant s and higher P
+    else:
+        Sin = GasIn.s
+        Pout = GasIn.P*PR
+        GasOut.SP = Sin, Pout # get GasOut at constant s and higher P
+        Hisout = GasOut.enthalpy_mass # isentropic exit specific enthalpy
+        Hout = GasIn.enthalpy_mass + (Hisout - GasIn.enthalpy_mass) / Eta
+        GasOut.HP = Hout, Pout
+        # bug fix: for Fan, GasOut<>GasIn: use GasOut as the mass being compressed
+        # PW = GasOut.H - GasIn.H
     PW = GasOut.H - GasOut.mass * GasIn.phase.enthalpy_mass
+    return PW
+
+def TurbineExpansion(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Eta, Wexp, Eta_Polytropic = 0):
+    # GSP code polytropic efficiency
+    #   S:=Incond.S-FR(Composition)*ln(PR)*(Etapol-1);
+    #   // Note that S already has pressure effect (ln(PR) therefore :
+    #   // (Etapol-1 term)
+    #   GetTfromS(S,Pt,Composition,Accy,Tt,ErrorComment);
+    #   S:=FS(Tt,Pt,Composition);
+    #   H:=FH(Tt,Composition);
+    #   Etais:=(Incond.H-H)/(Incond.H-His);
+    Pout = GasIn.P / PR
+    if Eta_Polytropic:
+        R = ct.gas_constant / GasIn.phase.mean_molecular_weight
+        Sout = GasIn.s - R*log(PR)*(1/Eta-1)
+        GasOut.SP = Sout, Pout
+    else:
+        GasOut.SP = GasIn.entropy_mass, Pout
+        final_enthalpy_is = GasOut.enthalpy_mass
+        # eta_is = (initial_enthalpy - final_enthalpy) / (initial_enthalpy - final_enthalpy_is)
+        final_enthalpy = GasIn.enthalpy_mass - (GasIn.enthalpy_mass - final_enthalpy_is) * Eta
+        GasOut.HP = final_enthalpy, Pout
+        # if Wexp = None then assume mass flow in = mass flow out here (GasIn.mass = GasOut.mass), so:
+    if Wexp == None:
+        PW = GasIn.H - GasOut.H
+    else:
+        PW = Wexp * (GasIn.enthalpy_mass - GasOut.enthalpy_mass)
     return PW
 
 def stagnation_pressure_from_quantity(q, V):
@@ -336,17 +370,3 @@ def stagnation_pressure_from_quantity(q, V):
 #         return math.exp(0.5*(ln_lo+ln_hi))
 #     finally:
 #         ph.TPY = T_s, P_s, Y_s
-
-def TurbineExpansion(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Etais, Wexp):
-    Pout = GasIn.P / PR
-    GasOut.SP = GasIn.entropy_mass, Pout
-    final_enthalpy_is = GasOut.enthalpy_mass
-    # eta_is = (initial_enthalpy - final_enthalpy) / (initial_enthalpy - final_enthalpy_is)
-    final_enthalpy = GasIn.enthalpy_mass - (GasIn.enthalpy_mass - final_enthalpy_is) * Etais
-    GasOut.HP = final_enthalpy, Pout
-    # if Wexp = None then assume mass flow in = mass flow out here (GasIn.mass = GasOut.mass), so:
-    if Wexp == None:
-        PW = GasIn.H - GasOut.H
-    else:
-        PW = Wexp * (GasIn.enthalpy_mass - GasOut.enthalpy_mass)
-    return PW
