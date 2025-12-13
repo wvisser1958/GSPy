@@ -70,6 +70,9 @@ P_std = 101325
 T_standard_ref = 298.15 # (25°C)
 P_standard_ref = ct.one_atm  # (1 atm)
 
+# 1.4
+output_path = None
+
 h_air_ref = None
 def InitializeGas():
     gas.TPY = T_standard_ref, P_standard_ref, s_air_composition_mass

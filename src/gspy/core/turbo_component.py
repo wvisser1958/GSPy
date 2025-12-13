@@ -48,7 +48,8 @@ class TTurboComponent(TGaspath):
         super().PlotMaps()
         if self.map != None:
             self.map.PlotDualMap()
-            print(self.name + " map (dual) with operating curve saved in " + self.map.map_figure_pathname)
+            # print(self.name + " map (dual) with operating curve saved in " + self.map.map_figure_pathname)
+            print(f"{self.name} map (dual) with operating curve saved in {self.map.map_figure_pathname}")
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)

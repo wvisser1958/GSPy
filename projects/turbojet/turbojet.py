@@ -46,7 +46,7 @@ def main():
     # Path to THIS script (scripts/run_analysis.py)
     project_dir = Path(__file__).resolve().parent
     map_path = project_dir / "maps"
-    output_path = project_dir / "output"
+    fg.output_path = project_dir / "output"
 
     # create Ambient conditions object (to set ambient/inlet/flight conditions)
     #                               Altitude, Mach, dTs,    Ps0,    Ts0
@@ -136,11 +136,11 @@ def main():
     outputbasename = os.path.splitext(os.path.basename(__file__))[0]
 
     # export OutputTable to CSV
-    fsys.OutputToCSV(output_path, outputbasename + ".csv")
+    fsys.OutputToCSV(fg.output_path, outputbasename + ".csv")
 
     # plot nY vs X parameter
     fsys.Plot_X_nY_graph('Engine performance vs. N [%]',
-                            os.path.join(output_path, outputbasename + "_1.jpg"),
+                            os.path.join(fg.output_path, outputbasename + "_1.jpg"),
                             # common X parameter column name with label
                             ("N1%",           "Rotor speed [%]"),
                             # 4 Y paramaeter column names with labels and color

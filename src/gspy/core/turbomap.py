@@ -17,6 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from gspy.core.map import TMap
 from scipy.interpolate import RegularGridInterpolator
+from gspy.core import sys_global as fg
 
 class TTurboMap(TMap):
     def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, ShaftString, Ncmapdes, Betamapdes):    # Constructor of the class
@@ -179,7 +180,9 @@ class TTurboMap(TMap):
     def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
         # Store plot under a different name, override map file name
         # reuse the map_figure_pathname and map size class parameters
-        self.map_figure_pathname = './output/' + self.name + '_dual' + '.jpg'
+        # 1.4
+        # self.map_figure_pathname = './output/' + self.name + '_dual' + '.jpg'
+        self.map_figure_pathname = fg.output_path / (self.name + '_dual' + '.jpg')
 
         # Create the subplot graph for a split turbomachinary plot
         self.dual_map_figure, (self.main_plot_axis, self.secondary_plot_axis) = plt.subplots(

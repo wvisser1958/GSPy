@@ -20,6 +20,7 @@ from scipy.interpolate import griddata
 from scipy.interpolate import SmoothBivariateSpline
 from scipy.ndimage import gaussian_filter
 import os
+from gspy.core import sys_global as fg
 
 class TMap:
     def __init__(self, host_component, name, MapFileName, OL_xcol, OL_ycol):    # Constructor of the class
@@ -42,11 +43,13 @@ class TMap:
         self.OL_ycol = OL_ycol
 
         # Output folder
-        output_dir = './output/'
+        # output_dir = './output/'
+        output_dir = fg.output_path
 
         # Mapnaming, override or extend in child classes
-        self.map_figure_pathname = output_dir + self.name + '.jpg'
-
+        # 1.4
+        # self.map_figure_pathname = output_dir + self.name + '.jpg'
+        self.map_figure_pathname = output_dir / (self.name + ".jpg")
         # Create the directory if it doesn't exist
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)

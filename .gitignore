@@ -66,3 +66,4 @@ map.drawio
 out.dot
 output/class_inheritance_diagram_hierarchical.png
 output/class_inheritance_diagram.png
+/.env

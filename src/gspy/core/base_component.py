@@ -39,7 +39,9 @@ class TComponent:
     def PlotMaps(self): # Plot performance in map(s)
         if self.map != None:
             self.map.PlotMap()
-            print(self.name + " map with operating curve saved in " + self.map.map_figure_pathname)
+            # 1.4
+            # print(self.name + " map with operating curve saved in " + self.map.map_figure_pathname)
+            print(f"{self.name} map with operating curve saved in {self.map.map_figure_pathname}")
 
     #  1.1 WV
     def AddOutputToDict(self, Mode):
