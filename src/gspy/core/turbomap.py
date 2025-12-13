@@ -163,7 +163,7 @@ class TTurboMap(TMap):
     def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
         super().PlotMap()
         # Set map title
-        map_title = self.MapFileName
+        map_title = self.name
 
         if do_plot_series or do_plot_design_point:
             use_scaled_map = True
@@ -189,7 +189,9 @@ class TTurboMap(TMap):
         )
 
         # Set map title
-        map_title = self.MapFileName
+        #  1.4 use name
+        # map_title = self.MapFileName
+        map_title = self.name
 
         if do_plot_series or do_plot_design_point:
             use_scaled_map = True

@@ -14,8 +14,8 @@
 #   Wilfried Visser
 #   Oscar Kogenhop
 
-import gspy.core.sys_global as fg
-import gspy.core.system as fsys
+from gspy.core import sys_global as fg
+from gspy.core import system as fsys
 
 from gspy.core.control import TControl
 from gspy.core.ambient import TAmbient
@@ -29,9 +29,10 @@ from gspy.core.turbine import TTurbine
 from gspy.core.duct import TDuct
 from gspy.core.exhaustnozzle import TExhaustNozzle
 
-import gspy.core.utils as fu
+from gspy.core import utils as fu
 import os
 import matplotlib.pyplot as plt
+from pathlib import Path
 
     # IMPORTANT NOTE TO THIS MODEL FILE
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -41,6 +42,12 @@ import matplotlib.pyplot as plt
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
+
+    # Path to THIS script (scripts/run_analysis.py)
+    project_dir = Path(__file__).resolve().parent
+    map_path = project_dir / "maps"
+    output_path = project_dir / "output"
+
     # create Ambient conditions object (to set ambient/inlet/flight conditions)
     #                               Altitude, Mach, dTs,    Ps0,    Ts0
     # None for Ps0 and Ts0 means values are calculated from standard atmosphere
@@ -63,7 +70,7 @@ def main():
     # Generic gas turbine components
     inlet1   = TInlet('Inlet1',      '', None,           0,2,   19.9, 1    )
 
-    compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
+    compressor1 = TCompressor('compressor1',map_path / 'compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
     # option for polytropic efficiency, uncomment next line
     # compressor1.Polytropic_Eta = 1
 
@@ -86,7 +93,7 @@ def main():
                 # fuel specified by Fuel temperature and Fuel composition (by mass)
                 #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
-    turbine1 =    TTurbine(   'turbine1'   ,'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
+    turbine1 =    TTurbine(   'turbine1'   , map_path / 'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
     # option for polytropic efficiency, uncomment next line
     # turbine1.Polytropic_Eta = 1
 
@@ -129,11 +136,11 @@ def main():
     outputbasename = os.path.splitext(os.path.basename(__file__))[0]
 
     # export OutputTable to CSV
-    fsys.OutputToCSV('output', outputbasename + ".csv")
+    fsys.OutputToCSV(output_path, outputbasename + ".csv")
 
     # plot nY vs X parameter
     fsys.Plot_X_nY_graph('Engine performance vs. N [%]',
-                            os.path.join('output', outputbasename + "_1.jpg"),
+                            os.path.join(output_path, outputbasename + "_1.jpg"),
                             # common X parameter column name with label
                             ("N1%",           "Rotor speed [%]"),
                             # 4 Y paramaeter column names with labels and color
