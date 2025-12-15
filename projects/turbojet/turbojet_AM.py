@@ -12,26 +12,25 @@
 
 # Author: Wilfried Visser 1-11-2025
 
-import f_global as fg
-import f_system as fsys
+from gspy.core import sys_global as fg
+from gspy.core import system as fsys
+from gspy.core import utils as fu
 
-from f_control import TControl
-from f_AMcontrol import TAMcontrol
-from f_ambient import TAmbient
+from gspy.core.control import TControl
+from gspy.core.ambient import TAmbient
+from gspy.core.shaft import TShaft
+from gspy.core.inlet import TInlet
+from gspy.core.compressor import TCompressor
+from gspy.core.combustor import TCombustor
+from gspy.core.turbine import TTurbine
+from gspy.core.duct import TDuct
+from gspy.core.exhaustnozzle import TExhaustNozzle
 
-from f_shaft import TShaft
-
-from f_inlet import TInlet
-from f_compressor import TCompressor
-from f_combustor import TCombustor
-from f_turbine import TTurbine
-from f_duct import TDuct
-from f_exhaustnozzle import TExhaustNozzle
-from f_turbomap import TTurboMap
-
-import f_utils as fu
 import os
 import matplotlib.pyplot as plt
+from pathlib import Path
+
+from gspy.core.AMcontrol import TAMcontrol
 
 
     # IMPORTANT NOTE TO THIS MODEL FILE
@@ -42,6 +41,12 @@ import matplotlib.pyplot as plt
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
+    # Paths
+    project_dir = Path(__file__).resolve().parent
+    map_path = project_dir / "maps"
+    am_input_path = project_dir / "input"
+    fg.output_path = project_dir / "am_output"
+
     # create Ambient conditions object (to set ambient/inlet/flight conditions)
     #                               Altitude, Mach, dTs,    Ps0,    Ts0
     # None for Ps0 and Ts0 means values are calculated from standard atmosphere
@@ -63,7 +68,7 @@ def main():
     # Generic gas turbine components
     inlet1   = TInlet('Inlet1',      '', None,           0,2,   19.9, 1    )
 
-    compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
+    compressor1 = TCompressor('compressor1',map_path / 'compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
 
     # OD fuel input from FuelControl
     # combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, '', None)
@@ -85,13 +90,13 @@ def main():
                 # fuel specified by Fuel temperature and Fuel composition (by mass)
                 #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
-    turbine1 =    TTurbine(   'turbine1'   ,'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
+    turbine1 =    TTurbine(   'turbine1'   ,map_path / 'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
     duct1    = TDuct('exhduct',      '', None,            5,7,   1.0        )
     exhaustnozzle = TExhaustNozzle('exhaustnozzle',  '', None,            7,8,9, 1, 1, 1)
 
     AMcontrol = TAMcontrol('AMcontrol',
                         # input data file
-                        "input/Turbojet_AMinput.csv",
+                        am_input_path / "Turbojet_AMinput.csv",
                         (combustor1, "Wf"),
                         ['Alt', 'dTs', 'Macha'],
                         ['T3',
@@ -144,11 +149,11 @@ def main():
     outputbasename = os.path.splitext(os.path.basename(__file__))[0]
 
     # export OutputTable to CSV
-    fsys.OutputToCSV('output', outputbasename + ".csv")
+    fsys.OutputToCSV(fg.output_path, outputbasename + ".csv")
 
     # plot nY vs X parameter
     fsys.Plot_X_nY_graph('Engine performance vs. N [%]',
-                            os.path.join('output', outputbasename + "_1.jpg"),
+                            os.path.join(fg.output_path, outputbasename + "_1.jpg"),
                             # common X parameter column name with label
                             ("N1%",           "Rotor speed [%]"),
                             # 4 Y paramaeter column names with labels and color

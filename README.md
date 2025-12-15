@@ -25,12 +25,16 @@ See the LICENSE file for details.
 ********************************************************************************
 2. VERSION HISTORY
 ********************************************************************************
-GSPy v1.4.0.0                                                         15-11-2025
+GSPy v1.4.0.0                                                         15-12-2025
+* IMPORTANT: you need to update any project / engine model file to comply to the
+  new folder structure and other changes. Look at sample model scripts like
+  turboject.py!
 --------------------------------------------------------------------------------
 New features
 --------------------------------------------------------------------------------
 * Entirely new folder structure more compliant to Python common practice.
   Changes is the import and other paths.
+* file names of component model classes changed
 * Option to treat DP and/or map turbomachinery efficiency eta as either isentropic
   (default so far) or polytropic (new) using turbomachinery component
   Polytropic_Eta flag. Set Polytropic_Eta to 1 to treat as polytropic.

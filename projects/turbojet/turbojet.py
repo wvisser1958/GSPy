@@ -16,12 +16,11 @@
 
 from gspy.core import sys_global as fg
 from gspy.core import system as fsys
+from gspy.core import utils as fu
 
 from gspy.core.control import TControl
 from gspy.core.ambient import TAmbient
-
 from gspy.core.shaft import TShaft
-
 from gspy.core.inlet import TInlet
 from gspy.core.compressor import TCompressor
 from gspy.core.combustor import TCombustor
@@ -29,7 +28,6 @@ from gspy.core.turbine import TTurbine
 from gspy.core.duct import TDuct
 from gspy.core.exhaustnozzle import TExhaustNozzle
 
-from gspy.core import utils as fu
 import os
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -43,7 +41,7 @@ from pathlib import Path
 
 def main():
 
-    # Path to THIS script (scripts/run_analysis.py)
+    # Paths
     project_dir = Path(__file__).resolve().parent
     map_path = project_dir / "maps"
     fg.output_path = project_dir / "output"

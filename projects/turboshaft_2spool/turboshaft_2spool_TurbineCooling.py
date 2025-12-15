@@ -13,25 +13,25 @@
 # Authors
 #   Wilfried Visser
 
-import f_global as fg
-import f_system as fsys
+from gspy.core import sys_global as fg
+from gspy.core import system as fsys
+from gspy.core import utils as fu
 
-from f_control import TControl
-from f_ambient import TAmbient
+from gspy.core.control import TControl
+from gspy.core.ambient import TAmbient
+from gspy.core.shaft import TShaft
+from gspy.core.inlet import TInlet
+from gspy.core.compressor import TCompressor
+from gspy.core.combustor import TCombustor
+from gspy.core.turbine import TTurbine
+from gspy.core.duct import TDuct
+from gspy.core.exhaustdiffuser import TExhaustDiffuser
+from gspy.core.bleedflow import TBleedFlow
+from gspy.core.coolingflow import TCoolingFlow
 
-from f_shaft import TShaft
-
-from f_inlet import TInlet
-from f_bleedflow import TBleedFlow
-from f_compressor import TCompressor
-from f_combustor import TCombustor
-from f_coolingflow import TCoolingFlow
-from f_turbine import TTurbine
-from f_duct import TDuct
-from f_exhaustdiffuser import TExhaustDiffuser
-
-import f_utils as fu
 import os
+import matplotlib.pyplot as plt
+from pathlib import Path
 
     # IMPORTANT NOTE TO THIS MODEL FILE
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -42,6 +42,11 @@ import os
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
+    # Paths
+    project_dir = Path(__file__).resolve().parent
+    map_path = project_dir / "maps"
+    fg.output_path = project_dir / "output_cooling"
+
     # create Ambient conditions object (to set ambient/inlet/flight conditions)
     #                               Altitude, Mach, dTs,    Ps0,    Ts0
     # None for Ps0 and Ts0 means values are calculated from standard atmosphere
@@ -71,7 +76,7 @@ def main():
                                     1.0)]
     # None = No bleeds
     # compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, '_gg', 4780, 0.915, 1, 0.8   , 20, 'GG', None)
-    compressor1 = TCompressor('compressor1','compmap.map' , None, 2, 3, '_gg', 4780, 0.915, 1, 0.8 , 20, 'GG', compressor1bleeds)
+    compressor1 = TCompressor('compressor1',map_path / 'compmap.map' , None, 2, 3, '_gg', 4780, 0.915, 1, 0.8 , 20, 'GG', compressor1bleeds)
 
     # OD fuel input from EGTFuelControl
     combustor1 = TCombustor('combustor1', '',  FuelControl, 3, 4, 2.5, None, 0.95, 0.9998, 458.15,      50025, 4, 0, 'CH4:1', None)
@@ -94,7 +99,7 @@ def main():
                                     0.5,
                                     0.5,
                                     0.16)]
-    turbine_gg      =  TTurbine(   'GGT'   ,'turbimap.map', None, 4, 45, '_gg', 4780, 0.8 , 1, 0.50943, 0.99, 'GG', GGTcoolingflows)
+    turbine_gg      =  TTurbine(   'GGT'   ,map_path / 'turbimap.map', None, 4, 45, '_gg', 4780, 0.8 , 1, 0.50943, 0.99, 'GG', GGTcoolingflows)
 
     PTcoolingflows = [TCoolingFlow('PTcooling1', None, None,
                                    24, 38,
@@ -104,7 +109,7 @@ def main():
                                    1.0,
                                    1.0,
                                    0)]
-    turbine_PT =    TTurbine(   'PT'   ,'turbimap.map', None, 45, 5, '_pt', 3000, 0.91 , 1, 0.8, 0.99, 'PT', PTcoolingflows)
+    turbine_PT =    TTurbine(   'PT'   ,map_path / 'turbimap.map', None, 45, 5, '_pt', 3000, 0.91 , 1, 0.8, 0.99, 'PT', PTcoolingflows)
 
     duct1    = TDuct('exhduct',      '', None,            5,7,   0.95        )
 
@@ -153,11 +158,11 @@ def main():
         outputbasename = os.path.splitext(os.path.basename(__file__))[0]
 
         # export OutputTable to CSV
-        fsys.OutputToCSV('output', outputbasename + ".csv")
+        fsys.OutputToCSV(fg.output_path, outputbasename + ".csv")
 
         # plot nY vs X parameter
         fsys.Plot_X_nY_graph('Engine performance vs. N_gg [%]',
-                                os.path.join('output', outputbasename + "_1.jpg"),
+                                os.path.join(fg.output_path, outputbasename + "_1.jpg"),
                                 # common X parameter column name with label
                                 ("N_gg%",           "Gas generator speed [%]"),
                                 # 4 Y paramaeter column names with labels and color
