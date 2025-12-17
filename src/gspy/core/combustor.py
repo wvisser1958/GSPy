@@ -216,6 +216,17 @@ class TCombustor(TGaspath):
     #         print(f"Exception error {e} in {self.name} Fund. Press. Loss calculation, Hint: increase (burner) duct cross area.")
 
     def Run(self, Mode, PointTime):
+        # 1.5 Necessary for fixing a wiring problem, which was exposed when developing the API
+        # combustor.py
+        if isinstance(self.Control, str):
+            try:
+                # import gspy.core.system as fsys
+                self.Control = fsys.components[self.Control]   # resolve by name -> object
+            except Exception as e:
+                raise ValueError(
+                    f"Combustor '{self.name}': Control '{self.Control}' cannot be resolved to an object. ({e})"
+                )
+
         def CalcEndConditions(PointTime):
             # self.GetLHV()
             if (self.FuelComposition == '') or (self.FuelComposition == None):  # fuel specification based on LHV, HC and OC mole ratio

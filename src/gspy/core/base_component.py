@@ -16,11 +16,18 @@
 import numpy as np
 import cantera as ct
 from gspy.core.map import TMap
+import gspy.core.system as fsys
 from typing import Optional
 
 class TComponent:
     def __init__(self, name, MapFileName, ControlComponent):    # Constructor of the class
         self.name = name
+        # 1.5 set as object parameter
+        self.MapFileName = MapFileName
+        self.ControlComponentName = ControlComponent
+        # 1.5 Necessary for fixing a wiring problem, which was exposed when developing the API
+        fsys.components[self.name] = self
+
         # assume in moste case single map in instantiable child classes (add extra map if necessary, e.g. with f_fan)
         self.map: Optional[TMap] = None
         # 1.1 WV
