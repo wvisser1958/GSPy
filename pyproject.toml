@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gspy"
+version = "1.4.0"
+description = "Gas turbine performance simulation library"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Wilfried Visser", email = "wvisser@xs4all.nl" },
+  { name = "Oscar Kogenhop", email = "oscar.kogenhop@gmail.com" },
+]
+keywords = ["gas turbine", "simulation"]
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+
+dependencies = [
+  "cantera",
+  "aero-calc",  # distribution name; imported as `aerocalc`
+  "numpy",
+  "pandas",
+  "scipy",
+  "matplotlib",
+]
+
+[project.optional-dependencies]
+# Only needed if you add an API layer (not used by the current sources in this repo)
+api = [
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["gspy*"]

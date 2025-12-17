@@ -20,6 +20,9 @@ from scipy.optimize import root
 import matplotlib.pyplot as plt
 import os
 
+# 1.5 Declare a global registry in gspy/core/system.py
+components = {}   # maps component name -> instance
+
 # use dictionary for gas path conditions oriented by gas path station number
 gaspath_conditions = {}
 
