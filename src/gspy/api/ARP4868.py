@@ -1,0 +1,845 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+"""
+ARP4868 API Interface
+
+This module provides a programmatic interface to gas turbine simulation models
+conforming to the SAE ARP4868 standard. It includes methods for:
+
+- Initializing simulation models
+- Executing runs
+- Setting and retrieving parameter data
+- Managing structured input/output arrays
+- Handling logging of API usage
+
+Usage:
+    - Models must be initialized via `initProg()` before other functions are called.
+    - Logging can be activated and written to per-model output folders.
+    - API functions use keyword arguments and return structured dict responses.
+
+This module is typically accessed by client code via FastAPI endpoints or CLI wrappers.
+"""
+from datetime import datetime
+import os
+import importlib
+import importlib.util
+from pathlib import Path
+from gspy.core import system as fsys
+
+_current_model = None
+_current_log_file = None
+
+# -----------------------------------------------------------------------------
+# API supporting functions
+# -----------------------------------------------------------------------------
+
+def _resolve_model_root(module_name: str, module_obj) -> Path | None:
+    """
+    Return the filesystem directory for the given module/package.
+    Prefer module.__file__ when available; fall back to importlib spec.
+    """
+    # 1) Most common case
+    f = getattr(module_obj, "__file__", None)
+    if f:
+        return Path(f).resolve().parent
+
+    # 2) Fallback to spec (handles some namespace/pkg cases)
+    spec = importlib.util.find_spec(module_name)
+    if not spec:
+        return None
+    if spec.submodule_search_locations:
+        # Package: choose first search location
+        return Path(next(iter(spec.submodule_search_locations))).resolve()
+    if spec.origin and spec.origin != "built-in":
+        return Path(spec.origin).resolve().parent
+    return None
+
+def is_model_initialized():
+    """Returns True if a model has been initialized and is marked as such."""
+    return _current_model is not None and getattr(_current_model, "initialized", False)
+
+def get_model_name():
+    """Returns the name of the currently initialized model.
+
+    Raises:
+        RuntimeError: If the model is not initialized.
+    """
+    if _current_model is None or not getattr(_current_model, "initialized", False):
+        raise RuntimeError("Model not initialized")
+    return _current_model.model_name
+
+def getModelComponentsList(verbose=False):
+    """Retrieves a list of system model components with their properties.
+
+    Args:
+        verbose (bool): Currently unused.
+
+    Returns:
+        dict: A dict with a "components" list containing dictionaries with
+              keys: type, name, station_in, station_out.
+    """
+    if _current_model is None:
+        raise RuntimeError("Model is not initialized")
+
+    if not fsys.system_model:
+        raise RuntimeError("System model is not initialized or empty")
+
+    components = []
+    for comp in fsys.system_model:
+        components.append({
+            "type": comp.__class__.__name__,
+            "name": getattr(comp, "name", "unknown"),
+            "station_in": getattr(comp, "station_in", None),
+            "station_out": getattr(comp, "station_out", None)
+        })
+
+    return {"components": components}
+
+
+def log_message(caller: str, message: str, severity: str = "INFO") -> str:
+    """Logs a message to the active log file with timestamp and severity.
+
+    Args:
+        caller (str): Name of the calling function.
+        message (str): Log message content.
+        severity (str): One of "INFO", "WARNING", "ERROR".
+
+    Returns:
+        str: Log write confirmation or error if no log file is active.
+    """
+    global _current_log_file
+
+    if not _current_log_file:
+        return "Logging to file not activated!"
+
+    # Normalize severity to uppercase
+    severity = severity.upper()
+    if severity not in {"INFO", "WARNING", "ERROR"}:
+        severity = "INFO"
+
+    timestamp = datetime.now().strftime("%Y-%m-%d,%H:%M:%S.%f")[:-3]
+    log_entry = f"{timestamp},{severity},{caller},{message}\n"
+    _current_log_file.write(log_entry)
+    _current_log_file.flush()
+    return "Log entry written"
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# ARP4868 API functions
+# -----------------------------------------------------------------------------
+def initProg(**kwargs):
+    """
+    Initialize the gas turbine model.
+
+    Keyword Args:
+        model (str): The model module path to import. Supports either:
+            - full dotted path, e.g. "projects.turbojet_api.turbojet"
+            - short name, e.g. "turbojet"  (will be expanded to "projects.turbojet_api.turbojet")
+        mode (str, optional): Run mode for the model, "DP" (Design Point) or "OD" (Off-Design).
+            Defaults to "DP" if not provided.
+
+    Returns:
+        str: Initialization status string from the model's initialize().
+
+    Raises:
+        RuntimeError: If a model is already initialized.
+        ValueError:   If 'model' is missing or 'mode' is invalid.
+        ImportError/AttributeError: If the module or class cannot be imported/resolved.
+    """
+    global _current_model
+
+    if _current_model is not None:
+        raise RuntimeError("Model is already initialized")
+
+    model_name = kwargs.get("model")
+    if not model_name:
+        raise ValueError("Missing required parameter: model")
+
+    # Validate/normalize the mode (default = "DP")
+    mode = kwargs.get("mode", "DP")
+    valid_modes = {"DP", "OD"}
+    if mode not in valid_modes:
+        raise ValueError(f"Invalid mode '{mode}'. Allowed values: {sorted(valid_modes)}")
+
+    # import model module + class
+    module_path = model_name  # e.g. "projects.turbojet_api.turbojet" (see Fix 2)
+    model_module = importlib.import_module(module_path)
+    # Class name: Turbojet, Turboshaft2spool, etc.
+    class_name = model_name.split(".")[-1].capitalize()
+    model_class = getattr(model_module, class_name)
+
+    instance = model_class()
+
+    # optional: push resolved root into instance before init
+    root = _resolve_model_root(module_path, model_module)
+    if root is not None and hasattr(instance, "set_model_root"):
+        instance.set_model_root(root)
+
+    _current_model = instance
+
+    # *** CALL initialize() ***
+    status = None
+    status = _current_model.initialize(run_mode=mode)
+    return status
+
+
+# -----------------------------------------------------------------------------
+# Functions for logging of API actions
+# -----------------------------------------------------------------------------
+def activateLog(**kwargs):
+    """Activates logging to a file for the current model.
+
+    Keyword Args:
+        filename (str): Optional filename for the log file (default 'api_log.txt').
+        mode (str): Write mode ('w' for overwrite, 'a' for append).
+
+    Returns:
+        str: Confirmation message including file path and mode.
+
+    Raises:
+        RuntimeError: If no model is initialized.
+        ValueError: If an invalid mode is provided.
+    """
+    if not is_model_initialized():
+        raise RuntimeError("Model not initialized")
+
+    global _current_log_file
+
+    model_name = get_model_name()
+    filename = kwargs.get("filename", "api_log.txt")  # Default log file name
+    mode = kwargs.get("mode", "w")                    # Default is write mode, use "a" to append
+
+    # Validate mode early
+    if mode not in ("a", "w"):
+        log_message(
+            caller="x4868activateLog",
+            message="Invalid mode for logging. Use 'a' (append) or 'w' (overwrite)!",
+            severity="INFO",
+        )
+        raise ValueError("Invalid mode for logging. Use 'a' (append) or 'w' (overwrite).")
+
+    # Prefer the model instance's output_path; fall back to legacy location
+    # NOTE: BaseGasTurbineModel sets output_path (and set_model_root() updates it).
+    # If not present, we write to src/system_models/output/{model_name}
+    output_dir = getattr(_current_model, "output_path", None)
+    if output_dir is not None:
+        base_dir = Path(output_dir)
+    else:
+        base_dir = Path(f"src/system_models/output/{model_name}")
+
+    # Ensure directory exists
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    # Construct full path using pathlib (safer and clearer)
+    log_path = (base_dir / filename).resolve()
+
+    # Open and prime the log file
+    _current_log_file = open(log_path, mode, encoding="utf-8")
+    _current_log_file.write("=== API Logging Activated ===\n")
+    log_message(caller="x4868activateLog", message=f"Logging started in '{mode}' mode", severity="INFO")
+
+   
+def closeLog(**kwargs):
+    """Closes the currently active log file and writes closing info.
+    Returns:
+        str: Confirmation of log closure or note if no log was open.
+    """
+    global _current_log_file
+    if _current_log_file:
+        log_message(caller="x4868closeLog", message="API logging deactivated", severity="INFO")
+        _current_log_file.write("=== API Logging Closed ===\n")
+        _current_log_file.close()
+        _current_log_file = None
+        return "Log closed"
+    else:
+        return "No log was active"
+# -----------------------------------------------------------------------------
+
+
+def defineDataList(**kwargs):
+    """Define a named list of parameters in the data model.
+
+    Returns:
+        dict: Dispatch dictionary for 'defineDataList' with keyword arguments.
+    """
+    return {'function': 'defineDataList', 'args': kwargs}
+
+
+def getArraySize1D(**kwargs):
+    """Return the size of a 1D data array.
+
+    Returns:
+        dict: Dispatch dictionary for 'getArraySize1D' with keyword arguments.
+    """
+    return {'function': 'getArraySize1D', 'args': kwargs}
+
+
+def getArraySize2D(**kwargs):
+    """Return the size (shape) of a 2D data array.
+
+    Returns:
+        dict: Dispatch dictionary for 'getArraySize2D' with keyword arguments.
+    """
+    return {'function': 'getArraySize2D', 'args': kwargs}
+
+
+def getArraySize3D(**kwargs):
+    """Return the size (shape) of a 3D data array.
+
+    Returns:
+        dict: Dispatch dictionary for 'getArraySize3D' with keyword arguments.
+    """
+    return {'function': 'getArraySize3D', 'args': kwargs}
+
+
+def getD(**kwargs):
+    """Retrieve a double-precision scalar value.
+
+    Returns:
+        dict: Dispatch dictionary for 'getD' with keyword arguments.
+    """
+    return {'function': 'getD', 'args': kwargs}
+
+
+def getD1D(**kwargs):
+    """Retrieve a 1D array of double-precision values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getD1D' with keyword arguments.
+    """
+    return {'function': 'getD1D', 'args': kwargs}
+
+
+def getD1Dentry(**kwargs):
+    """Retrieve a single entry from a 1D array of double-precision values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getD1Dentry' with keyword arguments.
+    """
+    return {'function': 'getD1Dentry', 'args': kwargs}
+
+
+def getD2Dentry(**kwargs):
+    """Retrieve a single entry from a 2D array of double-precision values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getD2Dentry' with keyword arguments.
+    """
+    return {'function': 'getD2Dentry', 'args': kwargs}
+
+
+def getD3Dentry(**kwargs):
+    """Retrieve a single entry from a 3D array of double-precision values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getD3Dentry' with keyword arguments.
+    """
+    return {'function': 'getD3Dentry', 'args': kwargs}
+
+
+def getDataListD(**kwargs):
+    """Retrieve a list of double-precision values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getDataListD' with keyword arguments.
+    """
+    return {'function': 'getDataListD', 'args': kwargs}
+
+
+def getDataListF(**kwargs):
+    """Retrieve a list of float values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getDataListF' with keyword arguments.
+    """
+    return {'function': 'getDataListF', 'args': kwargs}
+
+
+def getDataListI(**kwargs):
+    """Retrieve a list of integer values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getDataListI' with keyword arguments.
+    """
+    return {'function': 'getDataListI', 'args': kwargs}
+
+
+def getDataType(**kwargs):
+    """Return the data type of a specified parameter.
+
+    Returns:
+        dict: Dispatch dictionary for 'getDataType' with keyword arguments.
+    """
+    return {'function': 'getDataType', 'args': kwargs}
+
+
+def getDescription(**kwargs):
+    """Return the description string for a given parameter.
+
+    Returns:
+        dict: Dispatch dictionary for 'getDescription' with keyword arguments.
+    """
+    return {'function': 'getDescription', 'args': kwargs}
+
+
+def getErrorMsg(**kwargs):
+    """Return the last error or status message from the model.
+
+    Returns:
+        dict: Dispatch dictionary for 'getErrorMsg' with keyword arguments.
+    """
+    return {'function': 'getErrorMsg', 'args': kwargs}
+
+
+def getF(**kwargs):
+    """Retrieve a float scalar value.
+
+    Returns:
+        dict: Dispatch dictionary for 'getF' with keyword arguments.
+    """
+    return {'function': 'getF', 'args': kwargs}
+
+
+def getF1D(**kwargs):
+    """Retrieve a 1D array of float values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getF1D' with keyword arguments.
+    """
+    return {'function': 'getF1D', 'args': kwargs}
+
+
+def getF1Dentry(**kwargs):
+    """Retrieve a single entry from a 1D array of float values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getF1Dentry' with keyword arguments.
+    """
+    return {'function': 'getF1Dentry', 'args': kwargs}
+
+
+def getF2Dentry(**kwargs):
+    """Retrieve a single entry from a 2D array of float values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getF2Dentry' with keyword arguments.
+    """
+    return {'function': 'getF2Dentry', 'args': kwargs}
+
+
+def getF3Dentry(**kwargs):
+    """Retrieve a single entry from a 3D array of float values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getF3Dentry' with keyword arguments.
+    """
+    return {'function': 'getF3Dentry', 'args': kwargs}
+
+
+def getI(**kwargs):
+    """Retrieve an integer scalar value.
+
+    Returns:
+        dict: Dispatch dictionary for 'getI' with keyword arguments.
+    """
+    return {'function': 'getI', 'args': kwargs}
+
+
+def getI1D(**kwargs):
+    """Retrieve a 1D array of integer values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getI1D' with keyword arguments.
+    """
+    return {'function': 'getI1D', 'args': kwargs}
+
+
+def getI1Dentry(**kwargs):
+    """Retrieve a single entry from a 1D array of integer values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getI1Dentry' with keyword arguments.
+    """
+    return {'function': 'getI1Dentry', 'args': kwargs}
+
+
+def getI2Dentry(**kwargs):
+    """Retrieve a single entry from a 2D array of integer values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getI2Dentry' with keyword arguments.
+    """
+    return {'function': 'getI2Dentry', 'args': kwargs}
+
+
+def getI3Dentry(**kwargs):
+    """Retrieve a single entry from a 3D array of integer values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getI3Dentry' with keyword arguments.
+    """
+    return {'function': 'getI3Dentry', 'args': kwargs}
+
+
+def getS(**kwargs):
+    """Retrieve a string scalar value.
+
+    Returns:
+        dict: Dispatch dictionary for 'getS' with keyword arguments.
+    """
+    return {'function': 'getS', 'args': kwargs}
+
+
+def getS1Dentry(**kwargs):
+    """Retrieve a single entry from a 1D array of string values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getS1Dentry' with keyword arguments.
+    """
+    return {'function': 'getS1Dentry', 'args': kwargs}
+
+
+def getS2Dentry(**kwargs):
+    """Retrieve a single entry from a 2D array of string values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getS2Dentry' with keyword arguments.
+    """
+    return {'function': 'getS2Dentry', 'args': kwargs}
+
+
+def getS3Dentry(**kwargs):
+    """Retrieve a single entry from a 3D array of string values.
+
+    Returns:
+        dict: Dispatch dictionary for 'getS3Dentry' with keyword arguments.
+    """
+    return {'function': 'getS3Dentry', 'args': kwargs}
+
+
+def getSeverityMax(**kwargs):
+    """Return the highest severity level reported by the model/session.
+
+    Returns:
+        dict: Dispatch dictionary for 'getSeverityMax' with keyword arguments.
+    """
+    return {'function': 'getSeverityMax', 'args': kwargs}
+
+
+def getUnits(**kwargs):
+    """Return the engineering units associated with a parameter.
+
+    Returns:
+        dict: Dispatch dictionary for 'getUnits' with keyword arguments.
+    """
+    return {'function': 'getUnits', 'args': kwargs}
+
+
+def isValidParamName(**kwargs):
+    """Check whether the provided name is a valid parameter identifier.
+
+    Returns:
+        dict: Dispatch dictionary for 'isValidParamName' with keyword arguments.
+    """
+    return {'function': 'isValidParamName', 'args': kwargs}
+
+
+def parseEfile(**kwargs):
+    """Parse an engine configuration file (efile).
+
+    Returns:
+        dict: Dispatch dictionary for 'parseEfile' with keyword arguments.
+    """
+    return {'function': 'parseEfile', 'args': kwargs}
+
+
+def parseFile(**kwargs):
+    """Parse a general input file for structured data.
+
+    Returns:
+        dict: Dispatch dictionary for 'parseFile' with keyword arguments.
+    """
+    return {'function': 'parseFile', 'args': kwargs}
+
+
+# parseString could be a generic function that calls other functions by string name
+def parseString(**kwargs):
+    """Parse a function name from a string and dispatch the corresponding local function.
+
+    Keyword Args:
+        function (str): The name of the function to invoke.
+        ...: All remaining keyword arguments are passed through to the target function.
+
+    Returns:
+        Any: Result of the dispatched function.
+
+    Raises:
+        ValueError: If function name is missing or does not resolve to a callable.
+    """
+    log_message(caller="x4868parseString",
+                message="parseString called " + (', '.join(f"{k}={v}" for k, v in kwargs.items())),
+                severity="INFO")
+
+    function_name = kwargs.get("function")
+    # For now only functions are allowed
+    if not function_name:
+        raise ValueError("Missing 'function' argument")
+
+    # Get the function object by name from the current module (or a known module)
+    local_functions = globals()  # Or use `vars(module)` for external ones
+
+    func = local_functions.get(function_name)
+    if not callable(func):
+        raise ValueError(f"Function '{function_name}' is not callable or doesn't exist")
+
+    # Remove 'function' from kwargs
+    call_args = {k: v for k, v in kwargs.items() if k != "function"}
+
+    return func(**call_args)
+
+
+def run(**kwargs):
+    """Execute the current engine simulation run via the active model.
+
+    Returns:
+        Any: Result returned by the model's run() method.
+
+    Raises:
+        RuntimeError: If no model has been initialized.
+    """
+    log_message(caller="x4868run", message="Starting engine simulation", severity="INFO")
+    if _current_model is None:
+        log_message(caller="x4868run", message="Engine simulation aborted, no model initialized!", severity="ERROR")
+        raise RuntimeError("No model initialized")
+    return _current_model.run()
+
+
+def setD(**kwargs):
+    """Set a double-precision scalar value.
+
+    Returns:
+        dict: Dispatch dictionary for 'setD' with keyword arguments.
+    """
+    return {'function': 'setD', 'args': kwargs}
+
+
+def setD1D(**kwargs):
+    """Set a 1D array of double-precision values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setD1D' with keyword arguments.
+    """
+    return {'function': 'setD1D', 'args': kwargs}
+
+
+def setD1Dentry(**kwargs):
+    """Set a single entry in a 1D array of double-precision values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setD1Dentry' with keyword arguments.
+    """
+    return {'function': 'setD1Dentry', 'args': kwargs}
+
+
+def setD2Dentry(**kwargs):
+    """Set a single entry in a 2D array of double-precision values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setD2Dentry' with keyword arguments.
+    """
+    return {'function': 'setD2Dentry', 'args': kwargs}
+
+
+def setD3Dentry(**kwargs):
+    """Set a single entry in a 3D array of double-precision values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setD3Dentry' with keyword arguments.
+    """
+    return {'function': 'setD3Dentry', 'args': kwargs}
+
+
+def setDataListD(**kwargs):
+    """Set a list of double-precision values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setDataListD' with keyword arguments.
+    """
+    return {'function': 'setDataListD', 'args': kwargs}
+
+
+def setDataListF(**kwargs):
+    """Set a list of float values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setDataListF' with keyword arguments.
+    """
+    return {'function': 'setDataListF', 'args': kwargs}
+
+
+def setDataListI(**kwargs):
+    """Set a list of integer values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setDataListI' with keyword arguments.
+    """
+    return {'function': 'setDataListI', 'args': kwargs}
+
+
+def setF(**kwargs):
+    """Set a float scalar value.
+
+    Returns:
+        dict: Dispatch dictionary for 'setF' with keyword arguments.
+    """
+    return {'function': 'setF', 'args': kwargs}
+
+
+def setF1D(**kwargs):
+    """Set a 1D array of float values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setF1D' with keyword arguments.
+    """
+    return {'function': 'setF1D', 'args': kwargs}
+
+
+def setF1Dentry(**kwargs):
+    """Set a single entry in a 1D array of float values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setF1Dentry' with keyword arguments.
+    """
+    return {'function': 'setF1Dentry', 'args': kwargs}
+
+
+def setF2Dentry(**kwargs):
+    """Set a single entry in a 2D array of float values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setF2Dentry' with keyword arguments.
+    """
+    return {'function': 'setF2Dentry', 'args': kwargs}
+
+
+def setF3Dentry(**kwargs):
+    """Set a single entry in a 3D array of float values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setF3Dentry' with keyword arguments.
+    """
+    return {'function': 'setF3Dentry', 'args': kwargs}
+
+
+def setI(**kwargs):
+    """Set an integer scalar value.
+
+    Returns:
+        dict: Dispatch dictionary for 'setI' with keyword arguments.
+    """
+    return {'function': 'setI', 'args': kwargs}
+
+
+def setI1D(**kwargs):
+    """Set a 1D array of integer values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setI1D' with keyword arguments.
+    """
+    return {'function': 'setI1D', 'args': kwargs}
+
+
+def setI1Dentry(**kwargs):
+    """Set a single entry in a 1D array of integer values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setI1Dentry' with keyword arguments.
+    """
+    return {'function': 'setI1Dentry', 'args': kwargs}
+
+
+def setI2Dentry(**kwargs):
+    """Set a single entry in a 2D array of integer values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setI2Dentry' with keyword arguments.
+    """
+    return {'function': 'setI2Dentry', 'args': kwargs}
+
+
+def setI3Dentry(**kwargs):
+    """Set a single entry in a 3D array of integer values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setI3Dentry' with keyword arguments.
+    """
+    return {'function': 'setI3Dentry', 'args': kwargs}
+
+
+def setS(**kwargs):
+    """Set a string scalar value.
+
+    Returns:
+        dict: Dispatch dictionary for 'setS' with keyword arguments.
+    """
+    return {'function': 'setS', 'args': kwargs}
+
+
+def setS1Dentry(**kwargs):
+    """Set a single entry in a 1D array of string values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setS1Dentry' with keyword arguments.
+    """
+    return {'function': 'setS1Dentry', 'args': kwargs}
+
+
+def setS2Dentry(**kwargs):
+    """Set a single entry in a 2D array of string values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setS2Dentry' with keyword arguments.
+    """
+    return {'function': 'setS2Dentry', 'args': kwargs}
+
+
+def setS3Dentry(**kwargs):
+    """Set a single entry in a 3D array of string values.
+
+    Returns:
+        dict: Dispatch dictionary for 'setS3Dentry' with keyword arguments.
+    """
+    return {'function': 'setS3Dentry', 'args': kwargs}
+
+
+def terminate(**kwargs):
+    """Terminate the currently active engine model and close the log file.
+
+    Returns:
+        dict | str: Termination confirmation, or notice if no model was active.
+    """
+    global _current_model, _current_log_file
+    log_message(caller="x4868terminate", message="x4868terminate called", severity="INFO")
+
+    if _current_model is not None:
+        model_name = _current_model.model_name if hasattr(_current_model, "model_name") else "unknown"
+        _current_model = None
+        log_message(caller="x4868terminate", message="Model correctly terminated", severity="INFO")
+        result = {'function': 'terminate', 'args': kwargs, 'result': f"{model_name} terminated and cleaned up"}
+    else:
+        log_message(caller="x4868terminate", message="No model initialized!", severity="WARNING")
+        result = "No model was initialized."
+
+    # Now close the log file after logging is finished
+    closeLog()
+    return result
