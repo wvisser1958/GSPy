@@ -19,6 +19,13 @@ print("parString complete, result:\n", result)
 result = gspy_api.isValidParamName(parameter="A8_geom")
 print(result)
 
+temperatures = "T0, T2, T3, T4, T5, T9"
+dispatch = gspy_api.defineDataList(name="temperatures", params=temperatures,
+                          description="Core & turbine temperature sensors",
+                          category="APU")
+print(dispatch)
+
+
 # Optionally close the log
 # print(ARP4868.closeLog())
 

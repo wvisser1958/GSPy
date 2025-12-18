@@ -20,13 +20,17 @@ independent implementation not affiliated with independent implementation not
 affiliated with or endorsed by SAE or the ARP4868 committee.
 
 """
-from datetime import datetime
 import os
 import importlib
 import importlib.util
+
+from datetime import datetime
 from pathlib import Path
+from typing import Iterable, Union
+
 from gspy.core import system as fsys
 
+# Model variables
 _current_model = None
 _current_log_file = None
 
@@ -135,6 +139,25 @@ def log_message(caller: str, message: str, severity: str = "INFO") -> str:
     _current_log_file.write(log_entry)
     _current_log_file.flush()
     return "Log entry written"
+
+
+def parse_parameter_string(param_string: str) -> list[str]:
+    """
+    Parse a comma-separated string of parameter names into a clean list.
+    - Strips whitespace
+    - Drops empty entries
+    - De-duplicates while preserving order
+    """
+    seen = set()
+    result = []
+    for raw in param_string.split(","):
+        item = raw.strip()
+        if not item:
+            continue
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
@@ -269,13 +292,53 @@ def closeLog(**kwargs):
 # -----------------------------------------------------------------------------
 
 
-def defineDataList(**kwargs):
-    """Define a named list of parameters in the data model.
-
-    Returns:
-        dict: Dispatch dictionary for 'defineDataList' with keyword arguments.
+def defineDataList(name: str, params: Union[str, Iterable[str]], **kwargs) -> dict:
     """
-    return {'function': 'defineDataList', 'args': kwargs}
+    Define a named list of parameters in the data model.
+
+    Parameters
+    ----------
+    name : str
+        The list/set name, e.g. 'temperatures'.
+    params : str | Iterable[str]
+        Either a comma-separated string (e.g., 'T0, T2, T3')
+        or an iterable of strings (['T0','T2','T3']).
+    **kwargs :
+        Optional metadata (e.g., tags='APU', description='T-sensors')
+
+    Returns
+    -------
+    dict
+        Dispatch dictionary for 'defineDataList' with keyword arguments.
+    """
+    # Normalize params to a list of strings
+    if isinstance(params, str):
+        items = parse_parameter_string(params)
+    else:
+        # Clean iterable: strip, drop empties, de-duplicate preserving order
+        seen = set()
+        items = []
+        for p in params:
+            s = str(p).strip()
+            if s and s not in seen:
+                seen.add(s)
+                items.append(s)
+
+    if not name or not name.strip():
+        raise ValueError("List name must be a non-empty string.")
+    if not items:
+        raise ValueError("Parameter list cannot be empty.")
+
+    payload = {
+        "function": "defineDataList",
+               "args": {
+            "name": name.strip(),
+            "parameters": items,
+            **kwargs,  # carry any extra metadata you want
+        },
+    }
+    
+    return payload
 
 
 def getArraySize1D(**kwargs):
