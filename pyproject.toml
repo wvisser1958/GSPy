@@ -7,7 +7,7 @@ name = "gspy"
 version = "1.4.0"
 description = "Gas turbine performance simulation library"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = { file = "LICENSE" }
 authors = [
   { name = "Wilfried Visser", email = "wvisser@xs4all.nl" },
