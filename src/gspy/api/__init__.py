@@ -1,10 +1,20 @@
-
 """
-GSPy API Layer — ARP4868-compliant interface
+GSPy Simulation API — Interface for Gas Turbine Performance Models
 
-This package provides the function-based API for gas turbine simulation models,
-conforming to the SAE ARP4868 standard. It exposes the main ARP4868 functions,
-logging controls, and the base model class for inheritance.
+The GSPy API provides a structured, function-based interface for
+executing gas turbine performance models and integrating their 
+results into broader workflows. Designed with interoperability in 
+mind, this layer follows the principles outlined in SAE ARP4868 
+without claiming official affiliation. It enables developers to 
+initialize models, configure inputs, run simulations, and retrieve 
+outputs in a consistent, programmatic manner. In addition to core 
+simulation functions, the API includes logging controls for 
+traceability and a base model class that supports inheritance, 
+allowing users to extend functionality for custom applications. 
+By abstracting complexity behind a clean interface, the GSPy API 
+ensures that performance modeling can be seamlessly embedded into 
+system performance models that require gas turbine performance 
+simulation results.
 
 Typical usage:
     from gspy.api import (
@@ -18,7 +28,7 @@ Typical usage:
     terminate()
 """
 
-from .ARP4868 import (
+from .gspy_api import (
     initProg,
     activateLog,
     closeLog,

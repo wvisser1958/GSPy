@@ -82,3 +82,9 @@ src/gspy.egg-info/PKG-INFO
 src/gspy.egg-info/requires.txt
 src/gspy.egg-info/SOURCES.txt
 src/gspy.egg-info/top_level.txt
+/projects/turbojet/ncontrol_output
+/projects/turbojet_api/output
+/src/gspy/api/__pycache__
+/.vscode/launch.json
+/file_structure_to_text.py
+/tree_structure.txt

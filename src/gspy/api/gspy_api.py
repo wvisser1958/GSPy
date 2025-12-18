@@ -11,23 +11,14 @@
 # limitations under the License.
 #
 """
-ARP4868 API Interface
+GSPy API Interface
 
-This module provides a programmatic interface to gas turbine simulation models
-conforming to the SAE ARP4868 standard. It includes methods for:
+Provides a stable programmatic interface to run gas turbine performance models
+and retrieve structured results for downstream consumers. Compatible with data
+fields and behaviors described in ARP4868 for interoperability. This is an 
+independent implementation not affiliated with independent implementation not 
+affiliated with or endorsed by SAE or the ARP4868 committee.
 
-- Initializing simulation models
-- Executing runs
-- Setting and retrieving parameter data
-- Managing structured input/output arrays
-- Handling logging of API usage
-
-Usage:
-    - Models must be initialized via `initProg()` before other functions are called.
-    - Logging can be activated and written to per-model output folders.
-    - API functions use keyword arguments and return structured dict responses.
-
-This module is typically accessed by client code via FastAPI endpoints or CLI wrappers.
 """
 from datetime import datetime
 import os
@@ -42,7 +33,6 @@ _current_log_file = None
 # -----------------------------------------------------------------------------
 # API supporting functions
 # -----------------------------------------------------------------------------
-
 def _resolve_model_root(module_name: str, module_obj) -> Path | None:
     """
     Return the filesystem directory for the given module/package.
