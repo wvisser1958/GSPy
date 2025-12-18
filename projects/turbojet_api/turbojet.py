@@ -1,4 +1,3 @@
-
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -18,7 +17,7 @@
 from gspy.api.base_model import BaseGasTurbineModel
 
 class Turbojet(BaseGasTurbineModel):
-    """Input schema for turbojet engine simulation (declarative, no core imports)."""
+    """Input schema for turbojet engine simulation."""
 
     def __init__(self):
         super().__init__("turbojet")

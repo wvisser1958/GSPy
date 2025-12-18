@@ -212,7 +212,7 @@ def activateLog(**kwargs):
     # Validate mode early
     if mode not in ("a", "w"):
         log_message(
-            caller="x4868activateLog",
+            caller="activateLog",
             message="Invalid mode for logging. Use 'a' (append) or 'w' (overwrite)!",
             severity="INFO",
         )
@@ -236,7 +236,7 @@ def activateLog(**kwargs):
     # Open and prime the log file
     _current_log_file = open(log_path, mode, encoding="utf-8")
     _current_log_file.write("=== API Logging Activated ===\n")
-    log_message(caller="x4868activateLog", message=f"Logging started in '{mode}' mode", severity="INFO")
+    log_message(caller="activateLog", message=f"Logging started in '{mode}' mode", severity="INFO")
 
    
 def closeLog(**kwargs):
@@ -246,7 +246,7 @@ def closeLog(**kwargs):
     """
     global _current_log_file
     if _current_log_file:
-        log_message(caller="x4868closeLog", message="API logging deactivated", severity="INFO")
+        log_message(caller="closeLog", message="API logging deactivated", severity="INFO")
         _current_log_file.write("=== API Logging Closed ===\n")
         _current_log_file.close()
         _current_log_file = None
@@ -576,7 +576,7 @@ def parseString(**kwargs):
     Raises:
         ValueError: If function name is missing or does not resolve to a callable.
     """
-    log_message(caller="x4868parseString",
+    log_message(caller="parseString",
                 message="parseString called " + (', '.join(f"{k}={v}" for k, v in kwargs.items())),
                 severity="INFO")
 
@@ -607,9 +607,9 @@ def run(**kwargs):
     Raises:
         RuntimeError: If no model has been initialized.
     """
-    log_message(caller="x4868run", message="Starting engine simulation", severity="INFO")
+    log_message(caller="run", message="Starting engine simulation", severity="INFO")
     if _current_model is None:
-        log_message(caller="x4868run", message="Engine simulation aborted, no model initialized!", severity="ERROR")
+        log_message(caller="run", message="Engine simulation aborted, no model initialized!", severity="ERROR")
         raise RuntimeError("No model initialized")
     return _current_model.run()
 
@@ -819,15 +819,15 @@ def terminate(**kwargs):
         dict | str: Termination confirmation, or notice if no model was active.
     """
     global _current_model, _current_log_file
-    log_message(caller="x4868terminate", message="x4868terminate called", severity="INFO")
+    log_message(caller="terminate", message="terminate called", severity="INFO")
 
     if _current_model is not None:
         model_name = _current_model.model_name if hasattr(_current_model, "model_name") else "unknown"
         _current_model = None
-        log_message(caller="x4868terminate", message="Model correctly terminated", severity="INFO")
+        log_message(caller="terminate", message="Model correctly terminated", severity="INFO")
         result = {'function': 'terminate', 'args': kwargs, 'result': f"{model_name} terminated and cleaned up"}
     else:
-        log_message(caller="x4868terminate", message="No model initialized!", severity="WARNING")
+        log_message(caller="terminate", message="No model initialized!", severity="WARNING")
         result = "No model was initialized."
 
     # Now close the log file after logging is finished

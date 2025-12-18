@@ -22,6 +22,8 @@ class BaseGasTurbineModel:
 
         # Tell the core where to put outputs
         global_sys.output_path = self.output_path
+        # Do not print to console!
+        sys.VERBOSE = False
 
     def set_model_root(self, root: Path):
         self._model_root = Path(root).resolve()
@@ -32,13 +34,13 @@ class BaseGasTurbineModel:
 
     def initialize(self, run_mode="DP"):
         # Declarative: build_model returns a list of dicts
-        specs = self.build_model()
+        model_comps = self.build_model()
         components = []
-        for spec in specs:
-            cls = resolve_component_class(spec["type"])
-            args = [spec["name"]] + spec.get("args", [])
-            kwargs = spec.get("kwargs", {})
-            comp = cls(*args, **kwargs)
+        for model_comp in model_comps:
+            comp_class = resolve_component_class(model_comp["type"])
+            args = [model_comp["name"]] + model_comp.get("args", [])
+            kwargs = model_comp.get("kwargs", {})
+            comp = comp_class(*args, **kwargs)
             components.append(comp)
 
         # Wire into core system
@@ -47,7 +49,7 @@ class BaseGasTurbineModel:
         # Optionally expose ambient in the legacy global if your core expects it
         # (If you have multiple ambient types, adjust this check)
         from gspy.core.ambient import TAmbient
-        ambient = next((c for c in components if isinstance(c, TAmbient)), None)
+        ambient = next((component for component in components if isinstance(component, TAmbient)), None)
         if ambient is not None:
             sys.Ambient = ambient
 

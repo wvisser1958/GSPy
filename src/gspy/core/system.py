@@ -20,6 +20,7 @@ from scipy.optimize import root
 import matplotlib.pyplot as plt
 import os
 
+VERBOSE = True
 # 1.5 Declare a global registry in gspy/core/system.py
 components = {}   # maps component name -> instance
 
@@ -186,13 +187,14 @@ def Do_Output(PointTime, ErrorCode):
     # output to terminal
     global system_model,  OutputTable, Ambient
 
-    # 1.4
-    print(f"")
-    print(f"Point {PointTime}:")
+    if VERBOSE:
+        # 1.4
+        print(f"")
+        print(f"Point {PointTime}:")
 
-    for comp in system_model:
-        comp.PrintPerformance(Mode, PointTime)
-    PrintPerformance(Mode, PointTime)
+        for comp in system_model:
+            comp.PrintPerformance(Mode, PointTime)
+        PrintPerformance(Mode, PointTime)
 
     # add system performance
     AddSystemOutputToDict(Mode)
