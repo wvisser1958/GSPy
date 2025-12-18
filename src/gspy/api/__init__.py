@@ -29,13 +29,13 @@ Typical usage:
 """
 
 from .gspy_api import (
+    # Model interactions
     initProg,
-    activateLog,
-    closeLog,
     run,
     terminate,
-    parseString,
-    getModelComponentsList,
+    # Logging
+    activateLog,
+    closeLog,
     # Optionally expose all get/set/define/parse helpers:
     defineDataList,
     getArraySize1D, getArraySize2D, getArraySize3D,
@@ -46,7 +46,7 @@ from .gspy_api import (
     getI, getI1D, getI1Dentry, getI2Dentry, getI3Dentry,
     getS, getS1Dentry, getS2Dentry, getS3Dentry,
     getSeverityMax, getUnits, isValidParamName,
-    parseEfile, parseFile,
+    parseEfile, parseFile, parseString,
     setD, setD1D, setD1Dentry, setD2Dentry, setD3Dentry,
     setDataListD, setDataListF, setDataListI,
     setF, setF1D, setF1Dentry, setF2Dentry, setF3Dentry,
@@ -56,11 +56,13 @@ from .gspy_api import (
 from .base_model import BaseGasTurbineModel
 
 __all__ = [
-    # Main ARP4868 API
-    "initProg", "activateLog", "closeLog", "run", "terminate", "parseString",
-    "getModelComponentsList",
+    # Main GSPy API
+    "initProg", "run", "terminate",
+    # Logging
+    "activateLog", "closeLog",
     # Data/parameter helpers
     "defineDataList",
+    # Data getters
     "getArraySize1D", "getArraySize2D", "getArraySize3D",
     "getD", "getD1D", "getD1Dentry", "getD2Dentry", "getD3Dentry",
     "getDataListD", "getDataListF", "getDataListI",
@@ -68,8 +70,10 @@ __all__ = [
     "getF", "getF1D", "getF1Dentry", "getF2Dentry", "getF3Dentry",
     "getI", "getI1D", "getI1Dentry", "getI2Dentry", "getI3Dentry",
     "getS", "getS1Dentry", "getS2Dentry", "getS3Dentry",
+    # Get information
     "getSeverityMax", "getUnits", "isValidParamName",
-    "parseEfile", "parseFile",
+    "parseEfile", "parseFile", "parseString",
+    # Data setters
     "setD", "setD1D", "setD1Dentry", "setD2Dentry", "setD3Dentry",
     "setDataListD", "setDataListF", "setDataListI",
     "setF", "setF1D", "setF1Dentry", "setF2Dentry", "setF3Dentry",

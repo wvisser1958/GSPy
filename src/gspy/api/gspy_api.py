@@ -68,7 +68,7 @@ def get_model_name():
         raise RuntimeError("Model not initialized")
     return _current_model.model_name
 
-def getModelComponentsList(verbose=False):
+def get_model_components_list(verbose=False):
     """Retrieves a list of system model components with their properties.
 
     Args:
@@ -95,6 +95,19 @@ def getModelComponentsList(verbose=False):
 
     return {"components": components}
 
+
+def get_output_parameter_names(verbose=False) -> list:
+    """Retrieves the list of output parameters
+
+    Args:
+        verbose (bool): Currently unused.
+
+    Returns:
+        list: A list containing all the model parameters from the OutputTable
+    """
+    param_names = fsys.OutputTable.columns.tolist()
+    return param_names
+    
 
 def log_message(caller: str, message: str, severity: str = "INFO") -> str:
     """Logs a message to the active log file with timestamp and severity.
@@ -541,7 +554,18 @@ def isValidParamName(**kwargs):
     Returns:
         dict: Dispatch dictionary for 'isValidParamName' with keyword arguments.
     """
-    return {'function': 'isValidParamName', 'args': kwargs}
+    parameter_name = kwargs.get("parameter")
+    # For now only functions are allowed
+    if not parameter_name:
+        raise ValueError("Missing 'parameter' argument")
+    
+    result = False
+    # Get parameter names from system model
+    output_parameter_names = get_output_parameter_names()
+    if parameter_name in output_parameter_names:
+        result = True
+    
+    return {'function': 'isValidParamName', 'args': kwargs, 'result': result}
 
 
 def parseEfile(**kwargs):

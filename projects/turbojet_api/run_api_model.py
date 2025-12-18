@@ -11,8 +11,13 @@ result = gspy_api.run()
 print("Run complete:", result)
 
 # Get the model components
-result = gspy_api.parseString(function="getModelComponentsList")
-print("parString complete:", result)
+result = gspy_api.parseString(function="get_model_components_list")
+print("parString complete, result:\n", result)
+# Get the model output parameters
+result = gspy_api.parseString(function="get_output_parameter_names")
+print("parString complete, result:\n", result)
+result = gspy_api.isValidParamName(parameter="A8_geom")
+print(result)
 
 # Optionally close the log
 # print(ARP4868.closeLog())
