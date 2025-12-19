@@ -27,9 +27,12 @@ import pandas as pd
 
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Iterable, Union
+from typing import Iterable, Union, Dict, Any, List
 
 from gspy.core import system as fsys
+
+# Tiny internal storage to map set name -> parameter list
+_DATA_LISTS: Dict[str, List[str]] = {}
 
 # Model variables
 _current_model = None
@@ -314,53 +317,55 @@ def closeLog(**kwargs):
 # -----------------------------------------------------------------------------
 
 
-def defineDataList(name: str, params: Union[str, Iterable[str]], **kwargs) -> dict:
+def defineDataList(**kwargs) -> dict:
     """
     Define a named list of parameters in the data model.
-
-    Parameters
-    ----------
-    name : str
-        The list/set name, e.g. 'temperatures'.
-    params : str | Iterable[str]
-        Either a comma-separated string (e.g., 'T0, T2, T3')
-        or an iterable of strings (['T0','T2','T3']).
-    **kwargs :
-        Optional metadata (e.g., tags='APU', description='T-sensors')
-
-    Returns
-    -------
-    dict
-        Dispatch dictionary for 'defineDataList' with keyword arguments.
+    Accepts name and params via kwargs:
+      - name: str          (e.g., 'temperatures')
+      - params: str|iter   (e.g., 'T0, T2, T3' or ['T0','T2','T3'])
+    Any additional kwargs are passed through to the dispatch dictionary.
     """
-    # Normalize params to a list of strings
-    if isinstance(params, str):
-        items = _parse_parameter_string(params)
+    # read inputs from kwargs
+    raw_name = kwargs.get("name", "")
+    raw_params = kwargs.get("params", None)
+
+    name = str(raw_name).strip()
+    if not name:
+        raise ValueError("List name must be provided in kwargs['name'] and be non-empty.")
+    if raw_params is None:
+        raise ValueError("Parameter list must be provided in kwargs['params'].")
+
+    # normalize params
+    if isinstance(raw_params, str):
+        items = _parse_parameter_string(raw_params)
     else:
-        # Clean iterable: strip, drop empties, de-duplicate preserving order
+        # iterable case: strip empties, de-duplicate preserving order
         seen = set()
-        items = []
-        for p in params:
+        items: List[str] = []
+        for p in raw_params:
             s = str(p).strip()
             if s and s not in seen:
                 seen.add(s)
                 items.append(s)
 
-    if not name or not name.strip():
-        raise ValueError("List name must be a non-empty string.")
     if not items:
-        raise ValueError("Parameter list cannot be empty.")
+        raise ValueError("Parameter list cannot be empty after normalization.")
 
-    payload = {
+    # register for later retrieval by name
+    _DATA_LISTS[name] = items
+
+    # build dispatch; do not expose internal storage
+    # pass through any extra metadata from kwargs (description, category, etc.)
+    extras = {k: v for k, v in kwargs.items() if k not in ("name", "params")}
+    return {
         "function": "defineDataList",
-               "args": {
-            "name": name.strip(),
+        "args": {
+            "name": name,
             "parameters": items,
-            **kwargs,  # carry any extra metadata you want
-        },
+            **extras,
+        }
     }
-    
-    return payload
+
 
 
 def getArraySize1D(**kwargs):
@@ -441,13 +446,87 @@ def getD3Dentry(**kwargs):
     return {'function': 'getD3Dentry', 'args': kwargs}
 
 
-def getDataListD(**kwargs):
-    """Retrieve a list of double-precision values.
 
-    Returns:
-        dict: Dispatch dictionary for 'getDataListD' with keyword arguments.
+def getDataListD(**kwargs) -> dict:
     """
-    return {'function': 'getDataListD', 'args': kwargs}
+    Retrieve values for the named parameter list from fsys.OutputTable's last row.
+    Pass the list name via kwargs: e.g., getDataListD(name="temperatures", ...)
+    """
+    name = str(kwargs.get("name", "")).strip()
+    if not name:
+        return {
+            "function": "getDataListD",
+            "args": {
+                "name": name,
+                "parameters": [],
+                "values": [],
+                "status": "invalid",
+                "message": "List name must be provided as kwargs['name'].",
+                **kwargs,
+            },
+        }
+
+    params = _DATA_LISTS.get(name)
+    if not params:
+        return {
+            "function": "getDataListD",
+            "args": {
+                "name": name,
+                "parameters": [],
+                "values": [],
+                "status": "not_found",
+                "message": f"Parameter set '{name}' not defined.",
+                **kwargs,
+            },
+        }
+
+    # lazy access to fsys.OutputTable
+    try:
+        df = fsys.OutputTable
+    except Exception as e:
+        return {
+            "function": "getDataListD",
+            "args": {
+                "name": name,
+                "parameters": params,
+                "values": [],
+                "status": "invalid",
+                "message": f"Cannot access fsys.OutputTable: {e}",
+                **kwargs,
+            },
+        }
+
+    values: List[Any] = []
+    missing: List[str] = []
+    first_error: str = ""
+
+    for p in params:
+        res = _get_parameter_value(df, p)
+        if res["status"] == "ok":
+            values.append(res["value"])
+        elif res["status"] == "not_found":
+            values.append(None)
+            missing.append(p)
+        else:
+            # capture first non-ok message
+            if not first_error:
+                first_error = res.get("message", "")
+            values.append(None)
+
+    status = "ok" if not missing and not first_error else ("partial" if missing else "invalid")
+    message = (f"Missing columns: {missing}" if missing else first_error) or None
+
+    return {
+        "function": "getDataListD",
+        "args": {
+            "name": name,
+            "parameters": params,
+            "values": values,   # aligned with 'parameters'
+            "status": status,   # "ok" | "partial" | "invalid" | "not_found"
+            "message": message,
+            **kwargs,
+        }
+    }
 
 
 def getDataListF(**kwargs):
