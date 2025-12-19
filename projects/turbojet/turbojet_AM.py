@@ -11,6 +11,7 @@
 # limitations under the License.
 
 # Author: Wilfried Visser 1-11-2025
+# Modified by Lucas Middendorp
 
 from gspy.core import sys_global as fg
 from gspy.core import system as fsys
