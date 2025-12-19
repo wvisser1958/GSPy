@@ -393,3 +393,4 @@ class TCombustor(TGaspath):
     def AddOutputToDict(self, Mode):
         super().AddOutputToDict(Mode)
         fsys.output_dict["Wf_"+self.name] = self.Wf
+        fsys.output_dict["Wf"] = self.Wf  # <-- ADD THIS LINE

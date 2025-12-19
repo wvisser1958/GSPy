@@ -37,18 +37,22 @@ class TAMcontrol(TComponent):
         #                             (turbine1.map, "SF_wc_deter")
         #                         ])
 
-    def __init__(self, name, measdatafilename, powersettingcomppar, ambientparnamelist, measparnamelist, mapmod_comps_pars_list):
+    def __init__(self, name, measdatafilename, powersettingcomppar, ambientparnamelist, measparnametuple, mapmod_comps_pars_tuple):
         super().__init__(name, '', '') # no control controlling a control (yet)
         self.measdatafilename = measdatafilename
         self.powersettingcomppar = powersettingcomppar
         self.ambientparnamelist = ambientparnamelist
-        self.measparnamelist = measparnamelist
+
+        self.measparnamelist = [x[0] for x in measparnametuple]
+        self.tolerance = [float(x[1]) for x in measparnametuple]
         self.measpardesvalues = []
-        self.mapmod_comps_pars_list = mapmod_comps_pars_list
+
+        self.mapmod_comps_pars_list = [x[0] for x in mapmod_comps_pars_tuple]
+        self.mapmod_bounds = [x[1] for x in mapmod_comps_pars_tuple]
 
     def Get_OD_inputpoints(self):
         # set the input  points as the input data file row numbers
-        return self.am_input['Point'].to_numpy()
+        return self.am_input.index.to_numpy()
 
     def Run(self, Mode, PointTime):
         if Mode == 'DP':
@@ -59,7 +63,14 @@ class TAMcontrol(TComponent):
                 # fsys.errors = np.append(fsys.errors, 0)
             # read input (points to perform AM analysis on)
             self.am_input = pd.read_csv(self.measdatafilename)
-            self.am_input.set_index('Point')
+            self.am_input.set_index('Point', inplace=True)
+
+            # ======================== N1 control ========================
+            if self.powersettingcomppar[1] == 'N1%':
+                self.istate_Wf = fsys.states.size
+                fsys.states = np.append(fsys.states, 1.0)   # Wf scale factor
+                fsys.errors = np.append(fsys.errors, 0.0)
+                self.ierror_N1 = fsys.errors.size - 1
         else:
             # set ambient conditions
             for ambientcondpar in self.ambientparnamelist:
@@ -68,7 +79,14 @@ class TAMcontrol(TComponent):
 
             # set power setting
             psetcomp, psetpar = self.powersettingcomppar
-            setattr(psetcomp, psetpar, self.am_input.at[PointTime, psetpar])
+
+            # ======================== N1 control ========================
+            if psetpar == 'N1%':
+                Wf_meas = self.am_input.at[PointTime, 'Wf']
+                SF_Wf = fsys.states[self.istate_Wf]
+                setattr(psetcomp, 'Wf', Wf_meas * SF_Wf)
+            else:
+                setattr(psetcomp, psetpar, self.am_input.at[PointTime, psetpar])
 
             #  set map modifiers according to states
             # setattr(compmap, SFpar, fsys.states[self.first_map_mod_stateindex+i])
@@ -88,10 +106,52 @@ class TAMcontrol(TComponent):
                 fsys.errors = np.append(fsys.errors, 0)
             for parname in self.measparnamelist:
                 self.measpardesvalues = np.append(self.measpardesvalues, fsys.output_dict[f"{parname}"])
+            
+            # ======================== N1 control ========================
+            if self.powersettingcomppar[1] == 'N1%':
+                self.N1_DP = fsys.output_dict['N1%']
+
         else:
+            # ===================== AM errors with Tolerance =====================
+            mapmod_start = len(fsys.states) - len(self.mapmod_bounds)
             for i, parname in enumerate(self.measparnamelist, start = 0):
                 parvalue =  self.am_input.at[PointTime, parname]
-                fsys.errors[self.first_map_mod_stateindex+i] = (fsys.output_dict[f"{parname}"] - parvalue) / self.measpardesvalues[i]
+                error_idx = mapmod_start + i
+                fsys.errors[error_idx] = self.tolerance[i]*(fsys.output_dict[f"{parname}"] - parvalue) / self.measpardesvalues[i]
+
+            # ==================== Bounds Implementation ====================
+            for i, (compmap, SFpar) in enumerate(self.mapmod_comps_pars_list):
+                start_idx = mapmod_start + i
+                state_value = fsys.states[start_idx]
+                lower_bound_perc, upper_bound_perc = self.mapmod_bounds[i]
+                lower_bound = lower_bound_perc/100 + 1
+                upper_bound = upper_bound_perc/100 + 1
+                error_idx = mapmod_start + i
+                penalty = 1e3  # Penalty factor for out-of-bounds
+
+                if state_value < lower_bound:
+                    fsys.errors[:] += (lower_bound - state_value)**2 * penalty
+                    # print(f'Value {state_value} below lower bound {lower_bound} for {compmap.name}_{SFpar}, penalty = {fsys.errors[error_idx]}')
+                    continue
+                if state_value > upper_bound:
+                    fsys.errors[:] += (state_value - upper_bound)**2 * penalty
+                    # print(f'Value {state_value} above upper bound {upper_bound} for {compmap.name}_{SFpar}, penalty = {fsys.errors[error_idx]}')
+                    continue
+            
+                # print('Penalties applied, errors array:', fsys.errors)
+
+            # ======================= N1 control =======================
+            if self.powersettingcomppar[1] == 'N1%':
+
+                N1_meas = self.am_input.at[PointTime, 'N1%']
+                N1_model = fsys.output_dict['N1%']
+
+                # normalize with DP reference
+                if not hasattr(self, 'N1_DP'):
+                    self.N1_DP = N1_model
+
+                fsys.errors[self.ierror_N1] = (N1_meas - N1_model) / self.N1_DP
+
 
     def PrintPerformance(self, Mode, PointTime):
         if Mode == 'DP':

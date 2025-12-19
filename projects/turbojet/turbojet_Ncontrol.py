@@ -57,7 +57,7 @@ def main():
     # FuelControl = TControl('Fcontrol', '', 0.38, 0.38, 0.08, -0.01, None)
 
     # N1 rotor speed control
-    FuelControl = TControl('Ncontrol', '', 1.11, 100, 60, -5, 'N1%')
+    FuelControl = TControl('Ncontrol', '', 0.38, 100, 60, -5, 'N1%')
 
     # Generic gas turbine components
     inlet1   = TInlet('Inlet1',      '', None,           0,2,   19.9, 1    )
