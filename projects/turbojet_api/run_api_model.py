@@ -21,9 +21,12 @@ print(result)
 
 temperatures = "T0, T2, T3, T4, T5, T9"
 dispatch = gspy_api.defineDataList(name="temperatures", params=temperatures,
-                          description="Core & turbine temperature sensors",
-                          category="APU")
+                          description="Gas turbine temperatures dataset for quick reference",
+                          category="Turbojet")
 print(dispatch)
+
+result = gspy_api.getD(parameter='A8_geom')
+print(result)
 
 
 # Optionally close the log
