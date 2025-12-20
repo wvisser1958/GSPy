@@ -23,12 +23,16 @@ affiliated with or endorsed by SAE or the ARP4868 committee.
 import os
 import importlib
 import importlib.util
+import pandas as pd
 
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Union
+from typing import Iterable, Union, Dict, Any, List
 
 from gspy.core import system as fsys
+
+# Tiny internal storage to map set name -> parameter list
+_DATA_LISTS: Dict[str, List[str]] = {}
 
 # Model variables
 _current_model = None
@@ -58,11 +62,11 @@ def _resolve_model_root(module_name: str, module_obj) -> Path | None:
         return Path(spec.origin).resolve().parent
     return None
 
-def is_model_initialized():
+def _is_model_initialized():
     """Returns True if a model has been initialized and is marked as such."""
     return _current_model is not None and getattr(_current_model, "initialized", False)
 
-def get_model_name():
+def _get_model_name():
     """Returns the name of the currently initialized model.
 
     Raises:
@@ -72,7 +76,7 @@ def get_model_name():
         raise RuntimeError("Model not initialized")
     return _current_model.model_name
 
-def get_model_components_list(verbose=False):
+def _get_model_components_list(verbose=False):
     """Retrieves a list of system model components with their properties.
 
     Args:
@@ -100,7 +104,7 @@ def get_model_components_list(verbose=False):
     return {"components": components}
 
 
-def get_output_parameter_names(verbose=False) -> list:
+def _get_output_parameter_names(verbose=False) -> list:
     """Retrieves the list of output parameters
 
     Args:
@@ -113,7 +117,28 @@ def get_output_parameter_names(verbose=False) -> list:
     return param_names
     
 
-def log_message(caller: str, message: str, severity: str = "INFO") -> str:
+def _get_parameter_value(df: pd.DataFrame, param_name: str) -> Dict[str, Any]:
+    if df is None or not isinstance(df, pd.DataFrame):
+        return {"status": "invalid", "value": None, "message": "Input is not a DataFrame."}
+    if not isinstance(param_name, str) or not param_name.strip():
+        return {"status": "invalid", "value": None, "message": "Parameter name must be a non-empty string."}
+    if df.empty:
+        return {"status": "empty", "value": None, "message": "OutputTable has no rows."}
+    if param_name not in df.columns:
+        return {"status": "not_found", "value": None, "message": f"Column '{param_name}' not found."}
+
+    # Get value from the last row
+    val = df.iloc[-1][param_name]
+
+    # Normalize NA/NaT to None for consistency
+    if pd.isna(val):
+        val = None
+
+    # Return the successful result
+    return {"status": "ok", "value": val, "message": ""}
+
+
+def _log_message(caller: str, message: str, severity: str = "INFO") -> str:
     """Logs a message to the active log file with timestamp and severity.
 
     Args:
@@ -141,7 +166,7 @@ def log_message(caller: str, message: str, severity: str = "INFO") -> str:
     return "Log entry written"
 
 
-def parse_parameter_string(param_string: str) -> list[str]:
+def _parse_parameter_string(param_string: str) -> list[str]:
     """
     Parse a comma-separated string of parameter names into a clean list.
     - Strips whitespace
@@ -236,18 +261,18 @@ def activateLog(**kwargs):
         RuntimeError: If no model is initialized.
         ValueError: If an invalid mode is provided.
     """
-    if not is_model_initialized():
+    if not _is_model_initialized():
         raise RuntimeError("Model not initialized")
 
     global _current_log_file
 
-    model_name = get_model_name()
+    model_name = _get_model_name()
     filename = kwargs.get("filename", "api_log.txt")  # Default log file name
     mode = kwargs.get("mode", "w")                    # Default is write mode, use "a" to append
 
     # Validate mode early
     if mode not in ("a", "w"):
-        log_message(
+        _log_message(
             caller="activateLog",
             message="Invalid mode for logging. Use 'a' (append) or 'w' (overwrite)!",
             severity="INFO",
@@ -272,7 +297,7 @@ def activateLog(**kwargs):
     # Open and prime the log file
     _current_log_file = open(log_path, mode, encoding="utf-8")
     _current_log_file.write("=== API Logging Activated ===\n")
-    log_message(caller="activateLog", message=f"Logging started in '{mode}' mode", severity="INFO")
+    _log_message(caller="activateLog", message=f"Logging started in '{mode}' mode", severity="INFO")
 
    
 def closeLog(**kwargs):
@@ -282,7 +307,7 @@ def closeLog(**kwargs):
     """
     global _current_log_file
     if _current_log_file:
-        log_message(caller="closeLog", message="API logging deactivated", severity="INFO")
+        _log_message(caller="closeLog", message="API logging deactivated", severity="INFO")
         _current_log_file.write("=== API Logging Closed ===\n")
         _current_log_file.close()
         _current_log_file = None
@@ -292,53 +317,55 @@ def closeLog(**kwargs):
 # -----------------------------------------------------------------------------
 
 
-def defineDataList(name: str, params: Union[str, Iterable[str]], **kwargs) -> dict:
+def defineDataList(**kwargs) -> dict:
     """
     Define a named list of parameters in the data model.
-
-    Parameters
-    ----------
-    name : str
-        The list/set name, e.g. 'temperatures'.
-    params : str | Iterable[str]
-        Either a comma-separated string (e.g., 'T0, T2, T3')
-        or an iterable of strings (['T0','T2','T3']).
-    **kwargs :
-        Optional metadata (e.g., tags='APU', description='T-sensors')
-
-    Returns
-    -------
-    dict
-        Dispatch dictionary for 'defineDataList' with keyword arguments.
+    Accepts name and params via kwargs:
+      - name: str          (e.g., 'temperatures')
+      - params: str|iter   (e.g., 'T0, T2, T3' or ['T0','T2','T3'])
+    Any additional kwargs are passed through to the dispatch dictionary.
     """
-    # Normalize params to a list of strings
-    if isinstance(params, str):
-        items = parse_parameter_string(params)
+    # read inputs from kwargs
+    raw_name = kwargs.get("name", "")
+    raw_params = kwargs.get("params", None)
+
+    name = str(raw_name).strip()
+    if not name:
+        raise ValueError("List name must be provided in kwargs['name'] and be non-empty.")
+    if raw_params is None:
+        raise ValueError("Parameter list must be provided in kwargs['params'].")
+
+    # normalize params
+    if isinstance(raw_params, str):
+        items = _parse_parameter_string(raw_params)
     else:
-        # Clean iterable: strip, drop empties, de-duplicate preserving order
+        # iterable case: strip empties, de-duplicate preserving order
         seen = set()
-        items = []
-        for p in params:
+        items: List[str] = []
+        for p in raw_params:
             s = str(p).strip()
             if s and s not in seen:
                 seen.add(s)
                 items.append(s)
 
-    if not name or not name.strip():
-        raise ValueError("List name must be a non-empty string.")
     if not items:
-        raise ValueError("Parameter list cannot be empty.")
+        raise ValueError("Parameter list cannot be empty after normalization.")
 
-    payload = {
+    # register for later retrieval by name
+    _DATA_LISTS[name] = items
+
+    # build dispatch; do not expose internal storage
+    # pass through any extra metadata from kwargs (description, category, etc.)
+    extras = {k: v for k, v in kwargs.items() if k not in ("name", "params")}
+    return {
         "function": "defineDataList",
-               "args": {
-            "name": name.strip(),
+        "args": {
+            "name": name,
             "parameters": items,
-            **kwargs,  # carry any extra metadata you want
-        },
+            **extras,
+        }
     }
-    
-    return payload
+
 
 
 def getArraySize1D(**kwargs):
@@ -369,12 +396,18 @@ def getArraySize3D(**kwargs):
 
 
 def getD(**kwargs):
-    """Retrieve a double-precision scalar value.
+    """Retrieve a double-precision scalar value for an output parameter.
 
     Returns:
         dict: Dispatch dictionary for 'getD' with keyword arguments.
     """
-    return {'function': 'getD', 'args': kwargs}
+    parameter_name = kwargs.get("parameter")
+    # For now only functions are allowed
+    if not parameter_name:
+        raise ValueError("Missing 'parameter' argument")
+    else:
+        result = _get_parameter_value(fsys.OutputTable, parameter_name)
+    return {'function': 'getD', 'args': kwargs, 'result': result}
 
 
 def getD1D(**kwargs):
@@ -413,13 +446,87 @@ def getD3Dentry(**kwargs):
     return {'function': 'getD3Dentry', 'args': kwargs}
 
 
-def getDataListD(**kwargs):
-    """Retrieve a list of double-precision values.
 
-    Returns:
-        dict: Dispatch dictionary for 'getDataListD' with keyword arguments.
+def getDataListD(**kwargs) -> dict:
     """
-    return {'function': 'getDataListD', 'args': kwargs}
+    Retrieve values for the named parameter list from fsys.OutputTable's last row.
+    Pass the list name via kwargs: e.g., getDataListD(name="temperatures", ...)
+    """
+    name = str(kwargs.get("name", "")).strip()
+    if not name:
+        return {
+            "function": "getDataListD",
+            "args": {
+                "name": name,
+                "parameters": [],
+                "values": [],
+                "status": "invalid",
+                "message": "List name must be provided as kwargs['name'].",
+                **kwargs,
+            },
+        }
+
+    params = _DATA_LISTS.get(name)
+    if not params:
+        return {
+            "function": "getDataListD",
+            "args": {
+                "name": name,
+                "parameters": [],
+                "values": [],
+                "status": "not_found",
+                "message": f"Parameter set '{name}' not defined.",
+                **kwargs,
+            },
+        }
+
+    # lazy access to fsys.OutputTable
+    try:
+        df = fsys.OutputTable
+    except Exception as e:
+        return {
+            "function": "getDataListD",
+            "args": {
+                "name": name,
+                "parameters": params,
+                "values": [],
+                "status": "invalid",
+                "message": f"Cannot access fsys.OutputTable: {e}",
+                **kwargs,
+            },
+        }
+
+    values: List[Any] = []
+    missing: List[str] = []
+    first_error: str = ""
+
+    for p in params:
+        res = _get_parameter_value(df, p)
+        if res["status"] == "ok":
+            values.append(res["value"])
+        elif res["status"] == "not_found":
+            values.append(None)
+            missing.append(p)
+        else:
+            # capture first non-ok message
+            if not first_error:
+                first_error = res.get("message", "")
+            values.append(None)
+
+    status = "ok" if not missing and not first_error else ("partial" if missing else "invalid")
+    message = (f"Missing columns: {missing}" if missing else first_error) or None
+
+    return {
+        "function": "getDataListD",
+        "args": {
+            "name": name,
+            "parameters": params,
+            "values": values,   # aligned with 'parameters'
+            "status": status,   # "ok" | "partial" | "invalid" | "not_found"
+            "message": message,
+            **kwargs,
+        }
+    }
 
 
 def getDataListF(**kwargs):
@@ -624,7 +731,7 @@ def isValidParamName(**kwargs):
     
     result = False
     # Get parameter names from system model
-    output_parameter_names = get_output_parameter_names()
+    output_parameter_names = _get_output_parameter_names()
     if parameter_name in output_parameter_names:
         result = True
     
@@ -663,7 +770,7 @@ def parseString(**kwargs):
     Raises:
         ValueError: If function name is missing or does not resolve to a callable.
     """
-    log_message(caller="parseString",
+    _log_message(caller="parseString",
                 message="parseString called " + (', '.join(f"{k}={v}" for k, v in kwargs.items())),
                 severity="INFO")
 
@@ -675,7 +782,7 @@ def parseString(**kwargs):
     # Get the function object by name from the current module (or a known module)
     local_functions = globals()  # Or use `vars(module)` for external ones
 
-    func = local_functions.get(function_name)
+    func = local_functions.get('_'+function_name)
     if not callable(func):
         raise ValueError(f"Function '{function_name}' is not callable or doesn't exist")
 
@@ -694,9 +801,9 @@ def run(**kwargs):
     Raises:
         RuntimeError: If no model has been initialized.
     """
-    log_message(caller="run", message="Starting engine simulation", severity="INFO")
+    _log_message(caller="run", message="Starting engine simulation", severity="INFO")
     if _current_model is None:
-        log_message(caller="run", message="Engine simulation aborted, no model initialized!", severity="ERROR")
+        _log_message(caller="run", message="Engine simulation aborted, no model initialized!", severity="ERROR")
         raise RuntimeError("No model initialized")
     return _current_model.run()
 
@@ -906,15 +1013,15 @@ def terminate(**kwargs):
         dict | str: Termination confirmation, or notice if no model was active.
     """
     global _current_model, _current_log_file
-    log_message(caller="terminate", message="terminate called", severity="INFO")
+    _log_message(caller="terminate", message="terminate called", severity="INFO")
 
     if _current_model is not None:
         model_name = _current_model.model_name if hasattr(_current_model, "model_name") else "unknown"
         _current_model = None
-        log_message(caller="terminate", message="Model correctly terminated", severity="INFO")
+        _log_message(caller="terminate", message="Model correctly terminated", severity="INFO")
         result = {'function': 'terminate', 'args': kwargs, 'result': f"{model_name} terminated and cleaned up"}
     else:
-        log_message(caller="terminate", message="No model initialized!", severity="WARNING")
+        _log_message(caller="terminate", message="No model initialized!", severity="WARNING")
         result = "No model was initialized."
 
     # Now close the log file after logging is finished
