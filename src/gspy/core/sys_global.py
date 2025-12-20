@@ -79,7 +79,10 @@ def InitializeGas():
     global h_air_ref
     h_air_ref = gas.enthalpy_mass
 
+# divide N by GetRotorspeedCorrectionFactor to get Nc corrected
 def GetRotorspeedCorrectionFactor(gas: ct.Quantity):
     return math.sqrt(gas.T/T_std)
+
+# multiply W by GetFlowCorrectionFactor to get Wc corrected
 def GetFlowCorrectionFactor(gas: ct.Quantity):
     return math.sqrt(gas.T/T_std) / (gas.P/P_std)

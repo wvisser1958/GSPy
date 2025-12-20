@@ -24,7 +24,8 @@ from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
 
 class TFan(TTurboComponent):
-    def __init__(self, name, MapFileName_core, stationin, stationout_core, stationout_duct, ShaftNr, Ndes_core, Etades_core,
+    def __init__(self, name, MapFileName_core, stationin, stationout_core, stationout_duct, ShaftNr,
+                 Ndes_core, Etades_core,
                 # in TFan, Etades paramater = Etades_core
                 #          MapFileName = name of core map file
                  BPRdes,
@@ -42,6 +43,11 @@ class TFan(TTurboComponent):
         # core side map
         self.map_core = TCompressorMap(self, name + '_map_core', MapFileName_core, "Wc_core_"+self.name, "PR_core_"+self.name, ShaftNr, Ncmapdes_core, Betamapdes_core)
         self.PRdes_core = PRdes_core
+
+        #  1.5 set self.Etades to None, use Etadec_core instead to avoid duplicate in output
+        #      checking if self.Etades non None in TTurboComponent
+        self.Etades_core = self.Etades
+        self.Etades = None
 
         # duct side map
         self.map_duct = TCompressorMap(self, name + '_map_duct', MapFileName_duct, "Wc_duct_"+self.name, "PR_duct_"+self.name, ShaftNr, Ncmapdes_duct, Betamapdes_duct)
@@ -64,20 +70,28 @@ class TFan(TTurboComponent):
         else:
             self.BPR = fsys.states[self.istate_BPR] * self.BPRdes
 
-        # inherited compression is core side
-        self.W_core_in = self.GasIn.mass / (self.BPR + 1)
-        self.GasOut.mass = self.W_core_in
+        # 1.5 bug fix !!!! 20-12-2025 W. Visser
+        # W_core_in and W_duct_in are always the part corresponding to BPRdes  (design value!, we split the core and duct/bypass corresponding to BPRdes)
+        # W_core_in and W_duct_in are used for the mass flow error equations at the end of this procedure
+                    # old self.W_core_in = self.GasIn.mass / (self.BPR + 1)
+                    # old self.GasOut.mass = self.W_core_in
+                    # self.W_duct_in = self.GasIn.mass - self.GasOut.mass
+                    # self.GasOut_duct.mass = self.W_duct_in
+        self.W_core_in = self.GasIn.mass               / (self.BPRdes + 1)
+        self.W_duct_in = self.GasIn.mass * self.BPRdes / (self.BPRdes + 1)
+        # actual GasOut mass flows are corresponding to actual BPR !
+        self.GasOut.mass       = self.GasIn.mass            / (self.BPR + 1)
+        self.GasOut_duct.mass  = self.GasIn.mass * self.BPR / (self.BPR + 1)
 
-        # add fan duct side compression
-        self.W_duct_in = self.GasIn.mass - self.GasOut.mass
-        self.GasOut_duct.mass = self.W_duct_in
+        # 1.5
+        # W_duct_in is always the part corresponding to BPRdes  (design value!, we split the core and duct/bypass corresponding to BPRdes)
 
         if Mode == 'DP':
             # # correct mass flow
             self.Wdes_core_in = self.W_core_in
             self.Wcdes_core_in = self.Wdes_core_in * fg.GetFlowCorrectionFactor(self.GasIn)
-            self.map_core.ReadMapAndSetScaling(self.Ncdes, self.Wcdes_core_in, self.PRdes_core, self.Etades)   # self.Etades = same as Etades_core
-            self.PW_core = fu.Compression(self.GasIn, self.GasOut, self.PRdes_core, self.Etades, self.Polytropic_Eta)                 # self.Etades = same as Etades_core
+            self.map_core.ReadMapAndSetScaling(self.Ncdes, self.Wcdes_core_in, self.PRdes_core, self.Etades_core)
+            self.PW_core = fu.Compression(self.GasIn, self.GasOut, self.PRdes_core, self.Etades_core, self.Polytropic_Eta)
 
             # # add fan duct side compression
             # self.Wdes_duct = self.GasIn.mass - self.GasOut.mass
@@ -90,16 +104,19 @@ class TFan(TTurboComponent):
             self.shaft.PW_sum = self.shaft.PW_sum - self.PW
 
             # add states and errors
+            #  rotor speed
             fsys.states = np.append(fsys.states, 1)
             self.istate_n = fsys.states.size-1
             self.shaft.istate = self.istate_n
-            fsys.states = np.append(fsys.states, 1)
-            self.istate_beta_core = fsys.states.size-1
-            fsys.states = np.append(fsys.states, 1)
-            self.istate_beta_duct = fsys.states.size-1
             # state for bypass ratio BPR
             fsys.states = np.append(fsys.states, 1)
             self.istate_BPR = fsys.states.size-1
+            #  map beta core
+            fsys.states = np.append(fsys.states, 1)
+            self.istate_beta_core = fsys.states.size-1
+            # map beta duct
+            fsys.states = np.append(fsys.states, 1)
+            self.istate_beta_duct = fsys.states.size-1
 
             # error for equation GasIn.mass = W (W according to map operating point)
             fsys.errors = np.append(fsys.errors, 0)
@@ -112,13 +129,11 @@ class TFan(TTurboComponent):
             self.PR_duct = self.PRdes_duct
             self.Wc_core = self.Wcdes_core_in
             self.Wc_duct = self.Wcdes_duct_in
-            self.Eta_core = self.Etades
+            self.Eta_core = self.Etades_core
             self.Eta_duct = self.Etades_duct
         else:
             self.N = fsys.states[self.istate_n] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.GasIn)
-
-            # self.BPR = fsys.states[self.istate_BPR] * self.BPRdes
 
             self.Wc_core, self.PR_core, self.Eta_core = self.map_core.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta_core])
             self.Wc_duct, self.PR_duct, self.Eta_duct = self.map_duct.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta_duct])
@@ -162,8 +177,10 @@ class TFan(TTurboComponent):
             if self.map.Etamap!= None:
                 print(f"\tEta map : {self.map.Etamap:.4f}")
 
-        print(f"\tEta des : {self.Etades:.4f}")
-        print(f"\tEta     : {self.Eta:.4f}")
+        print(f"\tEta des_core : {self.Etades_core:.4f}")
+        print(f"\tEta core    : {self.Eta_core:.4f}")
+        print(f"\tEta des_duct : {self.Etades_duct:.4f}")
+        print(f"\tEta duct    : {self.Eta_duct:.4f}")
 
         print(f"\tPW : {self.PW:.1f}")
 
@@ -196,8 +213,16 @@ class TFan(TTurboComponent):
             # print(self.name + " core map with operating curve saved in " + self.map_core.map_figure_pathname)
             print(f"{self.name} map (dual) with operating curve saved in {self.map_core.map_figure_pathname}")
 
+            # 1.5
+            self.map_core.PlotDualMap('Eta_is_core_')
+            print(f"{self.name} core map (dual) with operating curve saved in {self.map_core.map_figure_pathname}")
+
         if self.map_duct != None:
             self.map_duct.PlotMap()
             # 1.4
             # print(self.name + " duct map with operating curve saved in " + self.map_duct.map_figure_pathname)
             print(f"{self.name} map (dual) with operating curve saved in {self.map_duct.map_figure_pathname}")
+
+            # 1.5
+            self.map_duct.PlotDualMap('Eta_is_duct_')
+            print(f"{self.name} duct map (dual) with operating curve saved in {self.map_duct.map_figure_pathname}")
