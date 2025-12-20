@@ -25,6 +25,9 @@ dispatch = gspy_api.defineDataList(name="temperatures", params=temperatures,
                           category="Turbojet")
 print(dispatch)
 
+resp = gspy_api.getDataListD(name="temperatures", source="e.g. OutputTableResults")
+print(resp)
+
 result = gspy_api.getD(parameter='A8_geom')
 print(result)
 

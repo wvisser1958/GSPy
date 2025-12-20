@@ -177,7 +177,9 @@ class TTurboMap(TMap):
         self.set_scaled_arrays(use_scaled_map)
 
     # This plot consists of two subplots
-    def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+    #  1.5 new eta_name parameter so we can also plot fan maps
+    # def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+    def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
         # Store plot under a different name, override map file name
         # reuse the map_figure_pathname and map size class parameters
         # 1.4
