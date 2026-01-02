@@ -11,6 +11,7 @@
 # limitations under the License.
 
 # Author: Wilfried Visser 1-11-2025
+# Modified by Lucas Middendorp
 
 from gspy.core import sys_global as fg
 from gspy.core import system as fsys
@@ -97,17 +98,17 @@ def main():
     AMcontrol = TAMcontrol('AMcontrol',
                         # input data file
                         am_input_path / "Turbojet_AMinput.csv",
-                        (combustor1, "Wf"),
+                        (combustor1, "N1%"),
                         ['Alt', 'dTs', 'Macha'],
-                        ['T3',
-                         'P3',
-                         'T5',
-                         'N1%'],
+                        [['T3', 1.0],   # note: tolerances are multipliers of the ErrorTolerance
+                         ['P3', 1.0],
+                         ['T5', 1.0],
+                         ['Wf', 1.0]],
                         [
-                            (compressor1.map, "SF_eta_deter"),
-                            (compressor1.map, "SF_wc_deter"),
-                            (turbine1.map, "SF_eta_deter"),
-                            (turbine1.map, "SF_wc_deter")
+                            [(compressor1.map, "SF_eta_deter"), [-10, 10]], # note: bounds are percentage change from 100%
+                            [(compressor1.map, "SF_wc_deter"), [-10, 10]],
+                            [(turbine1.map, "SF_eta_deter"), [-10, 10]],
+                            [(turbine1.map, "SF_wc_deter"), [-10, 10]]
                         ])
 
 
