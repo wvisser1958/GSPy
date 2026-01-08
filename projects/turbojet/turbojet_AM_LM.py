@@ -31,7 +31,7 @@ import os
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from gspy.core.AMcontrol import TAMcontrol
+from gspy.core.AMcontrol_LM import TAMcontrol
 
 
     # IMPORTANT NOTE TO THIS MODEL FILE
@@ -98,7 +98,7 @@ def main():
     AMcontrol = TAMcontrol('AMcontrol',
                         # input data file
                         am_input_path / "Turbojet_AMinput.csv",
-                        (combustor1, None), # note: if None, Wf is controlled. Can be set to all 
+                        (combustor1, None), # note: if None, Wf is controlled. Can be set to all
                         ['Alt', 'dTs', 'Macha'],
                         [['T5', 1.0],   # note: tolerances are multipliers of the residuals (error equations), standard set to 1.0
                          ['P3', 1.0],
