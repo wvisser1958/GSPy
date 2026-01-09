@@ -58,8 +58,10 @@ class TFan(TTurboComponent):
         self.PRdes_duct = PRdes_duct
         self.Etades_duct = Etades_duct
 
-        # 1.4
-        self.cf = cf
+        # 1.5
+        # self.cf = cf
+        # cf fixed to 1 until cf = 0 method development completed
+        self.cf = 1
 
     def GetSlWcValues(self):
         return self.sl_wc_array
@@ -75,19 +77,23 @@ class TFan(TTurboComponent):
             # create GasOut_duct ct.Quantity here
             self.GasOut_duct = ct.Quantity(self.GasIn.phase, mass = 1)
             #  1.5
-            self.OD_crossFlow = ct.Quantity(self.GasIn.phase, mass = 1)
+            # self.OD_crossFlow = ct.Quantity(self.GasIn.phase, mass = 1)
         else:
             self.BPR = fsys.states[self.istate_BPR] * self.BPRdes
 
         # 1.5 bug fix !!!! 20-12-2025 W. Visser
         # W_core_in and W_duct_in are always the part corresponding to BPRdes  (design value!, we split the core and duct/bypass corresponding to BPRdes)
         # W_core_in and W_duct_in are used for the mass flow error equations at the end of this procedure
-        self.W_core_in = self.GasIn.mass               / (self.BPRdes + 1)
-        self.W_duct_in = self.GasIn.mass * self.BPRdes / (self.BPRdes + 1)
+        # THIS IS EQUIVALENT TO CF = 0 om GSP
+        # self.W_core_in = self.GasIn.mass               / (self.BPRdes + 1)
+        # self.W_duct_in = self.GasIn.mass * self.BPRdes / (self.BPRdes + 1)
 
+        # AS FOR NOW, WE USE CF = 1 meaning the flows are 'distributed over the maps' corresponding to actual BPR
         # actual GasOut mass flows of parallel compressors (BEFORE splitter where flow is distributed corresponding to actual BPR)
-        # self.GasOut.mass       = self.GasIn.mass            / (self.BPR + 1)
-        # self.GasOut_duct.mass  = self.GasIn.mass * self.BPR / (self.BPR + 1)
+        self.W_core_in  = self.GasIn.mass            / (self.BPR + 1)
+        self.W_duct_in  = self.GasIn.mass * self.BPR / (self.BPR + 1)
+
+        #  set exit flows (pending correction if CF < 1)
         self.GasOut.mass       = self.W_core_in
         self.GasOut_duct.mass  = self.W_duct_in
 
@@ -162,29 +168,29 @@ class TFan(TTurboComponent):
             #       crossover flow dw_to_duct, between fan exit and splitter,
             #       due to BPR changing from BPRdes
             #       when dw_to_duct > 0, flow from core to duct side
-            win = self.W_core + self.W_duct
+            # win = self.W_core + self.W_duct
 
-            wd_split = win * self.BPR/(self.BPR+1)
-            wc_split = win *        1/(self.BPR+1)
-            dw_to_duct1 = wd_split - self.W_duct
+            # wd_split = win * self.BPR/(self.BPR+1)
+            # wc_split = win *        1/(self.BPR+1)
+            # dw_to_duct1 = wd_split - self.W_duct
 
-            # self.dw_to_duct = self.GasIn.mass * (1/(self.BPRdes + 1) - 1/(self.BPR + 1))
-            self.dw_to_duct = win * (1/(self.BPRdes + 1) - 1/(self.BPR + 1))
+            # # self.dw_to_duct = self.GasIn.mass * (1/(self.BPRdes + 1) - 1/(self.BPR + 1))
+            # self.dw_to_duct = win * (1/(self.BPRdes + 1) - 1/(self.BPR + 1))
 
-            if self.dw_to_duct > 0:  # i.e. BPR > BPRdes
-                # adjust duct flow properties with some of the core flow (flowing into the duct)
-                self.GasOut.mass = self.GasOut.mass - dw_to_duct
-                self.OD_crossFlow.mass = dw_to_duct
-                self.OD_crossFlow.HP = self.GasOut.enthalpy_mass, self.GasOut.P
-                self.GasOut_duct = self.GasOut_duct + self.OD_crossFlow
-                self.GasOut_duct.equilibrate("HP")
-            else:
-                # adjust core flow properties with some of the duct flow (flowing into the core)
-                self.GasOut_duct.mass = self.GasOut_duct.mass + dw_to_duct
-                self.OD_crossFlow.mass = - dw_to_duct
-                self.OD_crossFlow.HP = self.GasOut_duct.enthalpy_mass, self.GasOut_duct.P
-                self.GasOut = self.GasOut + self.OD_crossFlow
-                self.GasOut.equilibrate("HP")
+            # if self.dw_to_duct > 0:  # i.e. BPR > BPRdes
+            #     # adjust duct flow properties with some of the core flow (flowing into the duct)
+            #     self.GasOut.mass = self.GasOut.mass - dw_to_duct
+            #     self.OD_crossFlow.mass = dw_to_duct
+            #     self.OD_crossFlow.HP = self.GasOut.enthalpy_mass, self.GasOut.P
+            #     self.GasOut_duct = self.GasOut_duct + self.OD_crossFlow
+            #     self.GasOut_duct.equilibrate("HP")
+            # else:
+            #     # adjust core flow properties with some of the duct flow (flowing into the core)
+            #     self.GasOut_duct.mass = self.GasOut_duct.mass + dw_to_duct
+            #     self.OD_crossFlow.mass = - dw_to_duct
+            #     self.OD_crossFlow.HP = self.GasOut_duct.enthalpy_mass, self.GasOut_duct.P
+            #     self.GasOut = self.GasOut + self.OD_crossFlow
+            #     self.GasOut.equilibrate("HP")
 
         # calculate parameters for output
         self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(self.GasIn)
