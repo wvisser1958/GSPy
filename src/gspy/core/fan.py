@@ -41,8 +41,7 @@ class TFan(TTurboComponent):
         self.stationout_duct = stationout_duct
 
         self.BPRdes = BPRdes
-        # test
-        self.dw_to_duct = None
+
 
         # core side map
         self.map_core = TCompressorMap(self, name + '_map_core', MapFileName_core, "Wc_core_"+self.name, "PR_core_"+self.name, ShaftNr, Ncmapdes_core, Betamapdes_core)
@@ -59,9 +58,9 @@ class TFan(TTurboComponent):
         self.Etades_duct = Etades_duct
 
         # 1.5
-        # self.cf = cf
+        self.cf = cf
         # cf fixed to 1 until cf = 0 method development completed
-        self.cf = 1
+        # self.cf = 1
 
     def GetSlWcValues(self):
         return self.sl_wc_array
@@ -77,7 +76,7 @@ class TFan(TTurboComponent):
             # create GasOut_duct ct.Quantity here
             self.GasOut_duct = ct.Quantity(self.GasIn.phase, mass = 1)
             #  1.5
-            # self.OD_crossFlow = ct.Quantity(self.GasIn.phase, mass = 1)
+            self.OD_crossFlow = ct.Quantity(self.GasIn.phase, mass = 1)
         else:
             self.BPR = fsys.states[self.istate_BPR] * self.BPRdes
 
@@ -88,12 +87,20 @@ class TFan(TTurboComponent):
         # self.W_core_in = self.GasIn.mass               / (self.BPRdes + 1)
         # self.W_duct_in = self.GasIn.mass * self.BPRdes / (self.BPRdes + 1)
 
-        # AS FOR NOW, WE USE CF = 1 meaning the flows are 'distributed over the maps' corresponding to actual BPR
-        # actual GasOut mass flows of parallel compressors (BEFORE splitter where flow is distributed corresponding to actual BPR)
-        self.W_core_in  = self.GasIn.mass            / (self.BPR + 1)
-        self.W_duct_in  = self.GasIn.mass * self.BPR / (self.BPR + 1)
 
-        #  set exit flows (pending correction if CF < 1)
+        # *********** Lucas Cf implementation ***********
+        # design split (always based on BPRdes)
+        self.W_core_BPRdes = self.GasIn.mass / (self.BPRdes + 1.0)
+        self.W_duct_BPRdes = self.GasIn.mass * self.BPRdes / (self.BPRdes + 1.0)
+
+        # cross-flow due to BPR change (eq. 3-20)
+        self.crossflow = self.GasIn.mass * (self.BPR / (self.BPR + 1.0) - (self.BPRdes / (self.BPRdes + 1.0)))
+
+        # effective inlet flows for maps (eq. 3-21, 3-22)
+        self.W_core_in = self.W_core_BPRdes - self.cf * self.crossflow
+        self.W_duct_in = self.W_duct_BPRdes + self.cf * self.crossflow
+
+        #  set exit flows 
         self.GasOut.mass       = self.W_core_in
         self.GasOut_duct.mass  = self.W_duct_in
 
@@ -142,6 +149,7 @@ class TFan(TTurboComponent):
             self.Wc_duct = self.Wcdes_duct_in
             self.Eta_core = self.Etades_core
             self.Eta_duct = self.Etades_duct
+            
         else:
             self.N = fsys.states[self.istate_n] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.GasIn)
@@ -177,20 +185,24 @@ class TFan(TTurboComponent):
             # # self.dw_to_duct = self.GasIn.mass * (1/(self.BPRdes + 1) - 1/(self.BPR + 1))
             # self.dw_to_duct = win * (1/(self.BPRdes + 1) - 1/(self.BPR + 1))
 
-            # if self.dw_to_duct > 0:  # i.e. BPR > BPRdes
-            #     # adjust duct flow properties with some of the core flow (flowing into the duct)
-            #     self.GasOut.mass = self.GasOut.mass - dw_to_duct
-            #     self.OD_crossFlow.mass = dw_to_duct
-            #     self.OD_crossFlow.HP = self.GasOut.enthalpy_mass, self.GasOut.P
-            #     self.GasOut_duct = self.GasOut_duct + self.OD_crossFlow
-            #     self.GasOut_duct.equilibrate("HP")
-            # else:
-            #     # adjust core flow properties with some of the duct flow (flowing into the core)
-            #     self.GasOut_duct.mass = self.GasOut_duct.mass + dw_to_duct
-            #     self.OD_crossFlow.mass = - dw_to_duct
-            #     self.OD_crossFlow.HP = self.GasOut_duct.enthalpy_mass, self.GasOut_duct.P
-            #     self.GasOut = self.GasOut + self.OD_crossFlow
-            #     self.GasOut.equilibrate("HP")
+            # ************ Lucas Cf implementation ***********
+            crossflow_to_add = self.crossflow * (1-self.cf)
+            
+            if crossflow_to_add > 0:  # i.e. BPR > BPRdes
+                # adjust duct flow properties with some of the core flow (flowing into the duct)
+                self.GasOut.mass = self.GasOut.mass - crossflow_to_add
+                self.OD_crossFlow.mass = crossflow_to_add
+                self.OD_crossFlow.HP = self.GasOut.enthalpy_mass, self.GasOut.P
+                self.GasOut_duct = self.GasOut_duct + self.OD_crossFlow
+                self.GasOut_duct.equilibrate("HP")
+            else:
+                # adjust core flow properties with some of the duct flow (flowing into the core)
+                self.GasOut_duct.mass = self.GasOut_duct.mass + crossflow_to_add
+                self.OD_crossFlow.mass = - crossflow_to_add
+                self.OD_crossFlow.HP = self.GasOut_duct.enthalpy_mass, self.GasOut_duct.P
+                self.GasOut = self.GasOut + self.OD_crossFlow
+                self.GasOut.equilibrate("HP")
+  
 
         # calculate parameters for output
         self.Wc = self.GasIn.mass * fg.GetFlowCorrectionFactor(self.GasIn)
@@ -240,6 +252,7 @@ class TFan(TTurboComponent):
     def AddOutputToDict(self, Mode):
         super().AddOutputToDict(Mode)
         fsys.output_dict["BPR_"+self.name] = self.BPR
+        fsys.output_dict["crossflow_"+self.name] = self.crossflow
         fsys.output_dict["PR_core_"+self.name] = self.PR_core
         fsys.output_dict["PR_duct_"+self.name] = self.PR_duct
         fsys.output_dict["Wc_core_"+self.name] = self.Wc_core
@@ -247,7 +260,6 @@ class TFan(TTurboComponent):
         fsys.output_dict["Eta_is_core_"+self.name] = self.Eta_core
         fsys.output_dict["Eta_is_duct_"+self.name] = self.Eta_duct
         # test
-        fsys.output_dict["dw_to_duct"] = self.dw_to_duct
 
 
     # override PlotMaps, to now plot the self.map_core and self.map_duct
