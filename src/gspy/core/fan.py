@@ -41,8 +41,7 @@ class TFan(TTurboComponent):
         self.stationout_duct = stationout_duct
 
         self.BPRdes = BPRdes
-        # test
-        self.dw_to_duct = None
+
 
         # core side map
         self.map_core = TCompressorMap(self, name + '_map_core', MapFileName_core, "Wc_core_"+self.name, "PR_core_"+self.name, ShaftNr, Ncmapdes_core, Betamapdes_core)
@@ -91,18 +90,15 @@ class TFan(TTurboComponent):
 
         # *********** Lucas Cf implementation ***********
         # design split (always based on BPRdes)
-        self.W_core_des = self.GasIn.mass / (self.BPRdes + 1.0)
-        self.W_duct_des = self.GasIn.mass * self.BPRdes / (self.BPRdes + 1.0)
+        self.W_core_BPRdes = self.GasIn.mass / (self.BPRdes + 1.0)
+        self.W_duct_BPRdes = self.GasIn.mass * self.BPRdes / (self.BPRdes + 1.0)
 
         # cross-flow due to BPR change (eq. 3-20)
         self.crossflow = self.GasIn.mass * (self.BPR / (self.BPR + 1.0) - (self.BPRdes / (self.BPRdes + 1.0)))
 
         # effective inlet flows for maps (eq. 3-21, 3-22)
-        self.W_core_in = self.W_core_des - self.cf * self.crossflow
-        self.W_duct_in = self.W_duct_des + self.cf * self.crossflow
-
-        # store for output / diagnostics
-        self.dw_to_duct = self.cf * self.crossflow
+        self.W_core_in = self.W_core_BPRdes - self.cf * self.crossflow
+        self.W_duct_in = self.W_duct_BPRdes + self.cf * self.crossflow
 
         #  set exit flows 
         self.GasOut.mass       = self.W_core_in
@@ -153,7 +149,7 @@ class TFan(TTurboComponent):
             self.Wc_duct = self.Wcdes_duct_in
             self.Eta_core = self.Etades_core
             self.Eta_duct = self.Etades_duct
-            # self.dw_to_duct = 0.0
+            
         else:
             self.N = fsys.states[self.istate_n] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.GasIn)
