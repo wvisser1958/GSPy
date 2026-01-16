@@ -45,9 +45,14 @@ class TCompressor(TTurboComponent):
 
             # add states and errors
             if self.SpeedOption != 'CS':
-                fsys.states = np.append(fsys.states, 1)
-                self.istate_n = fsys.states.size-1
-                self.shaft.istate = self.istate_n
+                # 1.5
+                if self.shaft.istate == None:
+                    fsys.states = np.append(fsys.states, 1)
+                    self.istate_n = fsys.states.size-1
+                    self.shaft.istate = self.istate_n
+                else:
+                    # already assigned (e.g. by fan or compressor upstream in the gas path)
+                    self.istate_n = self.shaft.istate
             fsys.states = np.append(fsys.states, 1)
             self.istate_beta = fsys.states.size-1
             # error for equation GasIn.wc = wcmap

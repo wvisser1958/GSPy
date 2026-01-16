@@ -20,3 +20,5 @@ class TShaft:
         self.ShaftNr = ShaftNr
         self.name = name
         self.PW_sum = 0
+        # 1.5
+        self.istate = None

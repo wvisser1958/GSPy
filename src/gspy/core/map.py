@@ -103,33 +103,37 @@ class TMap:
             Interpolated F-values (shape: [n_points, n_points]).
         """
 
-        # Flatten input arrays for interpolation
-        x_flat = XArrayValues.flatten()
-        y_flat = YArrayValues.flatten()
-        f_flat = FArrayValues.flatten()
+        # 1.5 WV / TM temporarily deactivated pending code review and test
 
-        # Create uniform grid in X and Y
-        x_lin = np.linspace(XArrayValues.min(), XArrayValues.max(), 100)
-        y_lin = np.linspace(YArrayValues.min(), YArrayValues.max(), 100)
-        X_mesh, Y_mesh = np.meshgrid(x_lin, y_lin)
+        # # Flatten input arrays for interpolation
+        # x_flat = XArrayValues.flatten()
+        # y_flat = YArrayValues.flatten()
+        # f_flat = FArrayValues.flatten()
 
-        # Interpolate F-values onto the grid
-        F_grid = griddata(
-            (x_flat, y_flat),   # Known data points
-            f_flat,             # Function values at data points
-            (X_mesh, Y_mesh),   # Target grid
-            method='linear'     # Interpolation method
-        )
+        # # Create uniform grid in X and Y
+        # x_lin = np.linspace(XArrayValues.min(), XArrayValues.max(), 100)
+        # y_lin = np.linspace(YArrayValues.min(), YArrayValues.max(), 100)
+        # X_mesh, Y_mesh = np.meshgrid(x_lin, y_lin)
 
-        # Optionally smooth the interpolated surface
-        if doSmooth:
-            # F_grid = gaussian_filter(F_grid, sigma=0.8)
-                # Fit smooth spline to the data
-            spline = SmoothBivariateSpline(x_flat, y_flat, f_flat, s=0.001)  # s controls smoothing
+        # # Interpolate F-values onto the grid
+        # F_grid = griddata(
+        #     (x_flat, y_flat),   # Known data points
+        #     f_flat,             # Function values at data points
+        #     (X_mesh, Y_mesh),   # Target grid
+        #     method='linear'     # Interpolation method
+        # )
 
-            # Evaluate spline on grid
-            F_grid = spline.ev(X_mesh.ravel(), Y_mesh.ravel()).reshape(X_mesh.shape)
+        # # Optionally smooth the interpolated surface
+        # if doSmooth:
+        #     # F_grid = gaussian_filter(F_grid, sigma=0.8)
+        #         # Fit smooth spline to the data
+        #     spline = SmoothBivariateSpline(x_flat, y_flat, f_flat, s=0.001)  # s controls smoothing
 
-        return X_mesh, Y_mesh, F_grid
+        #     # Evaluate spline on grid
+        #     F_grid = spline.ev(X_mesh.ravel(), Y_mesh.ravel()).reshape(X_mesh.shape)
 
+        # return X_mesh, Y_mesh, F_grid
 
+        # 1.5 WV / TM temporarily deactivated pending code review and test: just return imput
+
+        return XArrayValues, YArrayValues, FArrayValues

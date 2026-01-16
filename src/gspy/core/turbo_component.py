@@ -78,8 +78,10 @@ class TTurboComponent(TGaspath):
             if self.map.Etamap!= None:
                 print(f"\tEta map : {self.map.Etamap:.4f}")
 
-        print(f"\tEta des : {self.Etades:.4f}")
-        print(f"\tEta     : {self.Eta:.4f}")
+        #  1.5
+        if self.Etades != None:
+            print(f"\tEta des : {self.Etades:.4f}")
+            print(f"\tEta     : {self.Eta:.4f}")
 
         print(f"\tPW : {self.PW:.1f}")
 
@@ -90,6 +92,8 @@ class TTurboComponent(TGaspath):
         fsys.output_dict[f"Nc{self.stationin}"] = self.Nc
         fsys.output_dict[f"N{self.ShaftNr}%"] = self.N/self.Ndes*100
         fsys.output_dict[f"Nc{self.stationin}%"] = self.Nc/self.Ncdes*100
-        #  ??? why if here ???if "Eta_is_"+self.name in fsys.output_dict:
-        fsys.output_dict["Eta_is_"+self.name] = self.Eta
+
+        # 1.5
+        if self.Eta != None:
+            fsys.output_dict["Eta_is_"+self.name] = self.Eta
         fsys.output_dict["PW_"+self.name] = self.PW

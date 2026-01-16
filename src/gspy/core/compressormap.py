@@ -92,7 +92,7 @@ class TCompressorMap(TTurboMap):
 
         self.map_figure.savefig(self.map_figure_pathname)
 
-    def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+    def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
         super().PlotDualMap(use_scaled_map, do_plot_series)
 
         # Plot Wc-Eta top subplot
@@ -116,13 +116,17 @@ class TCompressorMap(TTurboMap):
 
         # Design point
         if do_plot_design_point:
-            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')]['Eta_is_' + str(self.host_component.name)].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+            #  1.5
+            # self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')]['Eta_is_' + str(self.host_component.name)].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][eta_name + str(self.host_component.name)].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
             self.secondary_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
 
         # Operating line
         if do_plot_series:
             # Plotting Wc - PR
-            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')]['Eta_is_' + str(self.host_component.name)].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
+            #  1.5
+            # self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')]['Eta_is_' + str(self.host_component.name)].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
+            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][eta_name + str(self.host_component.name)].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
             self.secondary_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
 
         # self.dual_map_figure.tight_layout()

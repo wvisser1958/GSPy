@@ -33,6 +33,15 @@ class TComponent:
         # 1.1 WV
         self.Control = ControlComponent
 
+    # 1.6
+    def PreRun(self, Mode, PointTime):
+        # raise NotImplementedError("Subclass must implement Run abstract method")
+        # if Mode == 'DP':
+        #     pass
+        # else:
+        #     pass
+        pass
+
     def Run(self, Mode, PointTime):
         raise NotImplementedError("Subclass must implement Run abstract method")
 
