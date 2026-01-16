@@ -33,7 +33,7 @@ print(result)
 
 
 # Optionally close the log
-# print(ARP4868.closeLog())
+# print(gspy_api.closeLog())
 
 # Terminate model
 gspy_api.terminate()
