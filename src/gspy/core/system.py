@@ -96,11 +96,15 @@ def Do_Run(PointTime, states_par):
     output_dict['Point/Time'] = PointTime
     output_dict['Mode'] = Mode
 
-    # Control.Run(Mode, PointTime)
-    # Control.AddOutputToDict(Mode)
+    # 1.6 new PreRun virtual method
+    for comp in system_model:
+        comp.PreRun(Mode, PointTime)
+
+    # Run simulation code of all components in the system model
     for comp in system_model:
         comp.Run(Mode, PointTime)
         comp.AddOutputToDict(Mode)
+
     # v1.3 moved to BEFORE PostRun calls
     AddSystemOutputToDict(Mode)
     for comp in system_model:
