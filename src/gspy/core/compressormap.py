@@ -71,10 +71,9 @@ class TCompressorMap(TTurboMap):
         # self.ax.legend()
 
         # Contours
-        Wc_grid, PR_grid, Eta_grid = self.CalcMapEtaTopology(self.WcArrayValues,self.PRArrayValues,self.EtaArrayValues,False)
-        CS = self.main_plot_axis.contour(Wc_grid,PR_grid,Eta_grid,10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
+        self.main_plot_axis.contourf(self.WcArrayValues,self.PRArrayValues,self.EtaArrayValues, 14 , cmap='RdYlGn', alpha=0.3)
+        CS = self.main_plot_axis.contour(self.WcArrayValues,self.PRArrayValues,self.EtaArrayValues,10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
         self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
-        self.main_plot_axis.contourf(Wc_grid, PR_grid, Eta_grid, 14 , cmap='RdYlGn', alpha=0.3)
 
         # Design point
         if do_plot_design_point:
@@ -107,12 +106,6 @@ class TCompressorMap(TTurboMap):
             self.secondary_plot_axis.plot(self.WcArrayValues[index], self.PRArrayValues[index], linewidth=0.25, linestyle='dashed', color='black', label=str(round(NcValue)))
         self.secondary_plot_axis.set_ylabel('Pressure Ratio')
         self.secondary_plot_axis.set_xlabel('Corrected Mass Flow')
-
-        # # Contours TODO
-        # PR_grid, Wc_grid, Eta_grid = self.CalcMapEtaTopology(self.WcArrayValues,self.PRArrayValues,self.EtaArrayValues,False)
-        # CS = self.main_plot_axis.contour(Wc_grid,PR_grid,np.transpose(Eta_grid),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
-        # self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
-        # self.main_plot_axis.contourf(Wc_grid,PR_grid,np.transpose(Eta_grid), 14 ,cmap='RdYlGn',alpha=0.3)
 
         # Design point
         if do_plot_design_point:
