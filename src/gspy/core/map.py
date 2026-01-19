@@ -103,7 +103,7 @@ class TMap:
             Interpolated F-values (shape: [n_points, n_points]).
         """
 
-        # 1.5 WV / TM temporarily deactivated pending code review and test
+        # 1.6 WV / LM temporarily deactivated pending code review and test
 
         # # Flatten input arrays for interpolation
         # x_flat = XArrayValues.flatten()
@@ -134,6 +134,6 @@ class TMap:
 
         # return X_mesh, Y_mesh, F_grid
 
-        # 1.5 WV / TM temporarily deactivated pending code review and test: just return imput
+        # 1.6 WV / LM temporarily deactivated pending code review and test: just return imput
 
         return XArrayValues, YArrayValues, FArrayValues
