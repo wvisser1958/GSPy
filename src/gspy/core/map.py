@@ -85,7 +85,7 @@ class TMap:
         Parameters:
         ----------
         XArrayValues : ndarray
-            X-axis data (e.g., corrected mass flow, Wc) â€” can be scaled if needed.
+            X-axis data (e.g., corrected mass flow, Wc) — can be scaled if needed.
         YArrayValues : ndarray
             Y-axis data (e.g., pressure ratio, PR).
         FArrayValues : ndarray

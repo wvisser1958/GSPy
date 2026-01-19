@@ -88,10 +88,9 @@ class TTurbineMap(TTurboMap):
             self.main_plot_axis.set_xlabel('Pressure Ratio')
 
             # Contours
-            PR_grid, Wc_grid, Eta_grid = self.CalcMapEtaTopology(self.WcArrayValues,self.PRArrayValues,self.EtaArrayValues,False)
-            CS = self.main_plot_axis.contour(Wc_grid,PR_grid,np.transpose(Eta_grid),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
+            self.main_plot_axis.contourf(self.PRArrayValues,self.WcArrayValues,np.transpose(self.EtaArrayValues), 14 ,cmap='RdYlGn',alpha=0.3)
+            CS = self.main_plot_axis.contour(self.PRArrayValues,self.WcArrayValues,np.transpose(self.EtaArrayValues),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
             self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
-            self.main_plot_axis.contourf(Wc_grid,PR_grid,np.transpose(Eta_grid), 14 ,cmap='RdYlGn',alpha=0.3)
 
             # Design point
             if do_plot_design_point:
@@ -103,10 +102,12 @@ class TTurbineMap(TTurboMap):
                 self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
         else:
             # Plot Nc*Wc - PR
+            Nc_times_WcArrayValues = self.WcArrayValues.copy()
             for index, NcValue in enumerate(self.NcArrayValues):
+                Nc_times_WcArrayValues[index] *= NcValue
                 x = NcValue * self.WcArrayValues[index]
                 y = self.PRArrayValues[index]
-                self.main_plot_axis.plot(x, y, linewidth=0.25, linestyle='dashed', color='black', label=str(NcValue))
+                self.main_plot_axis.plot(x, y, linewidth=0.25, linestyle='dashed', color='black', label=str(NcValue), zorder=3)
                 # Add NcValue text at the last point of the curve
                 ymin, ymax = self.main_plot_axis.get_ylim()
                 # self.main_plot_axis.text(x[-1], y[-1], f'{NcValue:.1f}', fontsize=8, ha='left', va='center')
@@ -123,6 +124,9 @@ class TTurbineMap(TTurboMap):
 
             # Contours
             # None
+            self.main_plot_axis.contourf(Nc_times_WcArrayValues,self.PRArrayValues,np.transpose(self.EtaArrayValues), 14 ,cmap='RdYlGn',alpha=0.3)
+            CS = self.main_plot_axis.contour(Nc_times_WcArrayValues,self.PRArrayValues,np.transpose(self.EtaArrayValues),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
+            self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
 
             # Design point
             if do_plot_design_point:
@@ -158,12 +162,6 @@ class TTurbineMap(TTurboMap):
             self.secondary_plot_axis.plot(self.PRArrayValues[index], self.WcArrayValues[index], linewidth=0.25, linestyle='dashed', color='black', label=str(round(NcValue)))
         self.secondary_plot_axis.set_ylabel('Corected mass flow')
         self.secondary_plot_axis.set_xlabel('Pressure Ratio')
-
-        # # Contours
-        # PR_grid, Wc_grid, Eta_grid = self.CalcMapEtaTopology(self.WcArrayValues,self.PRArrayValues,self.EtaArrayValues,False)
-        # CS = self.main_plot_axis.contour(Wc_grid,PR_grid,np.transpose(Eta_grid),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
-        # self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
-        # self.main_plot_axis.contourf(Wc_grid,PR_grid,np.transpose(Eta_grid), 14 ,cmap='RdYlGn',alpha=0.3)
 
         # Design point
         if do_plot_design_point:
