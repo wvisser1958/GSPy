@@ -71,8 +71,8 @@ class TCompressorMap(TTurboMap):
         # self.ax.legend()
 
         # Contours
-        self.main_plot_axis.contourf(Wc_grid, PR_grid, Eta_grid, 14 , cmap='RdYlGn', alpha=0.3)
-        CS = self.main_plot_axis.contour(Wc_grid,PR_grid,Eta_grid,10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
+        self.main_plot_axis.contourf(self.WcArrayValues,self.PRArrayValues,self.EtaArrayValues, 14 , cmap='RdYlGn', alpha=0.3)
+        CS = self.main_plot_axis.contour(self.WcArrayValues,self.PRArrayValues,self.EtaArrayValues,10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
         self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
 
         # Design point
