@@ -28,7 +28,7 @@ class TComponent:
         # 1.5 Necessary for fixing a wiring problem, which was exposed when developing the API
         fsys.components[self.name] = self
 
-        # assume in moste case single map in instantiable child classes (add extra map if necessary, e.g. with f_fan)
+        # assume in most cases single map in instantiable child classes (add extra map if necessary, e.g. with f_fan)
         self.map: Optional[TMap] = None
         # 1.1 WV
         self.Control = ControlComponent
