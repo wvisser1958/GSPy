@@ -123,7 +123,6 @@ class TTurbineMap(TTurboMap):
             self.main_plot_axis.set_ylabel('Pressure Ratio')
 
             # Contours
-            # None
             self.main_plot_axis.contourf(Nc_times_WcArrayValues,self.PRArrayValues,np.transpose(self.EtaArrayValues), 14 ,cmap='RdYlGn',alpha=0.3)
             CS = self.main_plot_axis.contour(Nc_times_WcArrayValues,self.PRArrayValues,np.transpose(self.EtaArrayValues),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
             self.main_plot_axis.clabel(CS, fontsize=7, inline=True)

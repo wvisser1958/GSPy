@@ -23,17 +23,24 @@ from gspy.core.turbo_component import TTurboComponent
 from gspy.core.turbinemap import TTurbineMap
 
 class TTurbine(TTurboComponent):
-    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, ShaftNr,
+    def __init__(self, name,
+                 MapFileName_or_dict,
+                 ControlComponent, stationin, stationout, ShaftNr,
                  Ndes, Etades, Ncmapdes, Betamapdes, Etamechdes,
                  TurbineType,
                  CoolingFlows):
-        super().__init__(name, MapFileName, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades)
+        super().__init__(name, MapFileName_or_dict, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes)
         self.Etamechdes = Etamechdes # spool mechanical efficiency
         self.TurbineType = TurbineType  # gas generator turbine providing all power required by compressor(s)
         # TurbineType = 'PT'  # heavy duty single spool or power turbine, providing power to external loads
         # only call SetDPparameters in instantiable classes in init creator
-        self.map = TTurbineMap(self, name + '_map', MapFileName, '', '', ShaftNr, Ncmapdes, Betamapdes)
+        self.map = TTurbineMap(self, name + '_map', self.MapFileName, '', '', ShaftNr, Ncmapdes, Betamapdes)
         self.CoolingFlows = CoolingFlows
+
+    # 1.6 virtual method CreateMap will be called in ancestor TTurboComponent
+    # for either single map or series of maps in case of variable geometry with multipe maps for example
+    def CreateMap(self, MapFilePath, ShaftNr, Ncmapdes, Betamapdes):
+        return TTurbineMap(self, self.name + '_map', MapFilePath, '', '', ShaftNr, Ncmapdes, Betamapdes)
 
     def GetTotalPRdesUntilAmbient(self):
         # always at least one gas path component downstream a turbine (if only one: exhaust)
@@ -167,7 +174,9 @@ class TTurbine(TTurboComponent):
             # v1.2 recalculate self.Wcdes adding cooling flow
             self.Wcdes = (self.Wdes + self.W_cl_eff) * fg.GetFlowCorrectionFactor(self.GasInDes)
 
-            self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
+            # 1.6
+            # self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
+            self.ReadTurboMapAndSetScaling()
 
             # add states and errors
             # rotor speed state is same as compressor's

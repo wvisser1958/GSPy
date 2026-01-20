@@ -58,6 +58,8 @@ def main():
                         # for turbofan, note that fan has 2 GasOut outputs
                         TFan('FAN_BST',map_path / 'bigfanc.map', 2, 25, 21,   1,   4880, 0.8696, 5.3, 0.95, 0.7, 2.33,
                                        map_path / 'bigfand.map', 0.95, 0.7, 1.65,            0.8606),
+                                    # cf factor
+                                    # 0),
 
                         # always start with the components following the 1st GasOut object
                         TCompressor('HPC',map_path / 'compmap.map', None, 25,3,   2,   14000, 0.8433, 1, 0.8, 10.9, 'GG', None),

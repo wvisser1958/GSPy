@@ -24,24 +24,34 @@ from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
 
 class TCompressor(TTurboComponent):
-    def __init__(self, name, MapFileName, ControlComponent,
+    def __init__(self, name,
+                 MapFileName_or_dict,
+                 ControlComponent,
                  stationin, stationout, ShaftNr,
-                 Ndes, Etades, Ncmapdes, Betamapdes, PRdes,
+                 Ndes, Etades,
+                 Ncmapdes, Betamapdes, PRdes,
                  SpeedOption,
                  Bleeds):    # Constructor of the class
-        super().__init__(name, MapFileName, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades)
+        super().__init__(name, MapFileName_or_dict, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes)
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
-        self.map = TCompressorMap(self, name + '_map', MapFileName, '', '', ShaftNr, Ncmapdes, Betamapdes)
+
         self.Bleeds = Bleeds
+
+    # 1.6 virtual method CreateMap will be called in ancestor TTurboComponent
+    # for either single map or series of maps in case of variable geometry with multipe maps for example
+    def CreateMap(self, MapFilePath, ShaftNr, Ncmapdes, Betamapdes):
+        return TCompressorMap(self, self.name + '_map', MapFilePath, '', '', ShaftNr, Ncmapdes, Betamapdes)
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
             self.PW = fu.Compression(self.GasIn, self.GasOut, self.PRdes, self.Etades, self.Polytropic_Eta)
 
-            self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
+            # 1.6 WV
+            # self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
+            self.ReadTurboMapAndSetScaling()
 
             # add states and errors
             if self.SpeedOption != 'CS':
@@ -65,7 +75,9 @@ class TCompressor(TTurboComponent):
                 self.N = fsys.states[self.istate_n] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.GasIn)
 
-            self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
+            # 1.6 WV
+            # self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
+            self.Wc, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, fsys.states[self.istate_beta])
 
             self.PW = fu.Compression(self.GasIn, self.GasOut, self.PR, self.Eta, self.Polytropic_Eta)
 

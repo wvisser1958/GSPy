@@ -5,6 +5,9 @@ GSPy is a Python-based tool for modelling and simulating propulsion and power sy
 - Wilfried Visser
 - Oscar Kogenhop
 
+### Contributors:
+- Lucas Middendorp
+
 --------------------------------------------------------------------------------
 CONTENTS:
 ---------------------------------
@@ -31,12 +34,12 @@ See the LICENSE file for details.
 --------------------------------------------------------------------------------
 New features
 --------------------------------------------------------------------------------
-- This release introduces the API, a layer between gspy/core and the script is 
+- This release introduces the API, a layer between gspy/core and the script is
   created to run models from a script that calls a specific API model based on a
   base model. Inheriting this base model allows for creating a model without the
   need to have knowledge about the gspy/core, other than which options need to be
   added to create a model.
-- ./projects/turbojet_api contains a runable script run_api_model.py to 
+- ./projects/turbojet_api contains a runable script run_api_model.py to
   demonstrate how this works.
 
 ### GSPy v1.4.0.0                                                         15-12-2025
