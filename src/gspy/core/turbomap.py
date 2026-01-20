@@ -109,11 +109,17 @@ class TTurboMap(TMap):
             # now assign all betacount items to the fval_array
             fval_array[inc] = list(map(float, line_value_items))
 
-            line = file.readline()
+            # 1.6 WV check if need to read next line (avoid problems if no empty lines between cross tables)
+            # line = file.readline()
+            # inc +=1
             inc +=1
+            if inc < nccount:
+                line = file.readline()
+            else:
+                break
         return nc_values, beta_values, fval_array
 
-    def ReadMapAndSetScaling(self, Ncdes, Wcdes, PRdes, Etades):
+    def ReadMapAndGetScaling(self, Ncdes, Wcdes, PRdes, Etades):
         self.ReadMap(self.MapFileName)
         if self.mapfile is not None:
             # get map scaling parameters
@@ -128,6 +134,15 @@ class TTurboMap(TMap):
             # for Eta
             self.Etamap = self.get_map_eta((self.Ncmapdes, self.Betamapdes))
             self.SFmap_Eta = Etades / self.Etamap
+            return self.SFmap_Nc, self.SFmap_Wc, self.SFmap_PR, self.SFmap_Eta
+        else:
+            return 1, 1, 1, 1
+
+    def SetScaling(self, SF_Nc, SF_Wc, SF_PR, SF_Eta):
+        self.SFmap_Nc = SF_Nc
+        self.SFmap_Wc = SF_Wc
+        self.SFmap_PR = SF_PR
+        self.SFmap_Eta = SF_Eta
 
     def DefineInterpolationFunctions(self):
         self.get_map_wc = RegularGridInterpolator((self.nc_values, self.beta_values), self.wc_array, bounds_error=False, fill_value=None, method = 'cubic')
