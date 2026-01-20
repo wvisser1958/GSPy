@@ -30,26 +30,34 @@ class TTurbineMap(TTurboMap):
         # tbd : read stall line
         return amaptype, amaptitle, amapfile
 
-    def ReadPRlimits(self, mapfile, keyword):
-        line = mapfile.readline()
-        while keyword not in line.upper():
-            line = mapfile.readline()
-        line = mapfile.readline()
-        items = line.split()
-        nccount1= float(items[0])%1
-        nccount = round(nccount1*1000)-1
-        nc_values = np.empty(nccount, dtype=float)
-        line = mapfile.readline()
-        # items = line.split()
-        prlimits_array = np.array(list(map(float, line.split()[1:])))
-        return nc_values, prlimits_array
+    # 1.6 WV obsolete now, see below
+    # def ReadPRlimits(self, mapfile, keyword):
+    #     line = mapfile.readline()
+    #     while keyword not in line.upper():
+    #         line = mapfile.readline()
+    #     line = mapfile.readline()
+    #     items = line.split()
+    #     nccount1= float(items[0])%1
+    #     nccount = round(nccount1*1000)-1
+    #     nc_values = np.empty(nccount, dtype=float)
+    #     line = mapfile.readline()
+    #     # items = line.split()
+    #     prlimits_array = np.array(list(map(float, line.split()[1:])))
+    #     return nc_values, prlimits_array
 
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         super().ReadMap(filename)
 
+        # 1.6 WV use ReadNcBetaCrossTable instead... (like surge limit in compressor)
+        # this way, a line break half way the prmin_array values does not cause problems
         # read PR min values
-        self.nc_values, self.prmin_array = self.ReadPRlimits(self.mapfile, 'MIN PRESSURE RATIO')
-        self.nc_values, self.prmax_array = self.ReadPRlimits(self.mapfile, 'MAX PRESSURE RATIO')
+        # self.nc_values, self.prmin_array = self.ReadPRlimits(self.mapfile, 'MIN PRESSURE RATIO')
+        # self.nc_values, self.prmax_array = self.ReadPRlimits(self.mapfile, 'MAX PRESSURE RATIO')
+        dummy_value, self.nc_values, self.prmin_array = self.ReadNcBetaCrossTable(self.mapfile, 'MIN PRESSURE RATIO')
+        dummy_value, self.nc_values, self.prmax_array = self.ReadNcBetaCrossTable(self.mapfile, 'MAX PRESSURE RATIO')
+        # convert from 2-D array with 1 row to a 1-D array
+        self.prmin_array = self.prmin_array[0]
+        self.prmax_array = self.prmax_array[0]
 
         self.nc_values, self.beta_values, self.wc_array = self.ReadNcBetaCrossTable(self.mapfile, 'MASS FLOW')
         self.nc_values, self.beta_values, self.eta_array = self.ReadNcBetaCrossTable(self.mapfile, 'EFFICIENCY')
@@ -115,7 +123,6 @@ class TTurbineMap(TTurboMap):
             self.main_plot_axis.set_ylabel('Pressure Ratio')
 
             # Contours
-            # None
             self.main_plot_axis.contourf(Nc_times_WcArrayValues,self.PRArrayValues,np.transpose(self.EtaArrayValues), 14 ,cmap='RdYlGn',alpha=0.3)
             CS = self.main_plot_axis.contour(Nc_times_WcArrayValues,self.PRArrayValues,np.transpose(self.EtaArrayValues),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
             self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
