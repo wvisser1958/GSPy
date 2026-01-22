@@ -88,3 +88,5 @@ src/gspy.egg-info/top_level.txt
 /.vscode/launch.json
 /file_structure_to_text.py
 /tree_structure.txt
+*.pyc
+/projects/map_viewer/output/*.jpg
