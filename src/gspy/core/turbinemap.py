@@ -152,7 +152,7 @@ class TTurbineMap(TTurboMap):
         # Plot Pr-Eta top subplot
         for index, NcValue in enumerate(self.NcArrayValues):
             self.main_plot_axis.plot(self.PRArrayValues[index], self.EtaArrayValues[index], linewidth=0.25, linestyle='dashed', color='black', label=str(round(NcValue)))
-            self.main_plot_axis.text(8, np.sin(8), "sin(x)", fontsize=12, color="blue")
+            # 1.6.0.1 self.main_plot_axis.text(8, np.sin(8), "sin(x)", fontsize=12, color="blue")
         self.main_plot_axis.set_ylabel('Efficiency')
         # self.main_plot_axis.set_xlabel('Pressure Ratio')
 
