@@ -176,7 +176,7 @@ class TTurboMap(TMap):
             self.EtaArrayValues = self.eta_array
 
     # Map plotting routine
-    def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+    def PlotMap(self, use_scaled_map = False, do_plot_design_point = False, do_plot_series = False):
         super().PlotMap()
         # Set map title
         map_title = self.name
@@ -199,7 +199,12 @@ class TTurboMap(TMap):
         # reuse the map_figure_pathname and map size class parameters
         # 1.4
         # self.map_figure_pathname = './output/' + self.name + '_dual' + '.jpg'
-        self.map_figure_pathname = fg.output_path / (self.name + '_dual' + '.jpg')
+        # 1.6
+        # self.map_figure_pathname = fg.output_path / (self.name + '_dual' + '.jpg')
+        # Safeguard (only set if not already set by adapter)
+        if getattr(self, "map_figure_pathname", None) is None:
+            self.map_figure_pathname = fg.output_path / (self.name + '_dual' + '.jpg')
+
 
         # Create the subplot graph for a split turbomachinary plot
         self.dual_map_figure, (self.main_plot_axis, self.secondary_plot_axis) = plt.subplots(
