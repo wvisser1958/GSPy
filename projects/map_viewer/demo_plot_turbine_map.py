@@ -1,12 +1,34 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#    http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Authors
+#   Oscar Kogenhop
 
 # demo_plot_turbine_scaled.py
 from pathlib import Path
 from map_plotter import MapPlotter
 
 def main():
-    turb_map = Path(r"C:\Users\oscar.kogenhop\OneDrive - EPCOR B.V\Documents\Projects\VSCode\GSPy\projects\turbojet\maps\turbimap.map")
-    csv_file = Path(r"C:\Users\oscar.kogenhop\OneDrive - EPCOR B.V\Documents\Projects\VSCode\GSPy\projects\turbojet\output\turbojet.csv")
-    output_dir = Path(r"C:\Users\oscar.kogenhop\OneDrive - EPCOR B.V\Documents\Projects\VSCode\GSPy\projects\map_viewer\output")
+    # 1.6
+    projects_dir = Path(__file__).resolve().parent.parent
+    maps_path = projects_dir / "turbojet\maps"
+    model_output_path = projects_dir / "turbojet\output"
+    output_dir = "output"
+    # turb_map = Path(r"C:\Users\oscar.kogenhop\OneDrive - EPCOR B.V\Documents\Projects\VSCode\GSPy\projects\turbojet\maps\turbimap.map")
+    # csv_file = Path(r"C:\Users\oscar.kogenhop\OneDrive - EPCOR B.V\Documents\Projects\VSCode\GSPy\projects\turbojet\output\turbojet.csv")
+    # output_dir = Path(r"C:\Users\oscar.kogenhop\OneDrive - EPCOR B.V\Documents\Projects\VSCode\GSPy\projects\map_viewer\output")
+    turb_map = Path(maps_path / "turbimap.map")
+    csv_file = Path(model_output_path / "turbojet.csv")
+    output_dir = Path(output_dir)
 
     plotter = MapPlotter(
         map_type="turbine",

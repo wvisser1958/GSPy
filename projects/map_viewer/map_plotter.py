@@ -1,4 +1,19 @@
 # map_plotter.py
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#    http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Authors
+#   Oscar Kogenhop
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -82,7 +97,7 @@ class MapPlotter:
     ) -> None:
 
         self.map_type = map_type.lower().strip()
-        
+
         # remember the default legacy preference for turbine PlotMap calls
         self._legacy_default = bool(legacy_map)
 
@@ -204,7 +219,7 @@ class MapPlotter:
                 self._map.name = original_name
             if original_path is not None:
                 self._map.map_figure_pathname = original_path
-    
+
     @contextmanager
     def _temporary_turbine_legacy(self, legacy_flag: bool):
         """
