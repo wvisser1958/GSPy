@@ -29,7 +29,7 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
-### GSPy v1.6.0.0                                                     20-01-2026
+### GSPy v1.6.0.0                                                     22-01-2026
 - Cf factor added to the fan model for off-design duct-core cross flow correction
   cf < 1 :  cross flow between duct/bypass and core sections (with different maps
             used for compression calculation)
@@ -73,7 +73,7 @@ See the LICENSE file for details.
 
 ### GSPy v1.5.0.0                                                         17-12-2025
 --------------------------------------------------------------------------------
-New features
+### New features
 --------------------------------------------------------------------------------
 - This release introduces the API, a layer between gspy/core and the script is
   created to run models from a script that calls a specific API model based on a
@@ -88,7 +88,7 @@ New features
   new folder structure and other changes. Look at sample model scripts like
   turboject.py!
 --------------------------------------------------------------------------------
-New features
+### New features
 --------------------------------------------------------------------------------
 - Entirely new folder structure more compliant to Python common practice.
   Changes is the import and other paths.
@@ -99,7 +99,7 @@ New features
 
 ### GSPy v1.3.0.1                                                         12-11-2025
 --------------------------------------------------------------------------------
-Bug fixes
+### Bug fixes
 --------------------------------------------------------------------------------
 - Exhaust nozzle model CV affected A throat and thus mass flow capacity of the
   nozzle. Although may be an model option (but requires more code and equations)
@@ -109,7 +109,7 @@ Bug fixes
 
 ### GSPy v1.3.0.0                                                         01-11-2025
 --------------------------------------------------------------------------------
-Improvements
+### Improvements
 --------------------------------------------------------------------------------
 - Map modifier scaling factors "SF.." added to the TTurboMap class used in the
   TTurbo_Component model class, to modify the map output (Eta, Wc and/or PR).
@@ -142,7 +142,7 @@ Improvements
 
 ### GSPy v1.2.0.0                                                         18-10-2025
 --------------------------------------------------------------------------------
-Improvements
+### Improvements
 --------------------------------------------------------------------------------
 - Instead of a generic TExhaust class, we now have a TExhaustNozzle class
   (f_exhaustnozzle.py) for propelling nozzles (jet engines and turboprops)
@@ -181,7 +181,7 @@ Improvements
 
 ### GSPy v1.1.0.0                                                         14-07-2025
 --------------------------------------------------------------------------------
-Improvements
+### Improvements
 --------------------------------------------------------------------------------
 - provisions for scheduling specific parameters during OD simulation
   via TControl component class (f_control.py) using extra equations. The

@@ -42,7 +42,7 @@ def main():
     # (A.3) Unscaled map (no DP/OD overlays) Nc x Wc - PR
     plotter.plot(scaled=False, legacy_map=False, show=True)
 
-    # (B) Scaled to CSV + DP + OD overlays
+    # (B.1) Scaled to CSV + DP + OD overlays
     plotter.scale_from_csv_and_plot(
         csv_path=csv_file,
         do_plot_design_point=True,
@@ -50,6 +50,34 @@ def main():
         show=True,
         save=True,
         dual=False,         # True -> dual subplot (PR–η and PR–Wc / Nc*Wc depending on your map impl)
+        eta_prefix="Eta_is_",
+        # Optional overrides for scaling:
+        nc_map_des=1.0,
+        beta_map_des=0.50943,
+        # legacy_map=False,
+    )
+    # (B.2) Scaled to CSV + DP + OD overlays, as legacy map
+    plotter.scale_from_csv_and_plot(
+        csv_path=csv_file,
+        do_plot_design_point=True,
+        do_plot_series=True,
+        show=True,
+        save=True,
+        dual=False,         # True -> dual subplot (PR–η and PR–Wc / Nc*Wc depending on your map impl)
+        eta_prefix="Eta_is_",
+        # Optional overrides for scaling:
+        nc_map_des=1.0,
+        beta_map_des=0.50943,
+        legacy_map=True,
+    )
+    # (B.3) Scaled to CSV + DP + OD overlays in subplot graphs
+    plotter.scale_from_csv_and_plot(
+        csv_path=csv_file,
+        do_plot_design_point=True,
+        do_plot_series=True,
+        show=True,
+        save=True,
+        dual=True,         # True -> dual subplot (PR–η and PR–Wc / Nc*Wc depending on your map impl)
         eta_prefix="Eta_is_",
         # Optional overrides for scaling:
         nc_map_des=1.0,
