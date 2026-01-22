@@ -22,6 +22,7 @@ import gspy.core.system as fsys
 import gspy.core.utils as fu
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
+from gspy.core.vg_control import TVG_Control
 
 class TCompressor(TTurboComponent):
     def __init__(self, name,
@@ -77,6 +78,8 @@ class TCompressor(TTurboComponent):
 
             # 1.6 WV
             # self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
+            if self.Control != None:
+                  self.vg_angle = self.Control.Get_outputvalue_from_schedule(self.Nc)
             self.Wc, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, fsys.states[self.istate_beta])
 
             self.PW = fu.Compression(self.GasIn, self.GasOut, self.PR, self.Eta, self.Polytropic_Eta)

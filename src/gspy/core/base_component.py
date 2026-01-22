@@ -24,7 +24,8 @@ class TComponent:
         self.name = name
         # 1.5 set as object parameter
         self.MapFileName = MapFileName
-        self.ControlComponentName = ControlComponent
+        if ControlComponent and getattr(ControlComponent, "name", "").strip():
+            self.ControlComponentName = ControlComponent.name
         # 1.5 Necessary for fixing a wiring problem, which was exposed when developing the API
         fsys.components[self.name] = self
 

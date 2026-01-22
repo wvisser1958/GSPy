@@ -21,7 +21,7 @@ import gspy.core.system as fsys
 
 class TAmbient(TComponent):
     def __init__(self, name, stationnr, Altitude, Macha, dTs, Psa, Tsa):    # Constructor of the class
-        super().__init__(name, '', '')
+        super().__init__(name, '', None)
         self.stationnr = stationnr
         self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa)
 

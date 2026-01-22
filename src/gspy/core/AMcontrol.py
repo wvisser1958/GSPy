@@ -38,7 +38,7 @@ class TAMcontrol(TComponent):
         #                         ])
 
     def __init__(self, name, measdatafilename, powersettingcomppar, ambientparnamelist, measparnamelist, mapmod_comps_pars_list):
-        super().__init__(name, '', '') # no control controlling a control (yet)
+        super().__init__(name, None,  None) # no control controlling a control (yet)
         self.measdatafilename = measdatafilename
         self.powersettingcomppar = powersettingcomppar
         self.ambientparnamelist = ambientparnamelist

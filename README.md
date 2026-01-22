@@ -29,6 +29,43 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
+### GSPy v1.6.0.0                                                     20-01-2026
+- Cf factor added to the fan model for off-design duct-core cross flow correction
+  cf < 1 :  cross flow between duct/bypass and core sections (with different maps
+            used for compression calculation)
+            for cf = 0 : cross flow between fan exit and splitter, we need to mix
+            some of the core flow with bypass or
+            vice versa, so that the flow distribution is corresponding to the
+            off-design bypass ratio
+            0 < cf < 1 : the cf factor determines the fraction of the cross flow
+            actually compressed by the map
+            of 'the other side' (1-cf) * cross flow
+  cf = 1 :  no cross flow between duct/bypass and core sections (with different
+            maps used for compression calculation)
+            the flow distribution to core and duct/bypass maps remains
+            corresponding to design BPR (BPRdes)
+  default value for cf = 1 : most stable, assuming the duct-core dividing stream
+  line remains the same as with BPRdes
+- Added multi-map functionality (for variable geometry turbomachinery):
+  instead of a map file name, a structure with a design variable geometry
+  parameter (vg_angle_des) and a dictionary with maps corresponding to different
+  variable geometry control parameter values (vg_angle) are implemented in the
+  abtract TTurboComponent class.
+  This functionality has resulted in several changes in the map handling code,
+  keeping the existing projects mostly backward compatible.
+- A TVG_Control component class has been added.
+- A demo project demonstrating the use of the variable geometry function will be
+  provided later (waiting for compressor maps without publication restrictions).
+- Map plotting code has been improved, expecially for the turbine map.
+- PreRun virtual method added to TComponent base class to implement code running
+  prior to calling all the Run methods in a system model component list.
+- Map reading code made more robust (in case emtpy lines missing between cross
+  table blocks in map text file).
+- Provisional alternative TAMcontrol class added with separate control over the
+  adaptation equation tolerances and matching penalty factors: in AMcontrol_LM.py
+  (by Lucas Middendorp).
+- Turbine cooling output extended with separate W, T and P at cooling flow
+  Out stations.
 
 ### GSPy v1.5.0.0                                                         17-12-2025
 --------------------------------------------------------------------------------

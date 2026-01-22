@@ -29,7 +29,7 @@ class TControl(TComponent):
         # else:
         #    they are the direct input values of the component using this control (like fuel flow for a combustor for example)
         # DP_inputvalue always is direct input values of the component using this control
-        super().__init__(name, MapFileName, '') # no control controlling a control (yet)
+        super().__init__(name, MapFileName, None) # no control controlling a control (yet)
         self.DP_inputvalue = DP_inputvalue
         self.OD_startvalue = OD_startvalue
         self.OD_endvalue = OD_endvalue

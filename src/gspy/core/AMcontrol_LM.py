@@ -39,7 +39,7 @@ class TAMcontrol(TComponent):
         #                         ])
 
     def __init__(self, name, measdatafilename, powersettingcomppar, ambientparnamelist, measparnametuple, bounds_penalty, mapmod_comps_pars_tuple):
-        super().__init__(name, '', '') # no control controlling a control (yet)
+        super().__init__(name, None, None) # no control controlling a control (yet)
         self.measdatafilename = measdatafilename
         self.powersettingcomppar = powersettingcomppar
         self.ambientparnamelist = ambientparnamelist
@@ -110,11 +110,11 @@ class TAMcontrol(TComponent):
                 fsys.errors = np.append(fsys.errors, 0)
             for parname in self.measparnamelist:
                 self.measpardesvalues = np.append(self.measpardesvalues, fsys.output_dict[f"{parname}"])
-            
+
             # ======================== AM Powersetting control ========================
             if self.powersettingcomppar[1] != 'Wf':
                 self.powerset_DP = fsys.output_dict[f"{self.powersettingcomppar[1]}"]
-                
+
         else:
             # ===================== AM Errors with Tolerance =====================
             # Determine start index for mapmod states in the error vector

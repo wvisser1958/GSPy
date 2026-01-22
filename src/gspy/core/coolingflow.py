@@ -57,6 +57,12 @@ class TCoolingFlow(TGaspath):
         print(f"\tInject conditions:")
         print(f"\t\tTemperature : {self.GasInjected.T:.1f} K")
         print(f"\t\tPressure    : {self.GasInjected.P:.0f} Pa")
+        #  1.6 WV
+        print(f"\tExit conditions:")
+        print(f"\t\tMass flow : {self.GasOut.mass:.1f} [kg/s]")
+        print(f"\t\tTemperature : {self.GasOut.T:.1f} K")
+        print(f"\t\tPressure    : {self.GasOut.P:.0f} Pa")
+
         if self.PWpump != None:
             print(f"\t\tPW rad pump : {self.PWpump:.0f} kW")
         if self.PWexp != None:
@@ -68,6 +74,11 @@ class TCoolingFlow(TGaspath):
         fsys.output_dict[f"Fraction from bleed nr {self.frombleednumber}"]  = self.fractiontaken
         fsys.output_dict[f"T{self.stationin}j"]  = self.GasInjected.T
         fsys.output_dict[f"P{self.stationin}j"]  = self.GasInjected.P
+        #  1.6 WV
+        fsys.output_dict[f"W{self.stationout}"]  = self.GasOut.mass
+        fsys.output_dict[f"T{self.stationout}"]  = self.GasOut.T
+        fsys.output_dict[f"P{self.stationout}"]  = self.GasOut.P
+
         if self.PWpump != None:
             fsys.output_dict[f"PWpump{self.stationout}"]  = self.PWpump
         if self.PWexp != None:

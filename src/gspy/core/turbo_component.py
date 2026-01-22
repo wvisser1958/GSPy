@@ -165,6 +165,7 @@ class TTurboComponent(TGaspath):
             self.Nc = self.Ncdes
             self.Eta = self.Etades
             self.shaft = fsys.get_shaft(self.ShaftNr)
+            self.vg_angle = self.vg_angle_des
 
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
@@ -202,4 +203,7 @@ class TTurboComponent(TGaspath):
         # 1.5
         if self.Eta != None:
             fsys.output_dict["Eta_is_"+self.name] = self.Eta
+        # 1.6 WV
+        if self.vg_angle_des !=None:
+            fsys.output_dict["vg_angle_"+self.name] = self.vg_angle
         fsys.output_dict["PW_"+self.name] = self.PW

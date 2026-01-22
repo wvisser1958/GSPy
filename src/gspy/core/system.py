@@ -143,7 +143,7 @@ def Run_OD_simulation():
                             options={'maxiter': maxiter})
                             # options={'maxiter': maxiter, 'xtol': 0.01})
                             # options={'maxiter': maxiter, 'line_search': 'wolfe'})
-            if ipoint % points_output_interval ==0:
+            if ipoint % points_output_interval == 0:
                 Do_Output(inputpoints[ipoint], NoError if solution.success else ConvergenceError)
             if solution.success:
                 successcount = successcount + 1
