@@ -18,17 +18,9 @@ from pathlib import Path
 from map_plotter import MapPlotter
 
 def main():
-    # 1.6
-    projects_dir = Path(__file__).resolve().parent.parent
-    maps_path = projects_dir / "turbojet\maps"
-    model_output_path = projects_dir / "turbojet\output"
-    output_dir = "output"
-    # turb_map = Path(r"C:\Users\oscar.kogenhop\OneDrive - EPCOR B.V\Documents\Projects\VSCode\GSPy\projects\turbojet\maps\turbimap.map")
-    # csv_file = Path(r"C:\Users\oscar.kogenhop\OneDrive - EPCOR B.V\Documents\Projects\VSCode\GSPy\projects\turbojet\output\turbojet.csv")
-    # output_dir = Path(r"C:\Users\oscar.kogenhop\OneDrive - EPCOR B.V\Documents\Projects\VSCode\GSPy\projects\map_viewer\output")
-    turb_map = Path(maps_path / "turbimap.map")
-    csv_file = Path(model_output_path / "turbojet.csv")
-    output_dir = Path(output_dir)
+    turb_map = Path(r".\..\turbojet\maps\turbimap.map")
+    csv_file = Path(r".\..\turbojet\output\turbojet.csv")
+    output_dir = Path(r".\output")
 
     plotter = MapPlotter(
         map_type="turbine",
