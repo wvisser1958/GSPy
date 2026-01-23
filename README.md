@@ -29,6 +29,26 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
+### GSPy v1.6.0.2                                                     23-01-2026
+--------------------------------------------------------------------------------
+### Improvements
+--------------------------------------------------------------------------------
+- Improved map_viewer project; 
+  - map_plotter.py
+    - added docstrings describing the usage and class
+  - map plotting demo files
+    - added docstrings/comments describing the generated maps
+    - implemented map_suffix example usage
+  - updated the map classes to default use arguments with value False to prevent
+    accidental setting of plot options to True (fixing a bug where the title
+    displayed "(scaled to DP)" where in fact it was not scaled)
+
+### GSPy v1.6.0.1                                                     23-01-2026
+--------------------------------------------------------------------------------
+### Bug fixes
+--------------------------------------------------------------------------------
+- Bug fix removes spurious accidental added text to graph
+
 ### GSPy v1.6.0.0                                                     22-01-2026
 - Cf factor added to the fan model for off-design duct-core cross flow correction
   cf < 1 :  cross flow between duct/bypass and core sections (with different maps

@@ -14,6 +14,37 @@
 # Authors
 #   Oscar Kogenhop
 
+"""
+This module provides a high‑level wrapper around turbomachinery map classes
+used in gas turbine performance simulation tools such as GSP, GSPy and GasTurb.
+
+It enables convenient loading, scaling, visualization and comparison of
+compressor and turbine performance maps stored in the standard text formats
+commonly used in industry and research. These map files may originate from
+measurement data, test cell campaigns, or CFD‑derived maps generated with
+Smooth C (a GasTurb add‑on tool).
+
+The MapPlotter class adds:
+    • Robust path handling for absolute and relative file locations
+    • Reading and plotting of compressor and turbine maps (single or dual view)
+    • Optional scaling using design-point data from CSV files
+    • Optional scaling from manually supplied design-point values
+    • Per‑plot selection of single vs. dual map view
+    • Optional legacy plotting mode for turbine PR-Wc maps
+    • Automatic filename suffixing and figure title formatting
+    • Safe DP/OD overlay handling (only when scaled)
+    • Isolation of plot settings so they never "leak" between plots
+
+Relevant references:
+    • GasTurb: https://www.gasturb.com/
+    • Smooth C (GasTurb Add‑On Tool)
+    • Dr. Joachim Kurzke – Inventor of GasTurb:
+      https://www.kurzke-consulting.de/
+
+This module is intended to simplify the use of turbomachinery maps in 
+simulation workflows and help engineers quickly inspect, scale and 
+compare component performance characteristics.
+"""
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -50,14 +81,91 @@ except ImportError:
 
 
 class MapPlotter:
-    """
-    Facade for plotting compressor or turbine maps with optional CSV- or value-based scaling.
 
-    The caller MUST provide (component_name, station_in) so parameter names match your CSV/model:
-      - PR_<component_name>,        e.g. PR_compressor1
-      - Wc<station_in>,             e.g. Wc2
-      - Nc<station_in>,             e.g. Nc2  (optional in CSV; required for value-based scaling)
-      - Eta_is_<component_name>,    e.g. Eta_is_compressor1
+
+    """
+    High-level interface for reading, scaling, and plotting turbomachinery
+    compressor and turbine maps (single- and dual-panel), supporting both
+    modern and legacy plotting modes, CSV-driven scaling, and manual
+    design-point scaling.
+
+    The class wraps TCompressorMap / TTurbineMap and adds convenient features:
+    - automatic path normalization for absolute and relative file locations
+    - optional scaling using:
+        * design-point values from a CSV file (DP + OD rows)
+        * manually supplied design-point parameters (Nc, Wc, PR, Eta)
+    - per-plot selection of single vs. dual map views
+    - per-plot legacy mode (turbine PlotMap only, never applied to dual views)
+    - optional title and filename suffixing for generated figures
+    - strict control over overlay behavior:
+        * DP/OD overlays only appear when scaled=True
+        * overlays are disabled automatically for unscaled plots
+
+    Basic Usage:
+        plotter = MapPlotter(
+            map_type="compressor" | "turbine",
+            map_file="path/to/mapfile.map",
+            output_dir="path/to/output",
+            component_name="compressor1",
+            station_in=2,
+            legacy_map=False,            # turbine single-panel legacy off by default
+            nc_map_des=1.0,              # optional map-design Nc (for scaling only)
+            beta_map_des=0.5,            # optional map-design Beta (for scaling only)
+        )
+
+        # Unscaled plot (no DP/OD overlays)
+        plotter.plot(scaled=False, show=True)
+
+        # Single-panel scaled plot with DP and OD overlays
+        plotter.scale_from_csv_and_plot(
+            csv_path="output/turbojet.csv",
+            do_plot_design_point=True,
+            do_plot_series=True,
+            map_suffix="_DP_from_CSV"
+        )
+
+        # Manual scaling (no CSV)
+        plotter.scale_from_values_and_plot(
+            Nc_des=16540,
+            Wc_des=19.9,
+            PR_des=6.92,
+            Eta_des=0.825,
+            do_plot_design_point=True,
+            do_plot_series=False,
+            map_suffix="_manual_DP"
+        )
+
+        # Dual-panel plot (always modern, never legacy)
+        plotter.plot(scaled=True, dual=True, show=True)
+
+    Key Options:
+        scaled (bool):
+            If False → plot raw/unscaled map with no overlays.
+            If True  → use previously computed scale factors.
+
+        do_plot_design_point (bool):
+            Plot the DP yellow square. Only valid when scaled=True.
+
+        do_plot_series (bool):
+            Plot OD series from CSV or manually provided series.
+
+        map_suffix (str):
+            Optional suffix for file output.
+            Title uses spaces, filename uses underscores.
+
+        legacy_map (bool, single-panel turbine only):
+            Per-plot legacy turbine view. Restored automatically after each plot.
+
+        dual (bool):
+            If True, calls plot_dual() for this call, ignoring legacy_map.
+
+    Notes:
+        - CSV mode expects columns named based on component_name and station_in:
+            Wc<station nr>, PR_<component name>, Eta_is_<component name>, 
+            optionally Nc<station nr>; where <station nr> and <component name> are
+            defined in the constructor
+        - Path resolution is robust to VS Code's changing working directory.
+        - No internal state leaks: legacy mode and suffixes are temporary per-plot.
     """
 
     # --------------------------------------------------------------------------
@@ -352,7 +460,6 @@ class MapPlotter:
                 plt.show()
             if not save:
                 pass
-
 
     def plot_dual(
         self,
