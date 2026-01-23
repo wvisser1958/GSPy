@@ -36,7 +36,7 @@ class TCompressorMap(TTurboMap):
         self.DefineInterpolationFunctions()
 
     def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
-        super().PlotMap(use_scaled_map, do_plot_series)
+        super().PlotMap(use_scaled_map, do_plot_design_point, do_plot_series)
 
         if use_scaled_map:
             self.compSlWcArrayValues = self.sl_wc_array * self.SFmap_Wc
@@ -92,7 +92,7 @@ class TCompressorMap(TTurboMap):
         self.map_figure.savefig(self.map_figure_pathname)
 
     def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
-        super().PlotDualMap(use_scaled_map, do_plot_series)
+        super().PlotDualMap(eta_name, use_scaled_map, do_plot_design_point, do_plot_series)
 
         # Plot Wc-Eta top subplot
         for index, NcValue in enumerate(self.NcArrayValues):

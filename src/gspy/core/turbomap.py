@@ -199,12 +199,8 @@ class TTurboMap(TMap):
         # reuse the map_figure_pathname and map size class parameters
         # 1.4
         # self.map_figure_pathname = './output/' + self.name + '_dual' + '.jpg'
-        # 1.6
-        # self.map_figure_pathname = fg.output_path / (self.name + '_dual' + '.jpg')
-        # Safeguard (only set if not already set by adapter)
-        if getattr(self, "map_figure_pathname", None) is None:
-            self.map_figure_pathname = fg.output_path / (self.name + '_dual' + '.jpg')
-
+        # 1.6.0.3 reverted
+        self.map_figure_pathname = fg.output_path / (self.name + '_dual' + '.jpg')
 
         # Create the subplot graph for a split turbomachinary plot
         self.dual_map_figure, (self.main_plot_axis, self.secondary_plot_axis) = plt.subplots(

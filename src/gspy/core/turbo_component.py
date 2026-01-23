@@ -153,7 +153,7 @@ class TTurboComponent(TGaspath):
     def PlotMaps(self): # Plot performance in map(s) override to add dual plotting option
         super().PlotMaps()
         if self.map != None:
-            self.map.PlotDualMap()
+            self.map.PlotDualMap(use_scaled_map = True, do_plot_design_point = True, do_plot_series = True)
             # 1.4
             # print(self.name + " map (dual) with operating curve saved in " + self.map.map_figure_pathname)
             print(f"{self.name} map (dual) with operating curve saved in {self.map.map_figure_pathname}")
