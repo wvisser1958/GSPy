@@ -67,11 +67,11 @@ See the LICENSE file for details.
 - Turbine cooling output extended with separate W, T and P at cooling flow
   Out stations.
 - map_viewer app added to the projects folder for plotting individual maps, either
-  unscaled or scaled using a design point (DP) results from an output csv file or
+  unscaled or scaled using a design point (DP), results from an output csv file or
   manually scaled. An operating curve can also be plotted in the map using csv
   output data.
 
-### GSPy v1.5.0.0                                                         17-12-2025
+### GSPy v1.5.0.0                                                     17-12-2025
 --------------------------------------------------------------------------------
 ### New features
 --------------------------------------------------------------------------------
