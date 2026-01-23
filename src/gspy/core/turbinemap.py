@@ -77,7 +77,7 @@ class TTurbineMap(TTurboMap):
         # self.get_map_pr = RegularGridInterpolator((self.nc_values, self.beta_values), self.pr_array, bounds_error=False, fill_value=None)
         self.DefineInterpolationFunctions()
 
-    def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+    def PlotMap(self, use_scaled_map = False, do_plot_design_point = False, do_plot_series = False):
         super().PlotMap(use_scaled_map, do_plot_series)
 
         if self.LegacyMap:
@@ -146,7 +146,7 @@ class TTurbineMap(TTurboMap):
 
         self.map_figure.savefig(self.map_figure_pathname)
 
-    def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+    def PlotDualMap(self, use_scaled_map = False, do_plot_design_point = False, do_plot_series = False):
         super().PlotDualMap(use_scaled_map, do_plot_series)
 
         # Plot Pr-Eta top subplot

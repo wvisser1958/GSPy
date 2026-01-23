@@ -12,7 +12,31 @@
 
 # Authors
 #   Oscar Kogenhop
-# demo_plot_compressor_scaled.py
+
+"""
+Demo script for plotting compressor performance maps using MapPlotter.
+
+This example file demonstrates how to:
+    • Load a compressor map from a standard text-based component map file
+    • Optionally plot the map unscaled (raw map view)
+    • Scale the map using design-point and off-design data from a CSV file
+    • Apply per-plot options such as:
+         - DP and OD overlays
+         - title/filename suffixing
+         - single plot vs. dual-panel (Eta and PR subplots) plotting
+
+The compressor map file format follows the conventions used in GSP and GasTurb
+and may originate from measurement data, CFD-generated maps, or Smooth C
+(GasTurb add‑on tool) post-processing.
+
+This demo illustrates typical usage of:
+    - MapPlotter.plot(...)
+    - MapPlotter.scale_from_csv_and_plot(...)
+    - MapPlotter.scale_from_values_and_plot(...)
+
+Adjust file paths and component names as needed for your project layout.
+"""
+# demo_plot_compressor_map.py
 from pathlib import Path
 from map_plotter import MapPlotter
 
@@ -30,16 +54,20 @@ def main():
         station_in=2,
         name="Turbojet compressor map",
         # Optional map-design point if you plan to scale later
-        # nc_map_des=1.0,
-        # beta_map_des=0.75,
-         # map_suffix="_A",
+        # nc_map_des=1.0,      ┐
+        # beta_map_des=0.75,   │─› better to specify this in the function caller below!
+        # map_suffix="_A",     ┘
    )
 
-    # (A.1) Unscaled map (no DP/OD overlays)
-    plotter.plot(scaled=False, show=True)
+    # Simple compressor plots, no scaling, plot data directly unscaled from map file
+    # ------------------------------------------------------------------------------
+   # (A.1) Unscaled map (no DP/OD overlays)
+    plotter.plot(scaled=False, map_suffix="_A.1", show=True)
     # (A.2) Unscaled map (no DP/OD overlays) Dual subplot graph map
-    plotter.plot(scaled=False, dual=True, show=True)
+    plotter.plot(scaled=False, dual=True, map_suffix="_A.2", show=True)
 
+    # Plot scaled compressor maps based on CSV file with DP and OD performance data
+    # -----------------------------------------------------------------------------
     # (B.1) Scaled to CSV + DP (yellow square) + OD series overlays
     plotter.scale_from_csv_and_plot(
         csv_path=csv_file,
@@ -53,7 +81,7 @@ def main():
         nc_map_des=1.0,
         beta_map_des=0.75,
         # or supply wc_map_des=... to infer Beta at the chosen Nc
-        # map_suffix="_B",
+        map_suffix="_B.1",
     )
     # (B.2) Scaled to CSV + DP (yellow square) + OD series overlays, dual subplot map graph
     plotter.scale_from_csv_and_plot(
@@ -68,9 +96,11 @@ def main():
         nc_map_des=1.0,
         beta_map_des=0.75,
         # or supply wc_map_des=... to infer Beta at the chosen Nc
-        # map_suffix="_B",
+        map_suffix="_B.2",
     )
 
+    # Manually scaled compressor map to given design point data
+    # ---------------------------------------------------------------------------
     # (C) Scaled to input values
     Nc_des = 16540
     Wc_des = 19.9
@@ -88,7 +118,7 @@ def main():
         # Optional overrides for the *map-design* location used in scaling:
         nc_map_des=1.0, beta_map_des=0.75,
         # or infer beta from a map Wc: wc_map_des=8.0,
-        # map_suffix="_C",
+        map_suffix="_C",
     )
 
 if __name__ == "__main__":
