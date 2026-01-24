@@ -61,6 +61,40 @@ class TTurboMap(TMap):
         else:
             self.PR_comp_param = 'PR_' + str(self.host_component.name)
 
+    def _annotate_line_end(self, ax, x, y, text, which="last",
+                            color="black", dx=4, dy=0, fontsize=7, with_box=True):
+        # Argument "which" takes string values ["first","last"] to plot the value
+        # at the start or at the end of the curve.
+        import numpy as np
+        x = np.asarray(x); y = np.asarray(y)
+        m = np.isfinite(x) & np.isfinite(y)
+        if not m.any():
+            return
+        xm = x[m]; ym = y[m]
+        if which == "first":
+            xi, yi = xm[0], ym[0]
+        else:  # "last"
+            xi, yi = xm[-1], ym[-1]
+
+        bbox = dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.55) if with_box else None
+        ax.annotate(text, xy=(xi, yi), xytext=(dx, dy), textcoords="offset points",
+                    va="center", ha="left", fontsize=fontsize, color=color, bbox=bbox)
+
+    @staticmethod
+    def _format_nc_label(nc_value, with_prefix=False):
+        """
+        Format Nc with precision rule:
+          - Nc < 500  -> 2 decimals
+          - Nc >= 500 -> 0 decimals
+        And optionally prefix with e.g. 'Nc=' on a separate line.
+        Note that 500 is chosen for cutoff whether plotting decimals or not
+        """
+        if nc_value < 500:
+            val_txt = f"{nc_value:.2f}"
+        else:
+            val_txt = f"{nc_value:.0f}"
+        return f"Nc=\n{val_txt}" if with_prefix else val_txt
+
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         amaptype, amaptitle, amapfile = super().ReadMap(filename)
         # with self.file:

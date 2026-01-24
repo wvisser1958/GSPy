@@ -98,12 +98,35 @@ class TCompressorMap(TTurboMap):
         for index, NcValue in enumerate(self.NcArrayValues):
             self.main_plot_axis.plot(self.WcArrayValues[index], self.EtaArrayValues[index], linewidth=0.25, linestyle='dashed', color='black', label=str(round(NcValue)))
             # 1.6.0.1 self.main_plot_axis.text(8, np.sin(8), "sin(x)", fontsize=12, color="blue")
+            # 1.6.0.4
+            x = np.asarray(self.WcArrayValues[index])
+            y = np.asarray(self.EtaArrayValues[index])
+            # First line gets "Nc=\n<value>", others just "<value>"
+            label_txt = self._format_nc_label(NcValue, with_prefix=(index == 0))
+
+            # Optional: stagger vertical offset a bit to reduce collisions when ends align
+            dy = (index % 2) * 6 - 3  # -3, +3, -3, +3...
+            self._annotate_line_end(
+                self.main_plot_axis, x, y,
+                label_txt, which="first", color="black", dx=4, dy=dy, fontsize=7
+            )
+
         self.main_plot_axis.set_ylabel('Efficiency')
         # self.main_plot_axis.set_xlabel('Pressure Ratio')
 
         # Plot Pr-Eta bottom subplot
         for index, NcValue in enumerate(self.NcArrayValues):
             self.secondary_plot_axis.plot(self.WcArrayValues[index], self.PRArrayValues[index], linewidth=0.25, linestyle='dashed', color='black', label=str(round(NcValue)))
+            # 1.6.0.4
+            x = np.asarray(self.WcArrayValues[index])
+            y = np.asarray(self.PRArrayValues[index])
+            label_txt = self._format_nc_label(NcValue, with_prefix=(index == 0))
+            dy = (index % 2) * 6 - 3
+            self._annotate_line_end(
+                self.secondary_plot_axis, x, y,
+                label_txt, which="first", color="black", dx=4, dy=dy, fontsize=7
+            )
+
         self.secondary_plot_axis.set_ylabel('Pressure Ratio')
         self.secondary_plot_axis.set_xlabel('Corrected Mass Flow')
 

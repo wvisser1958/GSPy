@@ -90,3 +90,4 @@ src/gspy.egg-info/top_level.txt
 /tree_structure.txt
 *.pyc
 /projects/map_viewer/output/*.jpg
+*.bak
