@@ -138,7 +138,7 @@ class TTurbine(TTurboComponent):
                 initial_guess = [1.9]
 
                 # Use scipy.optimize.root to find the pressure ratio
-                solution = root(pressure_ratio_for_turbine_power, initial_guess)
+                solution = root(lambda x: pressure_ratio_for_turbine_power(x[0]), initial_guess)
 
                 # Check if the solution converged
                 if solution.success:

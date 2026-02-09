@@ -31,7 +31,7 @@ def set_enthalpy(gas, target_enthalpy):
     def equation(Titer):
         gas.TP = Titer, None
         return gas.enthalpy_mass - target_enthalpy
-    solution = root(equation, x0 = gas.T)
+    solution = root(lambda x: equation(x[0]), x0 = gas.T)
     if solution.success:
         return gas.T
     else:
@@ -90,7 +90,7 @@ def calculate_expansion_to_A(gas, pressure_ratio, A):
             velocity1 = gas.sound_speed
             return velocity - velocity1
         initial_guess = [stagnation_pressure/1.9] # 1.0 approx. critical PR
-        solution = root(throat_H_error, initial_guess)
+        solution = root(lambda x: throat_H_error(x[0]), initial_guess)
 
         massflow = A * gas.sound_speed * gas.density
         # Check if the solution converged

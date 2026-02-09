@@ -371,7 +371,7 @@ class TCombustor(TGaspath):
             def equation(Wfiter):
                 self.Wf=Wfiter[0]
                 return CalcEndConditions(PointTime) - self.Texit
-            solution = root(equation, x0 = Wf0)
+            solution = root(lambda x: equation(x[0]), x0 = Wf0)
             if solution.success:
                 self.Wf = solution.x[0]
             else:
