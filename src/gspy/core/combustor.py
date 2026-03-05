@@ -369,7 +369,9 @@ class TCombustor(TGaspath):
         if (self.Control != None) and (self.Control.OD_controlledparname == None) and  (self.Texit != None): # calc Wf from Texit
             #  calculate Wf for given Texit, using scipy root function
             def equation(Wfiter):
-                self.Wf=Wfiter[0]
+                # 1.6.0.5
+                # self.Wf=Wfiter[0]
+                self.Wf=Wfiter
                 return CalcEndConditions(PointTime) - self.Texit
             solution = root(equation, x0 = Wf0)
             if solution.success:

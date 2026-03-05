@@ -80,7 +80,10 @@ def calculate_expansion_to_A(gas, pressure_ratio, A):
         # exit_pressure = gas.P / pressure_ratio
         # keep entropy S constant
         def throat_H_error(Ps_throat):
-            gas.SP = stagnation_entropy, Ps_throat  # Isentropic expansion to exit pressure
+            # 1.6.0.5
+            # gas.SP = stagnation_entropy, Ps_throat  # Isentropic expansion to exit pressure
+            gas.SP = stagnation_entropy, float(np.asarray(Ps_throat).squeeze())  # Isentropic expansion to exit pressure
+
             dh = stagnation_enthalpy - gas.enthalpy_mass
             # allow backwards flow during iteration (avoiding complex number for velocity)
             if dh < 0:
@@ -147,7 +150,11 @@ def TurbineExpansion(GasIn: ct.Quantity, GasOut: ct.Quantity, PR, Eta, Wexp, Eta
     #   S:=FS(Tt,Pt,Composition);
     #   H:=FH(Tt,Composition);
     #   Etais:=(Incond.H-H)/(Incond.H-His);
-    Pout = GasIn.P / PR
+
+    # 1.6.0.5 make sure Pout becomes a single value
+    # Pout = GasIn.P / PR
+    Pout = GasIn.P / float(np.asarray(PR).squeeze())
+
     if Eta_Polytropic:
         R = ct.gas_constant / GasIn.phase.mean_molecular_weight
         Sout = GasIn.s - R*log(PR)*(1/Eta-1)

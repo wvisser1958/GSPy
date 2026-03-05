@@ -31,6 +31,8 @@ class TGaspath(TComponent):
         self.Wc = None
         self.PRdes = 1
         self.PR = None
+        # 1.6.0.5
+        self.W = None
 
     def Run(self, Mode, PointTime):
         self.GasIn = fsys.gaspath_conditions[self.stationin]

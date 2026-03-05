@@ -29,6 +29,16 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
+### GSPy v1.6.0.5                                                     10-02-2026
+--------------------------------------------------------------------------------
+### Improvements
+--------------------------------------------------------------------------------
+- numpy updated to version 2.4.2
+- scipy updated to version 1.17.0
+- code labeled 1.6.0.5 updated to comply to these newer versions, specifically
+  statements requiring float scalars (needed conversion from 1-element NumPy
+  arrays to scalars, mostly in Cantera tuple assignment statements).
+
 ### GSPy v1.6.0.4                                                     24-01-2026
 --------------------------------------------------------------------------------
 ### Improvements
@@ -45,7 +55,7 @@ See the LICENSE file for details.
 --------------------------------------------------------------------------------
 ### Improvements
 --------------------------------------------------------------------------------
-- Improved map_viewer project; 
+- Improved map_viewer project;
   - map_plotter.py
     - added docstrings describing the usage and class
   - map plotting demo files

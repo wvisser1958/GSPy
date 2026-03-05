@@ -59,7 +59,11 @@ class TExhaustNozzle(TGaspath):
 
                 # Function to find the pressure for Mach 1
                 def mach_number_difference(exit_pressure):
-                    self.GasThroat.SP = Sin, float(exit_pressure)  # Set state at the given pressure
+
+                    # 1.6.0.5 make sure Pout becomes a single value
+                    # self.GasThroat.SP = Sin, float(exit_pressure)  # Set state at the given pressure
+                    self.GasThroat.SP = Sin, float(np.asarray(exit_pressure).squeeze())  # Set state at the given pressure
+
                     local_speed_of_sound = self.GasThroat.sound_speed
                     velocity = (2 * (Hin - self.GasThroat.enthalpy_mass))**0.5
                     mach_number = velocity / local_speed_of_sound
