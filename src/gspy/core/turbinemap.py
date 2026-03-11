@@ -111,12 +111,16 @@ class TTurbineMap(TTurboMap):
                 # Add NcValue text at the last point of the curve
                 ymin, ymax = self.main_plot_axis.get_ylim()
                 # self.main_plot_axis.text(x[-1], y[-1], f'{NcValue:.1f}', fontsize=8, ha='left', va='center')
-                if index == 0:
-                    text_label = f'Nc = {NcValue:.1f}'
-                else:
-                    text_label = f'{NcValue:.1f}'
+                # 1.6.0.6
+                # if index == 0:
+                #     text_label = f'Nc = {NcValue:.1f}'
+                # else:
+                #     text_label = f'{NcValue:.1f}'
+                label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
                 self.main_plot_axis.text(
-                    x[-1], y[-1]-((ymax-ymin)/8), text_label,
+                    # 1.6.0.6
+                    # x[-1], y[-1]-((ymax-ymin)/8), text_label,
+                    x[-1], y[-1]-((ymax-ymin)/8), label_txt,
                     fontsize=8, ha='left', va='bottom', rotation=-90
                 )
             self.main_plot_axis.set_xlabel('Corected mass flow * Corrected speed')
