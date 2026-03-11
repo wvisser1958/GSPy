@@ -39,6 +39,11 @@ See the LICENSE file for details.
   Characteristics Versus Pressure Altitude)". 
 - Model projects/turbojet/turbojet ambient_AS210.py demonstrates the usage of non-
   ISA atmospheric models.
+- Additional project to plot output parameters versus station number
+- Added gas turbine models incorporating SAE AS755 (Aircraft Propulsion System 
+  Performance Station Designation) and naming from AS5571 (Gas Turbine Engine 
+  Performance Presentation and Nomenclature For Object-Oriented Computer Programs).
+- Plotting project to plot the T-S diagram of air.
 
 ### GSPy v1.6.0.5                                                     10-02-2026
 --------------------------------------------------------------------------------

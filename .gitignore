@@ -91,3 +91,5 @@ src/gspy.egg-info/top_level.txt
 *.pyc
 /projects/map_viewer/output/*.jpg
 *.bak
+/output
+/.vscode/settings.json
