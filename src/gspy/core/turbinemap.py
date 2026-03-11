@@ -88,8 +88,11 @@ class TTurbineMap(TTurboMap):
             self.main_plot_axis.set_xlabel('Pressure Ratio')
 
             # Contours
-            self.main_plot_axis.contourf(self.PRArrayValues,self.WcArrayValues,np.transpose(self.EtaArrayValues), 14 ,cmap='RdYlGn',alpha=0.3)
-            CS = self.main_plot_axis.contour(self.PRArrayValues,self.WcArrayValues,np.transpose(self.EtaArrayValues),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
+            # 1.6.0.7 W. Visser bug fix: must NOT transpose self.EtaArrayValues here
+            # self.main_plot_axis.contourf(self.PRArrayValues,self.WcArrayValues,np.transpose(self.EtaArrayValues), 14 ,cmap='RdYlGn',alpha=0.3)
+            # CS = self.main_plot_axis.contour(self.PRArrayValues,self.WcArrayValues,np.transpose(self.EtaArrayValues),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
+            self.main_plot_axis.contourf(self.PRArrayValues,self.WcArrayValues,self.EtaArrayValues, 14 ,cmap='RdYlGn',alpha=0.3)
+            CS = self.main_plot_axis.contour(self.PRArrayValues,self.WcArrayValues,self.EtaArrayValues,10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
             self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
 
             # Design point
@@ -127,8 +130,11 @@ class TTurbineMap(TTurboMap):
             self.main_plot_axis.set_ylabel('Pressure Ratio')
 
             # Contours
-            self.main_plot_axis.contourf(Nc_times_WcArrayValues,self.PRArrayValues,np.transpose(self.EtaArrayValues), 14 ,cmap='RdYlGn',alpha=0.3)
-            CS = self.main_plot_axis.contour(Nc_times_WcArrayValues,self.PRArrayValues,np.transpose(self.EtaArrayValues),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
+            # 1.6.0.7 W. Visser bug fix: must NOT transpose self.EtaArrayValues here
+            # self.main_plot_axis.contourf(Nc_times_WcArrayValues,self.PRArrayValues,np.transpose(self.EtaArrayValues), 14 ,cmap='RdYlGn',alpha=0.3)
+            # CS = self.main_plot_axis.contour(Nc_times_WcArrayValues,self.PRArrayValues,np.transpose(self.EtaArrayValues),10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
+            self.main_plot_axis.contourf(Nc_times_WcArrayValues,self.PRArrayValues,self.EtaArrayValues, 14 ,cmap='RdYlGn',alpha=0.3)
+            CS = self.main_plot_axis.contour(Nc_times_WcArrayValues,self.PRArrayValues,self.EtaArrayValues,10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
             self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
 
             # Design point

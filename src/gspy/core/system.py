@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import os
 
 VERBOSE = True
+
 # 1.5 Declare a global registry in gspy/core/system.py
 components = {}   # maps component name -> instance
 

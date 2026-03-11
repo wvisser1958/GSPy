@@ -200,14 +200,16 @@ class TFan(TTurboComponent):
                 self.OD_crossFlow.mass = crossflow_to_add
                 self.OD_crossFlow.HP = self.GasOut.enthalpy_mass, self.GasOut.P
                 self.GasOut_duct = self.GasOut_duct + self.OD_crossFlow
-                self.GasOut_duct.equilibrate("HP")
+                # 1.6.0.7 obsolete
+                # self.GasOut_duct.equilibrate("HP")
             else:
                 # adjust core flow properties with some of the duct flow (flowing into the core)
                 self.GasOut_duct.mass = self.GasOut_duct.mass + crossflow_to_add
                 self.OD_crossFlow.mass = - crossflow_to_add
                 self.OD_crossFlow.HP = self.GasOut_duct.enthalpy_mass, self.GasOut_duct.P
                 self.GasOut = self.GasOut + self.OD_crossFlow
-                self.GasOut.equilibrate("HP")
+                # 1.6.0.7 obsolete
+                # self.GasOut.equilibrate("HP")
 
 
         # calculate parameters for output

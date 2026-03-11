@@ -33,7 +33,7 @@ class TVG_Control(TComponent):
 
         # the next line merely is an example schedule....
         # adapt to you own liking...
-        self.outputvalue = (1 - inputvalue/self.DP_inputvalue) * 300
+        self.outputvalue = (1 - inputvalue/self.DP_inputvalue) * 580
 
         self.inputvalue = inputvalue
         return self.outputvalue

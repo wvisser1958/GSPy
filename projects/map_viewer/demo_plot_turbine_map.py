@@ -20,10 +20,10 @@ Demo script for plotting turbine performance maps using MapPlotter.
 This example demonstrates:
     • Loading a turbine map file in the standard GSP / GasTurb text-map format
     • Generating unscaled (raw) map visualizations
-    • Scaling the map using design-point and off-design data from a GSPy CSV 
+    • Scaling the map using design-point and off-design data from a GSPy CSV
       performace output data file
     • Using modern turbine plotting or optionally enabling legacy single-panel
-      layout (legacy, simple PR-Wc plot, applies only to PlotMap and never to 
+      layout (legacy, simple PR-Wc plot, applies only to PlotMap and never to
       dual-panel plots)
     • Per-plot selection of:
          - scaled vs. unscaled view

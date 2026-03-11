@@ -29,26 +29,40 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
+### GSPy v1.6.0.7                                                     11-03-2026
+--------------------------------------------------------------------------------
+### Bug fixes
+--------------------------------------------------------------------------------
+- Bug in turbinemap.py call to contour functions fixed: self.EtaArrayValues
+  must not be transposed.
+
+--------------------------------------------------------------------------------
+### Improvements
+--------------------------------------------------------------------------------
+- equilibrate not anymore used after mixing cross flow (causes Cantera to
+  get stuck outside gas properties T range; and also does not have any effect
+  at the relatively low temperatures typically in a turbofan exit).
+
 ### GSPy v1.6.0.6                                                     11-03-2026
 --------------------------------------------------------------------------------
 ### New features
 --------------------------------------------------------------------------------
 - Added an ambient class in src/gspy/core to override standard ambient conditions
-  class. This class extends the ambient conditions to use the SAE AS210 standard 
-  "Definition of Commonly Used Day Types (Atmospheric Ambient Temperature 
-  Characteristics Versus Pressure Altitude)". 
+  class. This class extends the ambient conditions to use the SAE AS210 standard
+  "Definition of Commonly Used Day Types (Atmospheric Ambient Temperature
+  Characteristics Versus Pressure Altitude)".
 - Model projects/turbojet/turbojet ambient_AS210.py demonstrates the usage of non-
   ISA atmospheric models.
 - Additional project to plot output parameters versus station number
-- Added gas turbine models incorporating SAE AS755 (Aircraft Propulsion System 
-  Performance Station Designation) and naming from AS5571 (Gas Turbine Engine 
+- Added gas turbine models incorporating SAE AS755 (Aircraft Propulsion System
+  Performance Station Designation) and naming from AS5571 (Gas Turbine Engine
   Performance Presentation and Nomenclature For Object-Oriented Computer Programs).
 - Plotting project to plot the T-S diagram of air.
 
 --------------------------------------------------------------------------------
 ### Improvements
 --------------------------------------------------------------------------------
-- Speed parameter labels in map plots are now referred to the design speed, the 
+- Speed parameter labels in map plots are now referred to the design speed, the
   speed line at design has value 1.0.
 
 ### GSPy v1.6.0.5                                                     10-02-2026
