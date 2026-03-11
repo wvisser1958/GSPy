@@ -45,6 +45,12 @@ See the LICENSE file for details.
   Performance Presentation and Nomenclature For Object-Oriented Computer Programs).
 - Plotting project to plot the T-S diagram of air.
 
+--------------------------------------------------------------------------------
+### Improvements
+--------------------------------------------------------------------------------
+- Speed parameter labels in map plots are now referred to the design speed, the 
+  speed line at design has value 1.0.
+
 ### GSPy v1.6.0.5                                                     10-02-2026
 --------------------------------------------------------------------------------
 ### Improvements

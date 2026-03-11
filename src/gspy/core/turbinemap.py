@@ -157,7 +157,7 @@ class TTurbineMap(TTurboMap):
             x = np.asarray(self.PRArrayValues[index])
             y = np.asarray(self.EtaArrayValues[index])
             # First line gets "Nc=\n<value>", others just "<value>"
-            label_txt = self._format_nc_label(NcValue, with_prefix=(index == 0))
+            label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
 
             # Optional: stagger vertical offset a bit to reduce collisions when ends align
             dy = (index % 2) * 6 - 3  # -3, +3, -3, +3...
@@ -174,7 +174,7 @@ class TTurbineMap(TTurboMap):
             # 1.6.0.4
             x = np.asarray(self.PRArrayValues[index])
             y = np.asarray(self.WcArrayValues[index])
-            label_txt = self._format_nc_label(NcValue, with_prefix=(index == 0))
+            label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
             dy = (index % 2) * 6 - 3
             self._annotate_line_end(
                 self.secondary_plot_axis, x, y,

@@ -55,12 +55,16 @@ class TCompressorMap(TTurboMap):
             # Add NcValue text at the last point of the curve
             ymin, ymax = self.main_plot_axis.get_ylim()
             # self.main_plot_axis.text(x[-1], y[-1], f'{NcValue:.1f}', fontsize=8, ha='left', va='center')
-            if index == 0:
-                text_label = f'Nc = {NcValue:.1f}'
-            else:
-                text_label = f'{NcValue:.1f}'
+            # 1.6.0.6
+            # if index == 0:
+            #     text_label = f'Nc = {NcValue:.1f}'
+            # else:
+            #     text_label = f'{NcValue:.1f}'
+            label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
             self.main_plot_axis.text(
-                x[0], y[0], text_label,
+            # 1.6.0.6
+                # x[0], y[0], text_label,
+                x[0], y[0], label_txt,
                 fontsize=8, ha='left', va='center'
             )
         self.main_plot_axis.set_xlabel('Corected massflow')
@@ -102,7 +106,7 @@ class TCompressorMap(TTurboMap):
             x = np.asarray(self.WcArrayValues[index])
             y = np.asarray(self.EtaArrayValues[index])
             # First line gets "Nc=\n<value>", others just "<value>"
-            label_txt = self._format_nc_label(NcValue, with_prefix=(index == 0))
+            label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
 
             # Optional: stagger vertical offset a bit to reduce collisions when ends align
             dy = (index % 2) * 6 - 3  # -3, +3, -3, +3...
@@ -120,7 +124,7 @@ class TCompressorMap(TTurboMap):
             # 1.6.0.4
             x = np.asarray(self.WcArrayValues[index])
             y = np.asarray(self.PRArrayValues[index])
-            label_txt = self._format_nc_label(NcValue, with_prefix=(index == 0))
+            label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
             dy = (index % 2) * 6 - 3
             self._annotate_line_end(
                 self.secondary_plot_axis, x, y,
