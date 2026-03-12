@@ -112,11 +112,47 @@ def Do_Run(PointTime, states_par):
         comp.PostRun(Mode, PointTime)
     return errors
 
-def Run_DP_simulation():
-    # not using states and errors yet for DP, but do this for later when doing DP iterations
+# 1.6.0.1.8 dictionary with design targets and variables
+# def Run_DP_simulation():
+def Run_DP_simulation(targets=None):
     try:
         reinit_states_and_errors()
-        Do_Run(0, states)    # in DP always fsys.states = [1, 1, 1, 1, .....]
+
+        if targets is None:
+            Do_Run(0, states)
+        else:
+            try:
+                var_values_ref = [0.0] * len(targets)
+
+                for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(targets):
+                    var_values_ref[i] = getattr(varobj, varattr)
+
+                def targetresiduals(dp_variables):
+                    for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(targets):
+                        setattr(varobj, varattr, dp_variables[i] * var_values_ref[i])
+
+                    Do_Run(0, states)
+
+                    residuals = [0.0] * len(targets)
+                    for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(targets):
+                        actual = getattr(targetobj, targetattr)
+                        residuals[i] = (actual - targetvalue) / targetvalue
+
+                    return residuals
+
+                dp_variables_init = [1.0] * len(targets)
+
+                solution = root(
+                    targetresiduals,
+                    dp_variables_init,
+                    method='krylov',
+                    tol=ErrorTolerance,
+                    options={'maxiter': 100}
+                )
+            except Exception as e:
+                Do_Output(0, ExceptionError)
+                print(f"DP target iteration exception error: {e}")
+
         Do_Output(0, NoError)      # 0 to indicated all Ok if we get to this line of code after Do_Run
     except Exception as e:
         Do_Output(0, ExceptionError)

@@ -60,8 +60,8 @@ class TTurbine(TTurboComponent):
         Pin = self.GasIn.P
 
         def CalcCoolingFlowEffects():
-            self.PW_cl_pump = 0
-            self.PW_cl_exp = 0
+            self.DHW_cl_pump = 0
+            self.DHW_cl_exp = 0
             self.W_cl_eff = 0
             Ekin_at_R1 = np.square(np.pi*self.N/60)
             for cf in self.CoolingFlows:
@@ -70,8 +70,8 @@ class TTurbine(TTurboComponent):
                 if cf.Rexit > 0:
                     # power taken from shaft for accelerating the cooling flow in circumferential direction
                     dHradialpump = Ekin_at_R1 * np.square(cf.Rexit)
-                    cf.PWpump =  dHradialpump * cf.W
-                    self.PW_cl_pump = self.PW_cl_pump + cf.PWpump
+                    cf.DHWpump =  dHradialpump * cf.W
+                    self.DHW_cl_pump = self.DHW_cl_pump + cf.DHWpump
                     # isentropic compression due to 'radial pump' action
                     # in the rotating frame dH increase is half of dHradialpump
                     dH_for_P = dHradialpump/2
@@ -81,16 +81,16 @@ class TTurbine(TTurboComponent):
                     # now add full dHradialpump to enthalpy, and P increase to GasInjected
                     cf.GasInjected.HP = cf.GasIn.enthalpy_mass + dHradialpump, cf.GasIn.P * PR_pump
                 else:
-                    cf.PWpump = 0
+                    cf.DHWpump = 0
 
                 # expansion of cooling flow contribution to turbine power
                 dPexp = (cf.GasInjected.P - self.GasOut.P) * cf.dPfraction
                 if dPexp > 0:
                     PRexp = (self.GasOut.P + dPexp) / self.GasOut.P
-                    cf.PWexp = fu.TurbineExpansion(cf.GasInjected, cf.GasOut, PRexp, self.Eta, cf.W, self.Polytropic_Eta)
-                    self.PW_cl_exp = self.PW_cl_exp + cf.PWexp
+                    cf.DHWexp = fu.TurbineExpansion(cf.GasInjected, cf.GasOut, PRexp, self.Eta, cf.W, self.Polytropic_Eta)
+                    self.DHW_cl_exp = self.DHW_cl_exp + cf.DHWexp
                 else:
-                    cf.PWexp = 0
+                    cf.DHWexp = 0
 
                 # add fraction of flow to be included inlet mass flow conservation of mass error equation
                 self.W_cl_eff = self.W_cl_eff + cf.W_tur_eff_fraction * cf.W
@@ -106,7 +106,7 @@ class TTurbine(TTurboComponent):
                 #  so we must preserve pressure strictly
                 self.GasOut.HP = self.GasOut.enthalpy_mass, Pout
             # return total cooling effects on turbine performance: PW delta and Wc delta
-            return self.PW_cl_exp - self.PW_cl_pump, self.W_cl_eff
+            return self.DHW_cl_exp - self.DHW_cl_pump, self.W_cl_eff
 
         def pressure_ratio_for_turbine_power(PR_iter):
             # Set the initial state
@@ -115,15 +115,19 @@ class TTurbine(TTurboComponent):
             self.GasOut.mass = self.GasIn.mass
 
             # power without cooling:
-            PW_PR = fu.TurbineExpansion(self.GasIn, self.GasOut, PR_iter, self.Eta, None, self.Polytropic_Eta)
+            # 1.6.0.8 renaming: gross power excl. mech. losses = DHW, mechanical power output = PW
+            # PW_PR = fu.TurbineExpansion(self.GasIn, self.GasOut, PR_iter, self.Eta, None, self.Polytropic_Eta)
+            DHW_PR = fu.TurbineExpansion(self.GasIn, self.GasOut, PR_iter, self.Eta, None, self.Polytropic_Eta)
 
             # cooling flow effects
             if self.CoolingFlows != None:
-                self.dPWcl, self.W_cl_eff = CalcCoolingFlowEffects()
-                PW_PR = PW_PR + self.dPWcl
+                self.dDHWcl, self.W_cl_eff = CalcCoolingFlowEffects()
+                DHW_PR = DHW_PR + self.dDHWcl
             else:
-                self.dPWcl = 0
+                self.dDHWcl = 0
                 self.W_cl_eff = 0
+
+            PW_PR = DHW_PR * self.Etamechdes
 
             return (PW_PR - self.PW)/self.PW
 
@@ -132,7 +136,11 @@ class TTurbine(TTurboComponent):
             self.W_cl_eff = 0
             if self.TurbineType == 'GG':    # gas generator or fan lpt turbine, providing all power required by compressor(s) or fan
                 # this turbine is providing all the power required by the shaft
-                self.PW = -self.shaft.PW_sum /  self.Etamechdes
+
+                # 1.6.0.8 adding thermodynamic power excl. mech. losses = DHW, mechanical power output = PW
+                # self.PW = -self.shaft.PW_sum /  self.Etamechdes
+                self.PW = -self.shaft.PW_sum
+                self.DHW = self.PW / self.Etamechdes
 
                 # Define the function to find the root of
                 initial_guess = [1.9]
@@ -155,15 +163,20 @@ class TTurbine(TTurboComponent):
                 self.PRdes = self.GasIn.P/Pout
                 self.PR = self.PRdes
 
-                self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PRdes, self.Etades, None, self.Polytropic_Eta)
-
+                # 1.6.0.8 adding thermodynamic power excl. mech. losses = DHW, mechanical power output = PW
+                # self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PRdes, self.Etades, None, self.Polytropic_Eta)
+                self.DHW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PRdes, self.Etades, None, self.Polytropic_Eta)
                 # v1.2
                 # cooling flow effects
                 if self.CoolingFlows != None:
-                    self.dPWcl, self.W_cl_eff = CalcCoolingFlowEffects()
-                    self.PW = self.PW + self.dPWcl
+                    self.dDHWcl, self.W_cl_eff = CalcCoolingFlowEffects()
+                    self.DHW = self.DHW + self.dDHWcl
 
-                self.shaft.PW_sum = self.shaft.PW_sum + self.PW * self.Etamechdes
+                self.PW = self.DHW * self.Etamechdes
+
+                # 1.6.0.8 adding thermodynamic power excl. mech. losses = DHW, mechanical power output = PW
+                # self.shaft.PW_sum = self.shaft.PW_sum + self.PW * self.Etamechdes
+                self.shaft.PW_sum = self.shaft.PW_sum + self.PW
 
             # reset GasOut to gaspath_conditions dictionary (because link broken by adding cooling flow to GasOut
             #                                                self.GasOut = self.GasOut + cf.GasOut)
@@ -203,15 +216,24 @@ class TTurbine(TTurboComponent):
             self.W = self.Wc / fg.GetFlowCorrectionFactor(self.GasIn)
             # fsys.errors[self.ierror_wc ] = (self.W - self.GasOut.mass) / self.Wdes
 
-            self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PR, self.Eta, None, self.Polytropic_Eta)
+            # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
+            # self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PR, self.Eta, None, self.Polytropic_Eta)
+            self.DHW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PR, self.Eta, None, self.Polytropic_Eta)
 
             # v1.2
             if self.CoolingFlows != None:
-                self.dPWcl, self.W_cl_eff = CalcCoolingFlowEffects()
-                self.PW = self.PW + self.dPWcl
+                self.dDHWcl, self.W_cl_eff = CalcCoolingFlowEffects()
+                # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
+                # self.PW = self.PW + self.dPWcl
+                self.DHW = self.DHW + self.dDHWcl
             fsys.errors[self.ierror_wc ] = (self.W - self.GasIn.mass - self.W_cl_eff) / self.Wdes
 
-            self.shaft.PW_sum = self.shaft.PW_sum + self.PW * self.Etamechdes
+            # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
+            self.PW = self.DHW * self.Etamechdes
+
+            # 1.6.0.8
+            # self.shaft.PW_sum = self.shaft.PW_sum + self.PW * self.Etamechdes
+            self.shaft.PW_sum = self.shaft.PW_sum + self.PW
             if self.TurbineType == 'GG':
                 fsys.errors[self.ierror_shaftpw] = self.shaft.PW_sum / self.PWdes
 

@@ -56,6 +56,8 @@ class TTurboComponent(TGaspath):
         self.Polytropic_Eta = 0  # default eta is assumed isentropic, if self.Polytropic_Eta == 1, polytropic
 
         self.PW = None
+        # 1.6.0.8
+        self.DHW = None
 
         # 1.6 Wilfried Visser, to accomodate multi-map functionality for variable geometry
         # VGparvalue is set from outside (manually of via TControl component) determining the maps in the MapFileNames list to be used for interpolation
@@ -191,6 +193,13 @@ class TTurboComponent(TGaspath):
             print(f"\tEta     : {self.Eta:.4f}")
 
         print(f"\tPW : {self.PW:.1f}")
+
+        # 1.6.0.8
+        if Mode == 'DP':
+            print(f"\tSFmap Nc : {self.map.SFmap_Nc :.4f}")
+            print(f"\tSFmap Wc : {self.map.SFmap_Wc :.4f}")
+            print(f"\tSFmap PR : {self.map.SFmap_PR :.4f}")
+            print(f"\tSFmap Eta: {self.map.SFmap_Eta :.4f}")
 
     #  1.1 WV
     def AddOutputToDict(self, Mode):

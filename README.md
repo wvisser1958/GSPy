@@ -29,6 +29,16 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
+### GSPy v1.6.0.7                                                     12-03-2026
+--------------------------------------------------------------------------------
+### Improvements
+--------------------------------------------------------------------------------
+- Functionality added to specify targets and free variables for design point
+  simulation (Run_DP_simulation method).
+  See example project turbojet_DPeq.py.
+- Code in turbine.py made more consistent: thermodynamic power = 'DHW',
+  mechanical power (after mechanical losses / Etamech) = 'PW'.
+
 ### GSPy v1.6.0.7                                                     11-03-2026
 --------------------------------------------------------------------------------
 ### Bug fixes

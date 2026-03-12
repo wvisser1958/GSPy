@@ -32,8 +32,8 @@ class TCoolingFlow(TGaspath):
         self.W_tur_eff_fraction = W_tur_eff_fraction
         self.Rexit = Rexit  # "pumping radius" / radius at point 'where cooling glow exits rotor blade cooling flow hole'
         self.GasInjected = None
-        self.PWexp = None
-        self.PWpump = None
+        self.DHWexp = None
+        self.DHWpump = None
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
@@ -63,10 +63,10 @@ class TCoolingFlow(TGaspath):
         print(f"\t\tTemperature : {self.GasOut.T:.1f} K")
         print(f"\t\tPressure    : {self.GasOut.P:.0f} Pa")
 
-        if self.PWpump != None:
-            print(f"\t\tPW rad pump : {self.PWpump:.0f} kW")
-        if self.PWexp != None:
-            print(f"\t\tPW expansion: {self.PWexp:.1f} kW")
+        if self.DHWpump != None:
+            print(f"\t\tDHW rad pump : {self.DHWpump:.0f} kW")
+        if self.DHWexp != None:
+            print(f"\t\tDHW expansion: {self.DHWexp:.1f} kW")
 
     #  1.1 WV
     def AddOutputToDict(self, Mode):
@@ -79,9 +79,9 @@ class TCoolingFlow(TGaspath):
         fsys.output_dict[f"T{self.stationout}"]  = self.GasOut.T
         fsys.output_dict[f"P{self.stationout}"]  = self.GasOut.P
 
-        if self.PWpump != None:
-            fsys.output_dict[f"PWpump{self.stationout}"]  = self.PWpump
-        if self.PWexp != None:
-            fsys.output_dict[f"PWexp{self.stationout}"]  = self.PWexp
+        if self.DHWpump != None:
+            fsys.output_dict[f"DHWpump{self.stationout}"]  = self.DHWpump
+        if self.DHWexp != None:
+            fsys.output_dict[f"DHWexp{self.stationout}"]  = self.DHWexp
 
 
