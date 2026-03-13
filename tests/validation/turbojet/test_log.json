@@ -109,5 +109,24 @@
     "user": "oscar.kogenhop",
     "platform": "win32",
     "python_version": "3.13.5"
+  },
+  {
+    "timestamp": "2026-03-13T16:29:38+00:00",
+    "model_name": "turbojet",
+    "action": "comparison",
+    "status": "passed",
+    "comparison_reason": "identical_bytes",
+    "model_returncode": 0,
+    "output_csv": "C:\\Users\\oscar.kogenhop\\OneDrive - EPCOR B.V\\Documents\\Projects\\VSCode\\GSPy\\tests\\output\\turbojet\\turbojet.csv",
+    "validation_csv": "C:\\Users\\oscar.kogenhop\\OneDrive - EPCOR B.V\\Documents\\Projects\\VSCode\\GSPy\\tests\\validation\\turbojet\\turbojet.csv",
+    "output_csv_exists": true,
+    "validation_csv_exists": true,
+    "output_csv_sha256": "f4b14695866e239a0edf3af06ba73ba90eecc23a1e66fed202a5507b855419cc",
+    "validation_csv_sha256": "f4b14695866e239a0edf3af06ba73ba90eecc23a1e66fed202a5507b855419cc",
+    "gspy_version": null,
+    "notes": "Output matches validation CSV.",
+    "user": "oscar.kogenhop",
+    "platform": "win32",
+    "python_version": "3.13.5"
   }
 ]

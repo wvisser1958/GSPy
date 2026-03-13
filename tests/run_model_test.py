@@ -1,24 +1,40 @@
 #!/usr/bin/env python3
 """
-GSPy regression test runner for a turbojet-like model.
+Generic GSPy regression test runner for a model script or module.
 
-run from terminal with: 
-    python tests/run_turbojet_test.py --project-root . --model-script tests/turbojet.py
+Typical usage:
+    python tests/run_model_test.py --project-root . --model-script tests/turbojet.py
 
 What this script does
 ---------------------
-1. Creates/uses the directory structure:
+1. Derives the test/model name from the model file or module name.
+   Examples:
+      tests/turbojet.py  -> turbojet
+      tests/turbofan.py  -> turbofan
+2. Creates/uses the directory structure:
       tests/
-        input/turbojet/
-        output/turbojet/
-        validation/turbojet/
+        input/<model_name>/
+        output/<model_name>/
+        validation/<model_name>/
    relative to a chosen project root.
-2. Runs a user-provided model function or script.
-3. Expects the model to write a CSV result to tests/output/turbojet/turbojet.csv.
-4. Compares that output against tests/validation/turbojet/turbojet.csv.
-5. If differences are found, interactively asks whether to reject or accept the new result.
-6. If accepted, overwrites the validation CSV.
-7. Appends a JSON log entry to tests/validation/turbojet/test_log.json.
+3. Runs the user-provided model.
+4. Expects the model to write <model_name>.csv to tests/output/<model_name>/.
+5. Compares that output against tests/validation/<model_name>/<model_name>.csv.
+6. If differences are found, interactively asks whether to reject or accept the new result.
+7. If accepted, overwrites the validation CSV.
+8. Appends a JSON log entry to tests/validation/<model_name>/test_log.json.
+
+Model interface expected by this runner
+---------------------------------------
+The model should accept these CLI arguments:
+    --input-dir <path>
+    --output-dir <path>
+
+The model should then write its CSV output to:
+    <output-dir>/<model_name>.csv
+
+For example, turbojet.py should write:
+    tests/output/turbojet/turbojet.csv
 """
 
 from __future__ import annotations
@@ -39,8 +55,6 @@ import traceback
 from typing import Any, Dict, List, Optional
 
 
-TEST_NAME = "turbojet"
-CSV_NAME = "turbojet.csv"
 LOG_NAME = "test_log.json"
 
 
@@ -58,26 +72,6 @@ def sha256_of_file(path: Path) -> str:
 
 def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
-
-
-def ensure_test_structure(project_root: Path, test_name: str) -> Dict[str, Path]:
-    tests_root = project_root / "tests"
-    input_dir = tests_root / "input" / test_name
-    output_dir = tests_root / "output" / test_name
-    validation_dir = tests_root / "validation" / test_name
-
-    for p in (tests_root, input_dir, output_dir, validation_dir):
-        ensure_dir(p)
-
-    return {
-        "tests_root": tests_root,
-        "input_dir": input_dir,
-        "output_dir": output_dir,
-        "validation_dir": validation_dir,
-        "output_csv": output_dir / CSV_NAME,
-        "validation_csv": validation_dir / CSV_NAME,
-        "log_json": validation_dir / LOG_NAME,
-    }
 
 
 def load_json_log(path: Path) -> List[Dict[str, Any]]:
@@ -146,7 +140,6 @@ def compare_csv_files(reference_csv: Path, candidate_csv: Path) -> Dict[str, Any
             "diff": [f"Reference file does not exist: {reference_csv}"],
         }
 
-    # Fast byte comparison first.
     if filecmp.cmp(reference_csv, candidate_csv, shallow=False):
         return {
             "equal": True,
@@ -154,7 +147,6 @@ def compare_csv_files(reference_csv: Path, candidate_csv: Path) -> Dict[str, Any
             "diff": [],
         }
 
-    # Semantic CSV diff.
     diff = unified_csv_diff(reference_csv, candidate_csv)
     return {
         "equal": False,
@@ -179,6 +171,62 @@ def prompt_user_choice() -> str:
         print("Invalid choice. Please enter 'r' or 'a'.")
 
 
+def normalize_model_args(model_args: List[str]) -> List[str]:
+    if model_args and model_args[0] == "--":
+        return model_args[1:]
+    return model_args
+
+
+def discover_model_script_near_runner(runner_path: Path) -> Optional[Path]:
+    candidates = [
+        p for p in runner_path.parent.glob("*.py")
+        if p.name not in {runner_path.name, "__init__.py"}
+    ]
+    if len(candidates) == 1:
+        return candidates[0].resolve()
+    return None
+
+
+def derive_model_name(model_script: Optional[Path], model_module: Optional[str]) -> str:
+    if model_script is not None:
+        return model_script.stem
+    if model_module:
+        return model_module.split(".")[-1]
+    auto_script = discover_model_script_near_runner(Path(__file__).resolve())
+    if auto_script is not None:
+        return auto_script.stem
+    raise ValueError(
+        "Could not determine model name. Provide --model-script or --model-module, or place a single model .py next to run_model_test.py."
+    )
+
+
+def ensure_test_structure(project_root: Path, model_name: str) -> Dict[str, Path]:
+    tests_root = project_root / "tests"
+    input_dir = tests_root / "input" / model_name
+    output_dir = tests_root / "output" / model_name
+    validation_dir = tests_root / "validation" / model_name
+
+    for p in (tests_root, input_dir, output_dir, validation_dir):
+        ensure_dir(p)
+
+    csv_name = f"{model_name}.csv"
+    return {
+        "tests_root": tests_root,
+        "input_dir": input_dir,
+        "output_dir": output_dir,
+        "validation_dir": validation_dir,
+        "output_csv": output_dir / csv_name,
+        "validation_csv": validation_dir / csv_name,
+        "log_json": validation_dir / LOG_NAME,
+    }
+
+
+def resolve_model_script(args_model_script: Optional[Path]) -> Optional[Path]:
+    if args_model_script is not None:
+        return args_model_script.resolve()
+    return discover_model_script_near_runner(Path(__file__).resolve())
+
+
 def run_model(
     model_script: Optional[Path],
     model_module: Optional[str],
@@ -187,19 +235,10 @@ def run_model(
     output_dir: Path,
     extra_args: List[str],
 ) -> subprocess.CompletedProcess[str]:
-    """
-    Run the user model.
-
-    Supported options:
-    - model_script: path to a Python script, called as:
-        python <script> --input-dir ... --output-dir ...
-    - model_module: dotted module name, called as:
-        python -m <module> --input-dir ... --output-dir ...
-
-    Adapt this function if your model uses a different API.
-    """
     if model_script is None and model_module is None:
-        raise ValueError("Provide either --model-script or --model-module.")
+        raise ValueError(
+            "Provide either --model-script or --model-module, or place a single model .py next to run_model_test.py."
+        )
 
     base_cmd = [sys.executable]
     if model_script is not None:
@@ -231,7 +270,7 @@ def build_log_entry(
     *,
     action: str,
     status: str,
-    test_name: str,
+    model_name: str,
     output_csv: Path,
     validation_csv: Path,
     comparison_reason: str,
@@ -241,7 +280,7 @@ def build_log_entry(
 ) -> Dict[str, Any]:
     entry: Dict[str, Any] = {
         "timestamp": utc_now_iso(),
-        "test_name": test_name,
+        "model_name": model_name,
         "action": action,
         "status": status,
         "comparison_reason": comparison_reason,
@@ -262,7 +301,7 @@ def build_log_entry(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run and validate a GSPy turbojet regression test.")
+    parser = argparse.ArgumentParser(description="Run and validate a generic GSPy model regression test.")
     parser.add_argument(
         "--project-root",
         type=Path,
@@ -270,15 +309,10 @@ def parse_args() -> argparse.Namespace:
         help="Root of the GSPy project. Default: current working directory.",
     )
     parser.add_argument(
-        "--test-name",
-        default=TEST_NAME,
-        help=f"Test folder name. Default: {TEST_NAME}",
-    )
-    parser.add_argument(
         "--model-script",
         type=Path,
         default=None,
-        help="Path to the Python script that runs the model.",
+        help="Path to the Python script that runs the model. If omitted, the runner tries to auto-discover a single .py model next to itself.",
     )
     parser.add_argument(
         "--model-module",
@@ -303,21 +337,15 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def normalize_model_args(model_args: List[str]) -> List[str]:
-    if model_args and model_args[0] == "--":
-        return model_args[1:]
-    return model_args
-
-
 def main() -> int:
     args = parse_args()
     project_root = args.project_root.resolve()
-    model_script = args.model_script.resolve() if args.model_script else None
+    model_script = resolve_model_script(args.model_script)
     model_module = args.model_module
-    test_name = args.test_name
+    model_name = derive_model_name(model_script, model_module)
     extra_args = normalize_model_args(args.model_args)
 
-    paths = ensure_test_structure(project_root, test_name)
+    paths = ensure_test_structure(project_root, model_name)
     input_dir = paths["input_dir"]
     output_dir = paths["output_dir"]
     validation_dir = paths["validation_dir"]
@@ -325,11 +353,26 @@ def main() -> int:
     validation_csv = paths["validation_csv"]
     log_json = paths["log_json"]
 
-    # Clean old output CSV so we can verify the model created a fresh one.
+    if model_script is not None and model_module is None and not model_script.exists():
+        append_log(
+            log_json,
+            {
+                "timestamp": utc_now_iso(),
+                "model_name": model_name,
+                "action": "model_script_missing",
+                "status": "error",
+                "message": f"Model script not found: {model_script}",
+            },
+        )
+        print(f"Test failed: model script not found: {model_script}")
+        return 2
+
     if output_csv.exists():
         output_csv.unlink()
 
     print(f"Project root     : {project_root}")
+    print(f"Model name       : {model_name}")
+    print(f"Model script     : {model_script if model_script is not None else '<module mode>'}")
     print(f"Input directory  : {input_dir}")
     print(f"Output directory : {output_dir}")
     print(f"Validation dir   : {validation_dir}")
@@ -348,7 +391,7 @@ def main() -> int:
             log_json,
             {
                 "timestamp": utc_now_iso(),
-                "test_name": test_name,
+                "model_name": model_name,
                 "action": "model_run_exception",
                 "status": "error",
                 "message": str(exc),
@@ -370,7 +413,7 @@ def main() -> int:
             build_log_entry(
                 action="model_run",
                 status="failed",
-                test_name=test_name,
+                model_name=model_name,
                 output_csv=output_csv,
                 validation_csv=validation_csv,
                 comparison_reason="model_nonzero_exit",
@@ -388,7 +431,7 @@ def main() -> int:
             build_log_entry(
                 action="model_run",
                 status="failed",
-                test_name=test_name,
+                model_name=model_name,
                 output_csv=output_csv,
                 validation_csv=validation_csv,
                 comparison_reason="missing_output_csv",
@@ -408,7 +451,7 @@ def main() -> int:
             build_log_entry(
                 action="comparison",
                 status="passed",
-                test_name=test_name,
+                model_name=model_name,
                 output_csv=output_csv,
                 validation_csv=validation_csv,
                 comparison_reason=comparison["reason"],
@@ -430,7 +473,7 @@ def main() -> int:
             build_log_entry(
                 action="comparison",
                 status="failed",
-                test_name=test_name,
+                model_name=model_name,
                 output_csv=output_csv,
                 validation_csv=validation_csv,
                 comparison_reason=comparison["reason"],
@@ -450,7 +493,7 @@ def main() -> int:
             build_log_entry(
                 action="reject_new_results",
                 status="failed",
-                test_name=test_name,
+                model_name=model_name,
                 output_csv=output_csv,
                 validation_csv=validation_csv,
                 comparison_reason=comparison["reason"],
@@ -462,7 +505,6 @@ def main() -> int:
         print("Test rejected. Validation CSV was left unchanged.")
         return 1
 
-    # Accept path.
     if not args.gspy_version:
         args.gspy_version = input("Enter the GSPy version to log for this accepted result: ").strip() or None
 
@@ -472,7 +514,7 @@ def main() -> int:
         build_log_entry(
             action="accept_new_results",
             status="accepted",
-            test_name=test_name,
+            model_name=model_name,
             output_csv=output_csv,
             validation_csv=validation_csv,
             comparison_reason=comparison["reason"],
