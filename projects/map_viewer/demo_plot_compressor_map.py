@@ -62,9 +62,9 @@ def main():
     # Simple compressor plots, no scaling, plot data directly unscaled from map file
     # ------------------------------------------------------------------------------
    # (A.1) Unscaled map (no DP/OD overlays)
-    plotter.plot(scaled=False, map_suffix="_A.1", show=True, beta_lines=True, beta_label_side='end')
+    plotter.plot(scaled=False, map_suffix="_A.1", show=True, nc_labels_use_scaling=True, beta_lines=True, beta_label_side='end')
     # (A.2) Unscaled map (no DP/OD overlays) Dual subplot graph map
-    plotter.plot(scaled=False, dual=True, map_suffix="_A.2", show=True, beta_lines=True, beta_label_side='end')
+    plotter.plot(scaled=False, dual=True, map_suffix="_A.2", show=True, nc_labels_use_scaling=False, beta_lines=False, beta_label_side='end')
 
     # Plot scaled compressor maps based on CSV file with DP and OD performance data
     # -----------------------------------------------------------------------------
@@ -82,6 +82,7 @@ def main():
         beta_map_des=0.75,
         # or supply wc_map_des=... to infer Beta at the chosen Nc
         map_suffix="_B.1",
+        nc_labels_use_scaling=True,
     )
     # (B.2) Scaled to CSV + DP (yellow square) + OD series overlays, dual subplot map graph
     plotter.scale_from_csv_and_plot(
@@ -97,11 +98,13 @@ def main():
         beta_map_des=0.75,
         # or supply wc_map_des=... to infer Beta at the chosen Nc
         map_suffix="_B.2",
+        nc_labels_use_scaling=True,
+        beta_lines=True,
     )
 
     # Manually scaled compressor map to given design point data
     # ---------------------------------------------------------------------------
-    # (C) Scaled to input values
+    # (C.1) Scaled to input values
     Nc_des = 16540
     Wc_des = 19.9
     PR_des = 6.92
@@ -118,7 +121,28 @@ def main():
         # Optional overrides for the *map-design* location used in scaling:
         nc_map_des=1.0, beta_map_des=0.75,
         # or infer beta from a map Wc: wc_map_des=8.0,
-        map_suffix="_C",
+        map_suffix="_C.1",
+        nc_labels_use_scaling=True,
+    )
+    # (C.2) Scaled to input values, Nc non referred
+    Nc_des = 16540
+    Wc_des = 19.9
+    PR_des = 6.92
+    Eta_des = 0.825
+    plotter.scale_from_values_and_plot(
+        Nc_des=Nc_des, Wc_des=Wc_des, PR_des=PR_des, Eta_des=Eta_des,
+        do_plot_design_point=True,
+        do_plot_series=False,
+        # od_points=od_points,          # omit or pass [] if you don't want OD
+        show=True,
+        save=True,
+        dual=False,
+        eta_prefix="Eta_is_",
+        # Optional overrides for the *map-design* location used in scaling:
+        nc_map_des=1.0, beta_map_des=0.75,
+        # or infer beta from a map Wc: wc_map_des=8.0,
+        map_suffix="_C.2",
+        nc_labels_use_scaling=False,
     )
 
 if __name__ == "__main__":

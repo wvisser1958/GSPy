@@ -77,8 +77,8 @@ class TTurbineMap(TTurboMap):
         # self.get_map_pr = RegularGridInterpolator((self.nc_values, self.beta_values), self.pr_array, bounds_error=False, fill_value=None)
         self.DefineInterpolationFunctions()
 
-    def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, beta_lines = True, beta_label_side = 'end'):
-        super().PlotMap(use_scaled_map, do_plot_design_point, do_plot_series)
+    def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, nc_labels_use_scaling = True, beta_lines = True, beta_label_side = 'end'):
+        super().PlotMap(use_scaled_map, do_plot_design_point, do_plot_series, nc_labels_use_scaling)
 
         if self.LegacyMap:
             # Plot Wc-PR
@@ -122,7 +122,7 @@ class TTurbineMap(TTurboMap):
                 #     text_label = f'Nc = {NcValue:.1f}'
                 # else:
                 #     text_label = f'{NcValue:.1f}'
-                label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
+                label_txt = self._format_nc_label(self._get_nc_label_value(NcValue, self.SFmap_Nc, nc_labels_use_scaling), with_prefix=(index == 0))
                 self.main_plot_axis.text(
                     # 1.6.0.6
                     # x[-1], y[-1]-((ymax-ymin)/8), text_label,
@@ -162,8 +162,8 @@ class TTurbineMap(TTurboMap):
 
         self.map_figure.savefig(self.map_figure_pathname)
 
-    def PlotDualMap(self, use_scaled_map = False, do_plot_design_point = False, do_plot_series = False, beta_lines = True, beta_label_side = 'end'):
-        super().PlotDualMap(use_scaled_map, do_plot_design_point, do_plot_series)
+    def PlotDualMap(self, use_scaled_map = False, do_plot_design_point = False, do_plot_series = False, nc_labels_use_scaling = True, beta_lines = True, beta_label_side = 'end'):
+        super().PlotDualMap(use_scaled_map, do_plot_design_point, do_plot_series, nc_labels_use_scaling)
 
         # Plot Pr-Eta top subplot
         for index, NcValue in enumerate(self.NcArrayValues):
@@ -173,7 +173,7 @@ class TTurbineMap(TTurboMap):
             x = np.asarray(self.PRArrayValues[index])
             y = np.asarray(self.EtaArrayValues[index])
             # First line gets "Nc=\n<value>", others just "<value>"
-            label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
+            label_txt = self._format_nc_label(self._get_nc_label_value(NcValue, self.SFmap_Nc, nc_labels_use_scaling), with_prefix=(index == 0))
 
             # Optional: stagger vertical offset a bit to reduce collisions when ends align
             dy = (index % 2) * 6 - 3  # -3, +3, -3, +3...
@@ -193,7 +193,7 @@ class TTurbineMap(TTurboMap):
             # 1.6.0.4
             x = np.asarray(self.PRArrayValues[index])
             y = np.asarray(self.WcArrayValues[index])
-            label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
+            label_txt = self._format_nc_label(self._get_nc_label_value(NcValue, self.SFmap_Nc, nc_labels_use_scaling), with_prefix=(index == 0))
             dy = (index % 2) * 6 - 3
             self._annotate_line_end(
                 self.secondary_plot_axis, x, y,

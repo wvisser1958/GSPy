@@ -65,12 +65,12 @@ def main():
     # "A.x" plots are overwritten, a suffix, e.g. suffix="A.1" is added to generate
     # a customized file name
     # (A.1) Unscaled map (no DP/OD overlays) Legacy map
-    plotter.plot(scaled=False, legacy_map=True, map_suffix="_A.1", show=True, beta_lines=True, beta_label_side='end')
+    plotter.plot(scaled=False, legacy_map=True, map_suffix="_A.1", show=True, nc_labels_use_scaling=True, beta_lines=True, beta_label_side='end')
     # (A.2) Unscaled map (no DP/OD overlays) Dual graph map
     # Note that dual=True overrides legacy_map=True
-    plotter.plot(scaled=False, legacy_map=True, dual=True, map_suffix="_A.2", show=True, beta_lines=True, beta_label_side='end')
+    plotter.plot(scaled=False, legacy_map=True, dual=True, map_suffix="_A.2", show=True, nc_labels_use_scaling=True, beta_lines=True, beta_label_side='end')
     # (A.3) Unscaled map (no DP/OD overlays) Nc x Wc - PR
-    plotter.plot(scaled=False, legacy_map=False, map_suffix="_A.3", show=True, beta_lines=True, beta_label_side='end')
+    plotter.plot(scaled=False, legacy_map=False, map_suffix="_A.3", show=True, nc_labels_use_scaling=True, beta_lines=True, beta_label_side='end')
 
     # Plot scaled turbine maps based on CSV file with DP and OD performance data
     # ---------------------------------------------------------------------------
@@ -88,6 +88,7 @@ def main():
         beta_map_des=0.50943,
         # legacy_map=False,
         map_suffix="_B.1",
+        nc_labels_use_scaling=True,
     )
     # (B.2) Scaled to CSV + DP + OD overlays, as legacy map
     plotter.scale_from_csv_and_plot(
@@ -103,6 +104,7 @@ def main():
         beta_map_des=0.50943,
         legacy_map=True,
         map_suffix="_B.2",
+        nc_labels_use_scaling=True,
     )
     # (B.3) Scaled to CSV + DP + OD overlays in subplot graphs
     plotter.scale_from_csv_and_plot(
@@ -118,6 +120,7 @@ def main():
         beta_map_des=0.50943,
         # legacy_map=False,
         map_suffix="_B.3",
+        nc_labels_use_scaling=True,
     )
 
     # Manually scaled turbine map to given design point data
@@ -140,6 +143,7 @@ def main():
         nc_map_des=1.0, beta_map_des=0.50943,
         # or infer beta from a map Wc: wc_map_des=8.0,
         map_suffix="_C.1",
+        nc_labels_use_scaling=True,
     )
 
 

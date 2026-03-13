@@ -415,6 +415,7 @@ class MapPlotter:
         map_suffix: str | None = None,
         legacy_map: bool | None = None,   # turbine PlotMap only, per-call
         dual: bool = False,               # per-call choice: single vs dual
+        nc_labels_use_scaling: bool = True,
         beta_lines: bool = True,
         beta_label_side: str = 'end',
     ) -> None:
@@ -436,6 +437,7 @@ class MapPlotter:
                 save=save,
                 eta_name=eta_name,
                 map_suffix=map_suffix,
+                nc_labels_use_scaling=nc_labels_use_scaling,
                 beta_lines=beta_lines,
                 beta_label_side=beta_label_side,
             )
@@ -458,6 +460,7 @@ class MapPlotter:
                 use_scaled_map=scaled,
                 do_plot_design_point=dp,
                 do_plot_series=series,
+                nc_labels_use_scaling=nc_labels_use_scaling,
                 beta_lines=beta_lines,
                 beta_label_side=beta_label_side,
             )
@@ -477,6 +480,7 @@ class MapPlotter:
         save: bool = True,
         eta_name: str = "Eta_is_",
         map_suffix: str | None = None,
+        nc_labels_use_scaling: bool = True,
         beta_lines: bool = True,
         beta_label_side: str = 'end',
     ) -> None:
@@ -498,6 +502,7 @@ class MapPlotter:
                     use_scaled_map=scaled,
                     do_plot_design_point=dp,
                     do_plot_series=series,
+                    nc_labels_use_scaling=nc_labels_use_scaling,
                     beta_lines=beta_lines,
                     beta_label_side=beta_label_side,
                 )
@@ -506,6 +511,7 @@ class MapPlotter:
                     use_scaled_map=scaled,
                     do_plot_design_point=dp,
                     do_plot_series=series,
+                    nc_labels_use_scaling=nc_labels_use_scaling,
                     beta_lines=beta_lines,
                     beta_label_side=beta_label_side,
                 )
@@ -605,6 +611,7 @@ class MapPlotter:
         # NEW: optional suffix for saved filename(s)
         map_suffix: str | None = None,   # default applied below: "_DP_from_CSV"
         legacy_map: bool | None = None,
+        nc_labels_use_scaling: bool = True,
         beta_lines: bool = True,
         beta_label_side: str = 'end',
     ) -> None:
@@ -638,6 +645,7 @@ class MapPlotter:
                 save=save,
                 eta_name=eta_prefix,
                 map_suffix=map_suffix,
+                nc_labels_use_scaling=nc_labels_use_scaling,
                 beta_lines=beta_lines,
                 beta_label_side=beta_label_side,
             )
@@ -651,6 +659,7 @@ class MapPlotter:
                 save=save,
                 map_suffix=map_suffix,
                 legacy_map=legacy_map,
+                nc_labels_use_scaling=nc_labels_use_scaling,
                 beta_lines=beta_lines,
                 beta_label_side=beta_label_side,
             )
@@ -711,6 +720,7 @@ class MapPlotter:
         wc_map_des: float | None = None,
         # NEW: optional suffix for saved filename(s)
         map_suffix: str | None = None,   # default applied below: "_manual_DP"
+        nc_labels_use_scaling: bool = True,
         beta_lines: bool = True,
         beta_label_side: str = 'end',
     ) -> None:
@@ -768,6 +778,7 @@ class MapPlotter:
                 save=save,
                 eta_name=eta_prefix,
                 map_suffix=map_suffix,
+                nc_labels_use_scaling=nc_labels_use_scaling,
                 beta_lines=beta_lines,
                 beta_label_side=beta_label_side,
             )
@@ -779,6 +790,7 @@ class MapPlotter:
                 show=show,
                 save=save,
                 map_suffix=map_suffix,
+                nc_labels_use_scaling=nc_labels_use_scaling,
                 beta_lines=beta_lines,
                 beta_label_side=beta_label_side,
             )

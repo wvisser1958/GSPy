@@ -96,6 +96,13 @@ class TTurboMap(TMap):
         return f"Nc=\n{val_txt}" if with_prefix else val_txt
 
 
+
+    @staticmethod
+    def _get_nc_label_value(nc_value, sfmap_nc=1.0, use_scaling=True):
+        if use_scaling:
+            return nc_value / sfmap_nc
+        return nc_value
+
     @staticmethod
     def _format_beta_label(beta_value, with_prefix=False):
         val_txt = f"{beta_value:.3f}".rstrip('0').rstrip('.')
@@ -234,7 +241,7 @@ class TTurboMap(TMap):
             self.EtaArrayValues = self.eta_array
 
     # Map plotting routine
-    def PlotMap(self, use_scaled_map = False, do_plot_design_point = False, do_plot_series = False):
+    def PlotMap(self, use_scaled_map = False, do_plot_design_point = False, do_plot_series = False, nc_labels_use_scaling = True):
         super().PlotMap()
         # Set map title
         map_title = self.name
@@ -252,7 +259,7 @@ class TTurboMap(TMap):
     # This plot consists of two subplots
     #  1.5 new eta_name parameter so we can also plot fan maps
     # def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
-    def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = False, do_plot_design_point = False, do_plot_series = False):
+    def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = False, do_plot_design_point = False, do_plot_series = False, nc_labels_use_scaling = True):
         # Store plot under a different name, override map file name
         # reuse the map_figure_pathname and map size class parameters
         # 1.4

@@ -35,8 +35,8 @@ class TCompressorMap(TTurboMap):
         dummy_value, self.sl_wc_array, self.sl_pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'SURGE LINE')
         self.DefineInterpolationFunctions()
 
-    def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, beta_lines = True, beta_label_side = 'end'):
-        super().PlotMap(use_scaled_map, do_plot_design_point, do_plot_series)
+    def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, nc_labels_use_scaling = True, beta_lines = True, beta_label_side = 'end'):
+        super().PlotMap(use_scaled_map, do_plot_design_point, do_plot_series, nc_labels_use_scaling)
 
         if use_scaled_map:
             self.compSlWcArrayValues = self.sl_wc_array * self.SFmap_Wc
@@ -60,7 +60,7 @@ class TCompressorMap(TTurboMap):
             #     text_label = f'Nc = {NcValue:.1f}'
             # else:
             #     text_label = f'{NcValue:.1f}'
-            label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
+            label_txt = self._format_nc_label(self._get_nc_label_value(NcValue, self.SFmap_Nc, nc_labels_use_scaling), with_prefix=(index == 0))
             self.main_plot_axis.text(
             # 1.6.0.6
                 # x[0], y[0], text_label,
@@ -98,8 +98,8 @@ class TCompressorMap(TTurboMap):
 
         self.map_figure.savefig(self.map_figure_pathname)
 
-    def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, beta_lines = True, beta_label_side = 'end'):
-        super().PlotDualMap(eta_name, use_scaled_map, do_plot_design_point, do_plot_series)
+    def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, nc_labels_use_scaling = True, beta_lines = True, beta_label_side = 'end'):
+        super().PlotDualMap(eta_name, use_scaled_map, do_plot_design_point, do_plot_series, nc_labels_use_scaling)
 
         # Plot Wc-Eta top subplot
         for index, NcValue in enumerate(self.NcArrayValues):
@@ -109,7 +109,7 @@ class TCompressorMap(TTurboMap):
             x = np.asarray(self.WcArrayValues[index])
             y = np.asarray(self.EtaArrayValues[index])
             # First line gets "Nc=\n<value>", others just "<value>"
-            label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
+            label_txt = self._format_nc_label(self._get_nc_label_value(NcValue, self.SFmap_Nc, nc_labels_use_scaling), with_prefix=(index == 0))
 
             # Optional: stagger vertical offset a bit to reduce collisions when ends align
             dy = (index % 2) * 6 - 3  # -3, +3, -3, +3...
@@ -130,7 +130,7 @@ class TCompressorMap(TTurboMap):
             # 1.6.0.4
             x = np.asarray(self.WcArrayValues[index])
             y = np.asarray(self.PRArrayValues[index])
-            label_txt = self._format_nc_label(NcValue/self.SFmap_Nc, with_prefix=(index == 0))
+            label_txt = self._format_nc_label(self._get_nc_label_value(NcValue, self.SFmap_Nc, nc_labels_use_scaling), with_prefix=(index == 0))
             dy = (index % 2) * 6 - 3
             self._annotate_line_end(
                 self.secondary_plot_axis, x, y,

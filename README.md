@@ -35,6 +35,8 @@ See the LICENSE file for details.
 --------------------------------------------------------------------------------
 - Maps can now be plotted with the β-lines and labels, see the demo_plot*.py
   files in ./projects/map_viewer
+- Nc label in map plot optionally displays the referred Nc or the actual RPM not
+  referred to the design spool speed
 
 ### GSPy v1.6.0.8                                                     12-03-2026
 --------------------------------------------------------------------------------
