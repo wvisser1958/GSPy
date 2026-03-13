@@ -35,7 +35,7 @@ class TCompressorMap(TTurboMap):
         dummy_value, self.sl_wc_array, self.sl_pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'SURGE LINE')
         self.DefineInterpolationFunctions()
 
-    def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+    def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, beta_lines = True, beta_label_side = 'end'):
         super().PlotMap(use_scaled_map, do_plot_design_point, do_plot_series)
 
         if use_scaled_map:
@@ -67,6 +67,9 @@ class TCompressorMap(TTurboMap):
                 x[0], y[0], label_txt,
                 fontsize=8, ha='left', va='center'
             )
+        if beta_lines:
+            self._plot_beta_lines(self.main_plot_axis, self.WcArrayValues, self.PRArrayValues, beta_label_side=beta_label_side)
+
         self.main_plot_axis.set_xlabel('Corected massflow')
         self.main_plot_axis.set_ylabel('Pressure Ratio')
 
@@ -95,7 +98,7 @@ class TCompressorMap(TTurboMap):
 
         self.map_figure.savefig(self.map_figure_pathname)
 
-    def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+    def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, beta_lines = True, beta_label_side = 'end'):
         super().PlotDualMap(eta_name, use_scaled_map, do_plot_design_point, do_plot_series)
 
         # Plot Wc-Eta top subplot
@@ -115,6 +118,9 @@ class TCompressorMap(TTurboMap):
                 label_txt, which="first", color="black", dx=4, dy=dy, fontsize=7
             )
 
+        if beta_lines:
+            self._plot_beta_lines(self.main_plot_axis, self.WcArrayValues, self.EtaArrayValues, beta_label_side=beta_label_side)
+
         self.main_plot_axis.set_ylabel('Efficiency')
         # self.main_plot_axis.set_xlabel('Pressure Ratio')
 
@@ -130,6 +136,9 @@ class TCompressorMap(TTurboMap):
                 self.secondary_plot_axis, x, y,
                 label_txt, which="first", color="black", dx=4, dy=dy, fontsize=7
             )
+
+        if beta_lines:
+            self._plot_beta_lines(self.secondary_plot_axis, self.WcArrayValues, self.PRArrayValues, beta_label_side=beta_label_side)
 
         self.secondary_plot_axis.set_ylabel('Pressure Ratio')
         self.secondary_plot_axis.set_xlabel('Corrected Mass Flow')

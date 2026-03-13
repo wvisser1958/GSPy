@@ -62,9 +62,9 @@ def main():
     # Simple compressor plots, no scaling, plot data directly unscaled from map file
     # ------------------------------------------------------------------------------
    # (A.1) Unscaled map (no DP/OD overlays)
-    plotter.plot(scaled=False, map_suffix="_A.1", show=True)
+    plotter.plot(scaled=False, map_suffix="_A.1", show=True, beta_lines=True, beta_label_side='end')
     # (A.2) Unscaled map (no DP/OD overlays) Dual subplot graph map
-    plotter.plot(scaled=False, dual=True, map_suffix="_A.2", show=True)
+    plotter.plot(scaled=False, dual=True, map_suffix="_A.2", show=True, beta_lines=True, beta_label_side='end')
 
     # Plot scaled compressor maps based on CSV file with DP and OD performance data
     # -----------------------------------------------------------------------------

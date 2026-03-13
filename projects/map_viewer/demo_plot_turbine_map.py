@@ -65,12 +65,12 @@ def main():
     # "A.x" plots are overwritten, a suffix, e.g. suffix="A.1" is added to generate
     # a customized file name
     # (A.1) Unscaled map (no DP/OD overlays) Legacy map
-    plotter.plot(scaled=False, legacy_map=True, map_suffix="_A.1", show=True)
+    plotter.plot(scaled=False, legacy_map=True, map_suffix="_A.1", show=True, beta_lines=True, beta_label_side='end')
     # (A.2) Unscaled map (no DP/OD overlays) Dual graph map
     # Note that dual=True overrides legacy_map=True
-    plotter.plot(scaled=False, legacy_map=True, dual=True, map_suffix="_A.2", show=True)
+    plotter.plot(scaled=False, legacy_map=True, dual=True, map_suffix="_A.2", show=True, beta_lines=True, beta_label_side='end')
     # (A.3) Unscaled map (no DP/OD overlays) Nc x Wc - PR
-    plotter.plot(scaled=False, legacy_map=False, map_suffix="_A.3", show=True)
+    plotter.plot(scaled=False, legacy_map=False, map_suffix="_A.3", show=True, beta_lines=True, beta_label_side='end')
 
     # Plot scaled turbine maps based on CSV file with DP and OD performance data
     # ---------------------------------------------------------------------------

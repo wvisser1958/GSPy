@@ -77,13 +77,16 @@ class TTurbineMap(TTurboMap):
         # self.get_map_pr = RegularGridInterpolator((self.nc_values, self.beta_values), self.pr_array, bounds_error=False, fill_value=None)
         self.DefineInterpolationFunctions()
 
-    def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
+    def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, beta_lines = True, beta_label_side = 'end'):
         super().PlotMap(use_scaled_map, do_plot_design_point, do_plot_series)
 
         if self.LegacyMap:
             # Plot Wc-PR
             for index, NcValue in enumerate(self.NcArrayValues):
                 self.main_plot_axis.plot(self.PRArrayValues[index], self.WcArrayValues[index], linewidth=0.25, linestyle='dashed', color='black', label=str(NcValue))
+            if beta_lines:
+                self._plot_beta_lines(self.main_plot_axis, self.PRArrayValues, self.WcArrayValues, beta_label_side=beta_label_side)
+
             self.main_plot_axis.set_ylabel('Corected massflow')
             self.main_plot_axis.set_xlabel('Pressure Ratio')
 
@@ -126,6 +129,9 @@ class TTurbineMap(TTurboMap):
                     x[-1], y[-1]-((ymax-ymin)/8), label_txt,
                     fontsize=8, ha='left', va='bottom', rotation=-90
                 )
+            if beta_lines:
+                self._plot_beta_lines(self.main_plot_axis, Nc_times_WcArrayValues, self.PRArrayValues, beta_label_side=beta_label_side)
+
             self.main_plot_axis.set_xlabel('Corected mass flow * Corrected speed')
             self.main_plot_axis.set_ylabel('Pressure Ratio')
 
@@ -156,7 +162,7 @@ class TTurbineMap(TTurboMap):
 
         self.map_figure.savefig(self.map_figure_pathname)
 
-    def PlotDualMap(self, use_scaled_map = False, do_plot_design_point = False, do_plot_series = False):
+    def PlotDualMap(self, use_scaled_map = False, do_plot_design_point = False, do_plot_series = False, beta_lines = True, beta_label_side = 'end'):
         super().PlotDualMap(use_scaled_map, do_plot_design_point, do_plot_series)
 
         # Plot Pr-Eta top subplot
@@ -175,6 +181,9 @@ class TTurbineMap(TTurboMap):
                 self.main_plot_axis, x, y,
                 label_txt, which="last", color="black", dx=4, dy=dy, fontsize=7
             )
+        if beta_lines:
+            self._plot_beta_lines(self.main_plot_axis, self.PRArrayValues, self.EtaArrayValues, beta_label_side=beta_label_side)
+
         self.main_plot_axis.set_ylabel('Efficiency')
         # self.main_plot_axis.set_xlabel('Pressure Ratio')
 
@@ -190,6 +199,9 @@ class TTurbineMap(TTurboMap):
                 self.secondary_plot_axis, x, y,
                 label_txt, which="last", color="black", dx=4, dy=dy, fontsize=7
             )
+
+        if beta_lines:
+            self._plot_beta_lines(self.secondary_plot_axis, self.PRArrayValues, self.WcArrayValues, beta_label_side=beta_label_side)
 
         self.secondary_plot_axis.set_ylabel('Corected mass flow')
         self.secondary_plot_axis.set_xlabel('Pressure Ratio')

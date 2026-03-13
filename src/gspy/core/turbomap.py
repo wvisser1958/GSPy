@@ -95,6 +95,30 @@ class TTurboMap(TMap):
             val_txt = f"{nc_value:.0f}"
         return f"Nc=\n{val_txt}" if with_prefix else val_txt
 
+
+    @staticmethod
+    def _format_beta_label(beta_value, with_prefix=False):
+        val_txt = f"{beta_value:.3f}".rstrip('0').rstrip('.')
+        return f"β={val_txt}" if with_prefix else val_txt
+
+    def _plot_beta_lines(self, ax, x_array, y_array, beta_label_side="end"):
+        if not hasattr(self, "beta_values") or self.beta_values is None:
+            return
+        which = "first" if str(beta_label_side).lower() == "start" else "last"
+        x_array = np.asarray(x_array)
+        y_array = np.asarray(y_array)
+        n_beta = len(self.beta_values)
+        for index, beta_value in enumerate(np.asarray(self.beta_values, dtype=float)):
+            x = x_array[:, index]
+            y = y_array[:, index]
+            ax.plot(x, y, linewidth=0.25, linestyle='dotted', color='dimgray', zorder=2)
+            label_txt = self._format_beta_label(beta_value, with_prefix=(index == (n_beta -1 )))
+            dy = (index % 2) * 6 - 3
+            self._annotate_line_end(
+                ax, x, y,
+                label_txt, which=which, color='dimgray', dx=4, dy=dy, fontsize=7
+            )
+
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         amaptype, amaptitle, amapfile = super().ReadMap(filename)
         # with self.file:

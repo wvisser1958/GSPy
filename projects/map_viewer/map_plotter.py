@@ -415,6 +415,8 @@ class MapPlotter:
         map_suffix: str | None = None,
         legacy_map: bool | None = None,   # turbine PlotMap only, per-call
         dual: bool = False,               # per-call choice: single vs dual
+        beta_lines: bool = True,
+        beta_label_side: str = 'end',
     ) -> None:
         """
         Plot for this call.
@@ -434,6 +436,8 @@ class MapPlotter:
                 save=save,
                 eta_name=eta_name,
                 map_suffix=map_suffix,
+                beta_lines=beta_lines,
+                beta_label_side=beta_label_side,
             )
             return
 
@@ -454,6 +458,8 @@ class MapPlotter:
                 use_scaled_map=scaled,
                 do_plot_design_point=dp,
                 do_plot_series=series,
+                beta_lines=beta_lines,
+                beta_label_side=beta_label_side,
             )
 
             if show:
@@ -471,6 +477,8 @@ class MapPlotter:
         save: bool = True,
         eta_name: str = "Eta_is_",
         map_suffix: str | None = None,
+        beta_lines: bool = True,
+        beta_label_side: str = 'end',
     ) -> None:
         """
         Plot the dual-subplot figure.
@@ -490,12 +498,16 @@ class MapPlotter:
                     use_scaled_map=scaled,
                     do_plot_design_point=dp,
                     do_plot_series=series,
+                    beta_lines=beta_lines,
+                    beta_label_side=beta_label_side,
                 )
             else:
                 self._map.PlotDualMap(
                     use_scaled_map=scaled,
                     do_plot_design_point=dp,
                     do_plot_series=series,
+                    beta_lines=beta_lines,
+                    beta_label_side=beta_label_side,
                 )
 
             if show:
@@ -525,11 +537,7 @@ class MapPlotter:
         we infer beta_map_des at the specified Nc_map_des by nearest Wc.
         """
         import pandas as pd
-
-        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         csv_path = self._normalize_path(csv_path)
-        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
         if not csv_path.is_file():
             raise FileNotFoundError(f"CSV not found: {csv_path}")
 
@@ -597,6 +605,8 @@ class MapPlotter:
         # NEW: optional suffix for saved filename(s)
         map_suffix: str | None = None,   # default applied below: "_DP_from_CSV"
         legacy_map: bool | None = None,
+        beta_lines: bool = True,
+        beta_label_side: str = 'end',
     ) -> None:
         """
         One-shot: read CSV, compute scale factors, then plot (scaled).
@@ -628,6 +638,8 @@ class MapPlotter:
                 save=save,
                 eta_name=eta_prefix,
                 map_suffix=map_suffix,
+                beta_lines=beta_lines,
+                beta_label_side=beta_label_side,
             )
         else:
             # Legacy applies ONLY to PlotMap
@@ -639,6 +651,8 @@ class MapPlotter:
                 save=save,
                 map_suffix=map_suffix,
                 legacy_map=legacy_map,
+                beta_lines=beta_lines,
+                beta_label_side=beta_label_side,
             )
 
     # --------------------------------------------------------------------------
@@ -697,6 +711,8 @@ class MapPlotter:
         wc_map_des: float | None = None,
         # NEW: optional suffix for saved filename(s)
         map_suffix: str | None = None,   # default applied below: "_manual_DP"
+        beta_lines: bool = True,
+        beta_label_side: str = 'end',
     ) -> None:
         """
         Scale using explicit values (no CSV), optionally overlay a DP yellow square
@@ -752,6 +768,8 @@ class MapPlotter:
                 save=save,
                 eta_name=eta_prefix,
                 map_suffix=map_suffix,
+                beta_lines=beta_lines,
+                beta_label_side=beta_label_side,
             )
         else:
             self.plot(
@@ -761,4 +779,6 @@ class MapPlotter:
                 show=show,
                 save=save,
                 map_suffix=map_suffix,
+                beta_lines=beta_lines,
+                beta_label_side=beta_label_side,
             )
