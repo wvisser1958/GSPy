@@ -1,0 +1,194 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#    http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Authors
+#   Wilfried Visser
+#   Oscar Kogenhop
+
+from gspy.core import sys_global as fg
+from gspy.core import system as fsys
+from gspy.core import utils as fu
+
+from gspy.core.control import TControl
+from gspy.core.ambient import TAmbient
+from gspy.core.shaft import TShaft
+from gspy.core.inlet import TInlet
+from gspy.core.compressor import TCompressor
+from gspy.core.combustor import TCombustor
+from gspy.core.turbine import TTurbine
+from gspy.core.duct import TDuct
+from gspy.core.exhaustnozzle import TExhaustNozzle
+
+import os
+import argparse
+import matplotlib.pyplot as plt
+from pathlib import Path
+
+    # IMPORTANT NOTE TO THIS MODEL FILE
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # note that this model is only to serve as example and does rougly  represent the GE J85
+    # note that low thrust off design performance is unrealistic due to the absence of variable bleed
+    # control to maintain low speed stall margin
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run GSPy turbojet test model")
+    parser.add_argument(
+        "--input-dir",
+        type=Path,
+        default=None,
+        help="Directory containing test input data such as maps"
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Directory where output files will be written"
+    )
+    return parser.parse_args()
+
+def main(input_dir=None, output_dir=None):
+
+    # Paths
+    project_dir = Path(__file__).resolve().parent
+
+    # Default behavior remains the same when no CLI arguments are provided
+    if input_dir is None:
+        input_dir = project_dir / "maps"
+    else:
+        input_dir = Path(input_dir)
+
+    if output_dir is None:
+        output_dir = project_dir / "output"
+    else:
+        output_dir = Path(output_dir)
+
+    # Ensure output folder exists
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # In test mode:
+    # --input-dir should point to tests/input/turbojet
+    # and the maps are expected inside that folder
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    map_path = input_dir
+    fg.output_path = output_dir
+
+    print(f"Using input directory : {input_dir}")
+    print(f"Using output directory: {output_dir}")
+
+    # create Ambient conditions object (to set ambient/inlet/flight conditions)
+    #                               Altitude, Mach, dTs,    Ps0,    Ts0
+    # None for Ps0 and Ts0 means values are calculated from standard atmosphere
+    fsys.Ambient = TAmbient('Ambient', 0, 0, 0,   0,   None,   None)
+
+    # create a control (controlling inputs to the system model)
+    # components like the combustor retrieve inputs like fuel flow or combustor exit temperature
+
+    # FuelControl for open loop direct control of fuel flow
+    FuelControl = TControl('Fcontrol', '', 0.38, 0.38, 0.08, -0.01, None)
+
+    # N1 rotor speed control
+    # FuelControl = TControl('Ncontrol', '', 0.38, 100, 60, -5, 'N1%')
+
+    # EGT (T5) control : instable at lower power setting due to multiple solutions at same T5
+    # FuelControl = TControl('EGTcontrol', '', 0.38, 1020, 820, -50, 'T5')
+
+    # Generic gas turbine components
+    inlet1 = TInlet('Inlet1', '', None, 0, 2, 19.9, 1)
+
+    compressor1 = TCompressor(
+        'compressor1',
+        map_path / 'compmap.map',
+        None, 2, 3, 1, 16540, 0.825, 1, 0.75, 6.92, 'GG', None
+    )
+
+    # compressor1.Polytropic_Eta = 1
+
+    combustor1 = TCombustor(
+        'combustor1', '', FuelControl, 3, 4, 0.38, None, 1, 1, None,
+        43031, 1.9167, 0, None, None
+    )
+
+    turbine1 = TTurbine(
+        'turbine1',
+        map_path / 'turbimap.map',
+        None, 4, 5, 1, 16540, 0.88, 1, 0.50943, 0.99, 'GG', None
+    )
+
+    # turbine1.Polytropic_Eta = 1
+
+    duct1 = TDuct('exhduct', '', None, 5, 7, 1.0)
+    exhaustnozzle = TExhaustNozzle('exhaustnozzle', '', None, 7, 8, 9, 1, 1, 1)
+
+    # create a turbojet system model
+    fsys.system_model = [
+        fsys.Ambient,
+        FuelControl,
+        inlet1,
+        compressor1,
+        combustor1,
+        turbine1,
+        duct1,
+        exhaustnozzle
+    ]
+
+    # define the gas model in f_global
+    fg.InitializeGas()
+    fsys.ErrorTolerance = 0.0001
+
+    # run the system model Design Point (DP) calculation
+    fsys.Mode = 'DP'
+    print("Design point (DP) results")
+    print("=========================")
+    fsys.Ambient.SetConditions('DP', 0, 0, 0, None, None)
+    fsys.Run_DP_simulation()
+
+    # run the Off-Design (OD) simulation
+    fsys.Mode = 'OD'
+    fsys.inputpoints = FuelControl.Get_OD_inputpoints()
+    print("\nOff-design (OD) results")
+    print("=======================")
+    fsys.Ambient.SetConditions('OD', 0, 0, 0, None, None)
+    fsys.Run_OD_simulation()
+
+    outputbasename = os.path.splitext(os.path.basename(__file__))[0]
+
+    # export OutputTable to CSV
+    fsys.OutputToCSV(fg.output_path, outputbasename + ".csv")
+
+    # # plot nY vs X parameter
+    # fsys.Plot_X_nY_graph(
+    #     'Engine performance vs. N [%]',
+    #     os.path.join(fg.output_path, outputbasename + "_1.jpg"),
+    #     ("N1%", "Rotor speed [%]"),
+    #     [
+    #         ("T4", "TIT [K]", "blue"),
+    #         ("T5", "EGT [K]", "blue"),
+    #         ("W2", "Inlet mass flow [kg/s]", "blue"),
+    #         ("Wf_combustor1", "Fuel flow [kg/s]", "blue"),
+    #         ("FN", "Net thrust [kN]", "blue")
+    #     ]
+    # )
+
+    # # Create component map plots with operating lines if available
+    # for comp in fsys.system_model:
+    #     comp.PlotMaps()
+
+    print("end of running turbojet simulation")
+
+if __name__ == "__main__":
+    args = parse_args()
+    main(input_dir=args.input_dir, output_dir=args.output_dir)

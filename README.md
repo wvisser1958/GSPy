@@ -37,6 +37,8 @@ See the LICENSE file for details.
   files in ./projects/map_viewer
 - Nc label in map plot optionally displays the referred Nc or the actual RPM not
   referred to the design spool speed
+- Created a basic test script for automatic testing of the results; now after each
+  version update, the output data can be compared for validation
 
 ### GSPy v1.6.0.8                                                     12-03-2026
 --------------------------------------------------------------------------------
