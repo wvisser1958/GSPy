@@ -214,7 +214,7 @@ wheels = [
 
 [[package]]
 name = "gspy"
-version = "1.6.0.9"
+version = "1.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "aero-calc" },
