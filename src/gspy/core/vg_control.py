@@ -16,7 +16,6 @@
 import numpy as np
 import cantera as ct
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 from gspy.core.base_component import TComponent
 
 class TVG_Control(TComponent):

@@ -15,7 +15,6 @@
 
 import numpy as np
 from gspy.core.turbomap import TTurboMap
-import gspy.core.system as fsys
 
 class TTurbineMap(TTurboMap):
     def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, ShaftString, Ncmapdes, Betamapdes):
@@ -100,12 +99,12 @@ class TTurbineMap(TTurboMap):
 
             # Design point
             if do_plot_design_point:
-                self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+                self.main_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
 
             # Operating line
             if do_plot_series:
                 # Plotting PR - Wc
-                self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
+                self.main_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
         else:
             # Plot Nc*Wc - PR
             Nc_times_WcArrayValues = self.WcArrayValues.copy()
@@ -146,18 +145,18 @@ class TTurbineMap(TTurboMap):
             # Design point
             if do_plot_design_point:
                 self.main_plot_axis.plot(
-                    np.multiply(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(),
-                                fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Nc_comp_param].to_numpy()),
-                    fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(),
+                    np.multiply(self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(),
+                                self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.Nc_comp_param].to_numpy()),
+                    self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(),
                     markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
 
             # Operating line
             if do_plot_series:
                 # Plot PR-Nc*Wc
                 self.main_plot_axis.plot(
-                    np.multiply(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),
-                                fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Nc_comp_param].to_numpy()),
-                    fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(),
+                    np.multiply(self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),
+                                self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Nc_comp_param].to_numpy()),
+                    self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(),
                     linewidth=1.5, linestyle='solid', color='navy')
 
         self.map_figure.savefig(self.map_figure_pathname)
@@ -208,14 +207,14 @@ class TTurbineMap(TTurboMap):
 
         # Design point
         if do_plot_design_point:
-            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')]['Eta_is_' + str(self.host_component.name)].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
-            self.secondary_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+            self.main_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'DP')]['Eta_is_' + str(self.host_component.name)].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
+            self.secondary_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
 
         # Operating line
         if do_plot_series:
             # Plotting PR - Wc
-            self.main_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')]['Eta_is_' + str(self.host_component.name)].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
-            self.secondary_plot_axis.plot(fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), fsys.OutputTable[(fsys.OutputTable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
+            self.main_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'OD')]['Eta_is_' + str(self.host_component.name)].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
+            self.secondary_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
 
         # self.dual_map_figure.tight_layout()
         self.dual_map_figure.savefig(self.map_figure_pathname)

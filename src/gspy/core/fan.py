@@ -18,7 +18,6 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 import cantera as ct
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 import gspy.core.utils as fu
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap

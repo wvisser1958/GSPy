@@ -17,11 +17,10 @@ import numpy as np
 import cantera as ct
 from gspy.core.base_component import TComponent
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 
 class TGaspath(TComponent):
-    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout):    # Constructor of the class
-        super().__init__(name, MapFileName, ControlComponent)
+    def __init__(self, owner, name, MapFileName, ControlComponent, stationin, stationout):    # Constructor of the class
+        super().__init__(owner, name, MapFileName, ControlComponent)
         self.stationin = stationin
         self.stationout = stationout
         # set design properties to None, if still None in PrintPerformance,
@@ -35,7 +34,7 @@ class TGaspath(TComponent):
         self.W = None
 
     def Run(self, Mode, PointTime):
-        self.GasIn = fsys.gaspath_conditions[self.stationin]
+        self.GasIn = self.owner.gaspath_conditions[self.stationin]
 
         if Mode == 'DP':
             # create GasInDes, GasOut cantera Quantity (GasIn already created)
@@ -53,7 +52,7 @@ class TGaspath(TComponent):
             self.GasOut.TPY = self.GasIn.TPY
             self.GasOut.mass = self.GasIn.mass
 
-        fsys.gaspath_conditions[self.stationout] = self.GasOut
+        self.owner.gaspath_conditions[self.stationout] = self.GasOut
         return self.GasOut
 
     def PrintPerformance(self, Mode, PointTime):
@@ -82,5 +81,22 @@ class TGaspath(TComponent):
         fsys.output_dict[f"P{self.stationin}"]  = self.GasIn.P
         if self.PR != None:
             fsys.output_dict["PR_"+self.name] = self.PR
+
+    # 2.0.0.0
+    def get_outputs(self):
+        out = super().get_outputs()
+
+        s = self.stationin
+
+        out[f"W{s}"] = self.GasIn.mass
+        out[f"T{s}"] = self.GasIn.T
+        out[f"P{s}"] = self.GasIn.P
+        out[f"Wc{s}"] = self.Wc
+
+        if self.PR is not None:
+            out[f"PR_{self.name}"] = self.PR
+
+        return out
+
 
 

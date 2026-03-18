@@ -17,14 +17,13 @@ import numpy as np
 from scipy.optimize import root, root_scalar
 import cantera as ct
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 from gspy.core.gaspath import TGaspath
 import gspy.core.utils as fu
 
 class TCombustor(TGaspath):
-    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, Wfdes, Texitdes, PRdes, Etades,
+    def __init__(self, owner, name, MapFileName, ControlComponent, stationin, stationout, Wfdes, Texitdes, PRdes, Etades,
                  Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes, A):
-        super().__init__(name, MapFileName, ControlComponent, stationin, stationout)
+        super().__init__(owner, name, MapFileName, ControlComponent, stationin, stationout)
         self.Wfdes = Wfdes
         self.Wf = Wfdes
         # Texitdes: set as None, use None or not None to determine input type : Wf or Texit
@@ -220,8 +219,7 @@ class TCombustor(TGaspath):
         # combustor.py
         if isinstance(self.Control, str):
             try:
-                # import gspy.core.system as fsys
-                self.Control = fsys.components[self.Control]   # resolve by name -> object
+                self.Control = self.owner.components[self.Control]   # resolve by name -> object
             except Exception as e:
                 raise ValueError(
                     f"Combustor '{self.name}': Control '{self.Control}' cannot be resolved to an object. ({e})"
@@ -317,7 +315,7 @@ class TCombustor(TGaspath):
             self.GasOut.HP = self.GasOut.enthalpy_mass, Pout
 
             # we redefined GasOut, so we must reassing self.GasOut to fsys.gaspath_conditions[self.stationout]
-            fsys.gaspath_conditions[self.stationout] = self.GasOut
+            self.owner.gaspath_conditions[self.stationout] = self.GasOut
             return self.GasOut.T
 
         super().Run(Mode, PointTime)
@@ -382,7 +380,7 @@ class TCombustor(TGaspath):
             CalcEndConditions(PointTime)
 
         #  add fuel to system level total fuel flow
-        fsys.WF = fsys.WF + self.Wf
+        self.owner.WF = self.owner.WF + self.Wf
 
         return self.GasOut
 
@@ -394,4 +392,10 @@ class TCombustor(TGaspath):
     #  1.1 WV
     def AddOutputToDict(self, Mode):
         super().AddOutputToDict(Mode)
-        fsys.output_dict["Wf_"+self.name] = self.Wf
+        self.owner.output_dict["Wf_"+self.name] = self.Wf
+
+    # 2.0.0.0
+    def get_outputs(self):
+        out = super().get_outputs()
+        out["Wf_"+self.name] = self.Wf
+        return out

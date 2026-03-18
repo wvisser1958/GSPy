@@ -16,11 +16,10 @@
 import numpy as np
 import cantera as ct
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 from gspy.core.base_component import TComponent
 
 class TControl(TComponent):
-    def __init__(self, name, MapFileName,
+    def __init__(self, owner, name, MapFileName,
                  DP_inputvalue,
                  OD_startvalue, OD_endvalue, OD_pointstepvalue,
                  OD_controlledparname):
@@ -29,7 +28,7 @@ class TControl(TComponent):
         # else:
         #    they are the direct input values of the component using this control (like fuel flow for a combustor for example)
         # DP_inputvalue always is direct input values of the component using this control
-        super().__init__(name, MapFileName, None) # no control controlling a control (yet)
+        super().__init__(owner, name, MapFileName, None) # no control controlling a control (yet)
         self.DP_inputvalue = DP_inputvalue
         self.OD_startvalue = OD_startvalue
         self.OD_endvalue = OD_endvalue

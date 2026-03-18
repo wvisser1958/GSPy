@@ -54,6 +54,10 @@ class TMap:
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
 
+    @property
+    def simresultstable(self):
+        return self.host_component.owner.OutputTable
+
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         try:
             self.mapfile = open(filename, 'r')

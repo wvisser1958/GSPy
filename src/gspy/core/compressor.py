@@ -18,14 +18,13 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 import cantera as ct
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 import gspy.core.utils as fu
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
 from gspy.core.vg_control import TVG_Control
 
 class TCompressor(TTurboComponent):
-    def __init__(self, name,
+    def __init__(self, owner, name,
                  MapFileName_or_dict,
                  ControlComponent,
                  stationin, stationout, ShaftNr,
@@ -33,7 +32,7 @@ class TCompressor(TTurboComponent):
                  Ncmapdes, Betamapdes, PRdes,
                  SpeedOption,
                  Bleeds):    # Constructor of the class
-        super().__init__(name, MapFileName_or_dict, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes)
+        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes)
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
@@ -58,34 +57,34 @@ class TCompressor(TTurboComponent):
             if self.SpeedOption != 'CS':
                 # 1.5
                 if self.shaft.istate == None:
-                    fsys.states = np.append(fsys.states, 1)
-                    self.istate_n = fsys.states.size-1
+                    self.owner.states = np.append(self.owner.states, 1)
+                    self.istate_n = self.owner.states.size-1
                     self.shaft.istate = self.istate_n
                 else:
                     # already assigned (e.g. by fan or compressor upstream in the gas path)
                     self.istate_n = self.shaft.istate
-            fsys.states = np.append(fsys.states, 1)
-            self.istate_beta = fsys.states.size-1
+            self.owner.states = np.append(self.owner.states, 1)
+            self.istate_beta = self.owner.states.size-1
             # error for equation GasIn.wc = wcmap
-            fsys.errors = np.append(fsys.errors, 0)
-            self.ierror_wc = fsys.errors.size-1
+            self.owner.errors = np.append(self.owner.errors, 0)
+            self.ierror_wc = self.owner.errors.size-1
             # calculate parameters for output
             self.PR = self.PRdes
         else:
             if self.SpeedOption != 'CS':
-                self.N = fsys.states[self.istate_n] * self.Ndes
+                self.N = self.owner.states[self.istate_n] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.GasIn)
 
             # 1.6 WV
             # self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
             if self.Control != None:
                   self.vg_angle = self.Control.Get_outputvalue_from_schedule(self.Nc)
-            self.Wc, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, fsys.states[self.istate_beta])
+            self.Wc, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, self.owner.states[self.istate_beta])
 
             self.PW = fu.Compression(self.GasIn, self.GasOut, self.PR, self.Eta, self.Polytropic_Eta)
 
             self.W = self.Wc / fg.GetFlowCorrectionFactor(self.GasIn)
-            fsys.errors[self.ierror_wc ] = (self.W - self.GasIn.mass) / self.Wdes
+            self.owner.errors[self.ierror_wc ] = (self.W - self.GasIn.mass) / self.Wdes
 
             # set out flow rate to W according to map
             # may deviate from self.GasIn.mass during iteration: this is to propagate the effect of mass flow error
@@ -109,7 +108,7 @@ class TCompressor(TTurboComponent):
                     bleed.GasIn.TPY = self.GasIn.T, self.GasIn.P, self.GasIn.Y
                     bleed.GasIn.mass = Wbleed
                 #  add to station conditions dictionary
-                fsys.gaspath_conditions[bleed.stationin] = bleed.GasIn
+                self.owner.gaspath_conditions[bleed.stationin] = bleed.GasIn
 
                 # Compress Wbleed to bleed point
                 dHW1 = fu.Compression(self.GasIn, bleed.GasIn, (self.GasIn.P+dP*bleed.dPfactor)/self.GasIn.P, self.Eta, self.Polytropic_Eta)
@@ -137,3 +136,13 @@ class TCompressor(TTurboComponent):
         if self.Bleeds != None:
             for bleed in self.Bleeds:
                 bleed.AddOutputToDict(Mode)
+
+    # 2.0.0.0
+    def get_outputs(self):
+        out = super().get_outputs()
+
+        if self.Bleeds != None:
+            for bleed in self.Bleeds:
+                out.update(bleed.get_outputs())
+
+        return out

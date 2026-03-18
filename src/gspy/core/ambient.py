@@ -17,13 +17,14 @@ import cantera as ct
 import aerocalc as ac     # !!!! install with "pip install aero-calc", see https://www.kilohotel.com/python/aerocalc/html/
 from gspy.core.base_component import TComponent
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 
 class TAmbient(TComponent):
-    def __init__(self, name, stationnr, Altitude, Macha, dTs, Psa, Tsa):    # Constructor of the class
-        super().__init__(name, '', None)
+    def __init__(self, owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa):    # Constructor of the class
+        super().__init__(owner, name, '', None)
         self.stationnr = stationnr
         self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa)
+        # 2.0.0.0 make sure the system model can directly access the Ambient component (must be only a single Ambient component)
+        owner.Ambient = self
 
     def SetConditions(self, Mode, Altitude, Macha, dTs, Psa, Tsa):
         if Mode == 'DP':
@@ -50,7 +51,7 @@ class TAmbient(TComponent):
             # self.Gas_Ambient = ct.Solution('jetsurf.yaml')
             # create Cantera quantity object for Ambient (mass = 1 per default)
             self.Gas_Ambient = ct.Quantity(fg.gas)
-            fsys.gaspath_conditions[self.stationnr] = self.Gas_Ambient
+            self.owner.gaspath_conditions[self.stationnr] = self.Gas_Ambient
         if self.Tsa == None:
             # Tsa not defined, use standard atmosphere
             self.Tsa = ac.std_atm.alt2temp(self.Altitude, alt_units='m', temp_units='K')
@@ -68,9 +69,21 @@ class TAmbient(TComponent):
 
     #  1.1 WV
     def AddOutputToDict(self, Mode):
-        fsys.output_dict["Alt"] = self.Altitude
-        fsys.output_dict["Tsa"] = self.Tsa
-        fsys.output_dict["Psa"] = self.Psa
-        fsys.output_dict["Tta"] = self.Tta
-        fsys.output_dict["Pta"] = self.Pta
-        fsys.output_dict["Macha"] = self.Macha
+        self.owner.output_dict["Alt"] = self.Altitude
+        self.owner.output_dict["Tsa"] = self.Tsa
+        self.owner.output_dict["Psa"] = self.Psa
+        self.owner.output_dict["Tta"] = self.Tta
+        self.owner.output_dict["Pta"] = self.Pta
+        self.owner.output_dict["Macha"] = self.Macha
+
+    # 2.0.0.0
+    def get_outputs(self):
+        #  outputs = super().get_outputs()
+        return {
+            "Alt": self.Altitude,
+            "Tsa": self.Tsa,
+            "Psa": self.Psa,
+            "Tta": self.Tta,
+            "Pta": self.Pta,
+            "Macha": self.Macha,
+        }

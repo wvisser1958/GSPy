@@ -20,15 +20,14 @@ import gspy.core.utils as fu
 from scipy.optimize import root_scalar
 from gspy.core.gaspath import TGaspath
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 
 class TExhaustNozzle(TGaspath):
-    def __init__(self, name, MapFileName, ControlComponent, stationin, stationthroat, stationout, CXdes, CVdes, CDdes):    # Constructor of the class
+    def __init__(self, owner, name, MapFileName, ControlComponent, stationin, stationthroat, stationout, CXdes, CVdes, CDdes):    # Constructor of the class
         # CXdes, CVdes, CDdes are for propelling nozzle
         # PRdes = diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
         # If PRdes <> None then a divergent diffuser expansion is calculated, with PRdes as the diffuser
         # pressure loss. PRdes must be < 1. Psout then determines the diffuser exit area A9.
-        super().__init__(name, MapFileName, ControlComponent, stationin, stationout)
+        super().__init__(owner, name, MapFileName, ControlComponent, stationin, stationout)
         self.stationthroat = stationthroat
         self.CXdes = CXdes
         self.CVdes = CVdes
@@ -41,7 +40,7 @@ class TExhaustNozzle(TGaspath):
         Sin = self.GasIn.entropy_mass
         Hin = self.GasIn.enthalpy_mass
         Pin = self.GasIn.P
-        Pout = fsys.Ambient.Psa
+        Pout = self.owner.Ambient.Psa
         # propelling nozzle, expansion flow
         # PR is nozzle PR Pout/Pin, only calculated (not given)
         # # v1.2
@@ -85,8 +84,8 @@ class TExhaustNozzle(TGaspath):
                 self.Vthroat = Vthroat_is
             self.Tthroat = self.GasThroat.T
             # exit flow error
-            fsys.errors = np.append(fsys.errors, 0)
-            self.ierror_w = fsys.errors.size - 1
+            self.owner.errors = np.append(self.owner.errors, 0)
+            self.ierror_w = self.owner.errors.size - 1
             if self.Vthroat <= 0:
                 self.Vthroat = 0.001  # always assume a minimal flow velocity: 0.001 will result in a theoretical
                                     # very large exhaust area
@@ -100,16 +99,16 @@ class TExhaustNozzle(TGaspath):
             self.Pthroat, self.Tthroat, Vthroat_is, massflow = fu.calculate_expansion_to_A(self.GasIn.phase, Pin/Pout, self.Athroat)
             self.GasThroat.TP = self.Tthroat, self.Pthroat
             self.Vthroat = Vthroat_is * self.CVdes
-            fsys.errors[self.ierror_w] = (self.GasIn.mass - massflow) / self.GasInDes.mass
+            self.owner.errors[self.ierror_w] = (self.GasIn.mass - massflow) / self.GasInDes.mass
             # 1.301 use Vthroat_is for Mach number
             # self.Mthroat = self.Vthroat / self.GasThroat.phase.sound_speed
             self.Mthroat = Vthroat_is / self.GasThroat.phase.sound_speed
         self.GasOut.TP = self.Tthroat, Pout # assume no further expansion
         self.FG = self.CXdes * (self.GasOut.mass * self.Vthroat + self.Athroat*(self.Pthroat-Pout)) / 1000 # kN
         # add gross thrust to system level thrust (note that multiple propelling nozzles may exist)
-        fsys.FG = fsys.FG + self.FG
+        self.owner.FG = self.owner.FG + self.FG
         self.Athroat_geom = self.Athroat / self.CDdes
-        fsys.gaspath_conditions[self.stationthroat] = self.GasThroat
+        self.owner.gaspath_conditions[self.stationthroat] = self.GasThroat
         return self.GasOut
 
 
@@ -126,15 +125,34 @@ class TExhaustNozzle(TGaspath):
         print(f"\tGross thrust: {self.FG:.2f} kN")
 
     #  1.1 WV
-    def AddOutputToDict(self, Mode):
-        super().AddOutputToDict(Mode)
-        fsys.output_dict[f"T{self.stationthroat}"]  = self.Tthroat
-        fsys.output_dict[f"P{self.stationthroat}"]  = self.Pthroat
-        fsys.output_dict[f"V{self.stationthroat}"]  = self.Vthroat
-        fsys.output_dict[f"Mach{self.stationthroat}"]  = self.Mthroat
-        fsys.output_dict[f"T{self.stationout}"]  = self.GasOut.T
-        fsys.output_dict[f"P{self.stationout}"]  = self.GasOut.P
-        fsys.output_dict[f"A{self.stationthroat}"]  = self.Athroat
-        fsys.output_dict[f"A{self.stationthroat}_geom"]  = self.Athroat_geom
-        fsys.output_dict["FG_"+self.name]  = self.FG
+    # def AddOutputToDict(self, Mode):
+    #     super().AddOutputToDict(Mode)
+    #     fsys.output_dict[f"T{self.stationthroat}"]  = self.Tthroat
+    #     fsys.output_dict[f"P{self.stationthroat}"]  = self.Pthroat
+    #     fsys.output_dict[f"V{self.stationthroat}"]  = self.Vthroat
+    #     fsys.output_dict[f"Mach{self.stationthroat}"]  = self.Mthroat
+    #     fsys.output_dict[f"T{self.stationout}"]  = self.GasOut.T
+    #     fsys.output_dict[f"P{self.stationout}"]  = self.GasOut.P
+    #     fsys.output_dict[f"A{self.stationthroat}"]  = self.Athroat
+    #     fsys.output_dict[f"A{self.stationthroat}_geom"]  = self.Athroat_geom
+    #     fsys.output_dict["FG_"+self.name]  = self.FG
+
+    # 2.0.0.0
+    def get_outputs(self):
+        out = super().get_outputs()
+
+        sthr = self.stationthroat
+        sout = self.stationout
+
+        out[f"T{sthr}"]  = self.Tthroat
+        out[f"P{sthr}"]  = self.Pthroat
+        out[f"V{sthr}"]  = self.Vthroat
+        out[f"Mach{sthr}"]  = self.Mthroat
+        out[f"T{sout}"]  = self.GasOut.T
+        out[f"P{sout}"]  = self.GasOut.P
+        out[f"A{sthr}"]  = self.Athroat
+        out[f"A{sthr}_geom"]  = self.Athroat_geom
+        out["FG_"+self.name]  = self.FG
+
+        return out
 

@@ -915,7 +915,6 @@ class Ambient_AS210:
 try:
     from gspy.core.base_component import TComponent
     import gspy.core.sys_global as fg
-    import gspy.core.system as fsys
 except Exception:
     TComponent = None
 

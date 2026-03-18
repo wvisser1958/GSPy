@@ -18,7 +18,6 @@ from abc import ABC, abstractmethod
 from bisect import bisect_left
 import cantera as ct
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 import gspy.core.shaft as fshaft
 import gspy.core.turbomap as TMap
 from gspy.core.gaspath import TGaspath
@@ -26,10 +25,10 @@ from pathlib import Path
 from gspy.core.turbomap import TTurboMap
 
 class TTurboComponent(TGaspath):
-    def __init__(self, name, MapFileName_or_dict, ControlComponent, stationin, stationout, ShaftNr,
+    def __init__(self, owner, name, MapFileName_or_dict, ControlComponent, stationin, stationout, ShaftNr,
                  Ndes, Etades,
                  Ncmapdes, Betamapdes):
-        super().__init__(name, MapFileName_or_dict, ControlComponent, stationin, stationout)
+        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, stationin, stationout)
 
         self.GasIn = None
         self.GasOut = None
@@ -102,8 +101,8 @@ class TTurboComponent(TGaspath):
                 "MapFileNames must be a str, pathlib.Path, or a tuple with 0) VGparvaluedesigm, and 1) list of (VGparvalue, MapFileName)"
             )
 
-        if all(shaft.ShaftNr != ShaftNr for shaft in fsys.shaft_list):
-            fsys.shaft_list.append(fshaft.TShaft(ShaftNr, name + ' shaft ' + str(ShaftNr)) )
+        if all(shaft.ShaftNr != ShaftNr for shaft in self.owner.shaft_list):
+            self.owner.shaft_list.append(fshaft.TShaft(ShaftNr, name + ' shaft ' + str(ShaftNr)) )
 
     # 1.6 WV
     # @abstractmethod  not abstract: not implemented in TFan child class
@@ -166,7 +165,7 @@ class TTurboComponent(TGaspath):
             self.Ncdes = self.Ndes / fg.GetRotorspeedCorrectionFactor(self.GasIn)
             self.Nc = self.Ncdes
             self.Eta = self.Etades
-            self.shaft = fsys.get_shaft(self.ShaftNr)
+            self.shaft = self.owner.get_shaft(self.ShaftNr)
             self.vg_angle = self.vg_angle_des
 
     def PrintPerformance(self, Mode, PointTime):
@@ -216,3 +215,22 @@ class TTurboComponent(TGaspath):
         if self.vg_angle_des !=None:
             fsys.output_dict["vg_angle_"+self.name] = self.vg_angle
         fsys.output_dict["PW_"+self.name] = self.PW
+
+    # 2.0.0.0
+    def get_outputs(self):
+        out = super().get_outputs()
+
+        out[f"N{self.ShaftNr}"] = self.N
+        out[f"Nc{self.stationin}"] = self.Nc
+        out[f"N{self.ShaftNr}%"] = self.N/self.Ndes*100
+        out[f"Nc{self.stationin}%"] = self.Nc/self.Ncdes*100
+
+        # 1.5
+        if self.Eta != None:
+            out["Eta_is_"+self.name] = self.Eta
+        # 1.6 WV
+        if self.vg_angle_des !=None:
+            out["vg_angle_"+self.name] = self.vg_angle
+        out["PW_"+self.name] = self.PW
+
+        return out

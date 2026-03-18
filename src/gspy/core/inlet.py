@@ -16,18 +16,17 @@
 import numpy as np
 import cantera as ct
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 from gspy.core.gaspath import TGaspath
 
 class TInlet(TGaspath):
-    def __init__(self, name, MapFileName, ControlComponent, stationin, stationout, Wdes, PRdes):  # Constructor of the class
-        super().__init__(name, MapFileName, ControlComponent, stationin, stationout)
+    def __init__(self, owner, name, MapFileName, ControlComponent, stationin, stationout, Wdes, PRdes):  # Constructor of the class
+        super().__init__(owner, name, MapFileName, ControlComponent, stationin, stationout)
         self.Wdes = Wdes
         self.PRdes = PRdes
 
     def Run(self, Mode, PointTime):
         if Mode == 'DP':
-            fsys.gaspath_conditions[self.stationin].mass = self.Wdes
+            self.owner.gaspath_conditions[self.stationin].mass = self.Wdes
         super().Run(Mode, PointTime)
         # self.GasIn.TP = self.GasIn.T, self.GasIn.P
         if Mode == 'DP':
@@ -35,10 +34,10 @@ class TInlet(TGaspath):
             self.wcdes = self.GasIn.mass * fg.GetFlowCorrectionFactor(self.GasIn)
             self.wc = self.wcdes
             self.PR = self.PRdes
-            fsys.states = np.append(fsys.states, 1)
-            self.istate_wc = fsys.states.size-1   # add state for corrected inlet flow wc more stable... state staying closer to 1 at high altitude
+            self.owner.states = np.append(self.owner.states, 1)
+            self.istate_wc = self.owner.states.size-1   # add state for corrected inlet flow wc more stable... state staying closer to 1 at high altitude
         else:
-            self.wc = fsys.states[self.istate_wc] * self.wcdes
+            self.wc = self.owner.states[self.istate_wc] * self.wcdes
             if self.wc < 0.001*self.wcdes:
                 self.wc = 0.001*self.wcdes
             self.GasIn.mass = self.wc / fg.GetFlowCorrectionFactor(self.GasIn)
@@ -47,7 +46,7 @@ class TInlet(TGaspath):
             self.PR = self.PRdes
         self.GasOut.TP = self.GasIn.T, self.GasIn.P * self.PR
         self.GasOut.mass = self.GasIn.mass
-        self.RD = self.GasIn.mass * fsys.Ambient.V / 1000 # kN
+        self.RD = self.GasIn.mass * self.owner.Ambient.V / 1000 # kN
         # add ram drag to system level ram drag (note that multiple inlets may exist)
-        fsys.RD = fsys.RD + self.RD
+        self.owner.RD = self.owner.RD + self.RD
         return self.GasOut

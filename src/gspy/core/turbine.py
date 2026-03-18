@@ -17,19 +17,18 @@ import numpy as np
 import cantera as ct
 from scipy.optimize import root
 import gspy.core.sys_global as fg
-import gspy.core.system as fsys
 import gspy.core.utils as fu
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.turbinemap import TTurbineMap
 
 class TTurbine(TTurboComponent):
-    def __init__(self, name,
+    def __init__(self, owner, name,
                  MapFileName_or_dict,
                  ControlComponent, stationin, stationout, ShaftNr,
                  Ndes, Etades, Ncmapdes, Betamapdes, Etamechdes,
                  TurbineType,
                  CoolingFlows):
-        super().__init__(name, MapFileName_or_dict, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes)
+        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes)
         self.Etamechdes = Etamechdes # spool mechanical efficiency
         self.TurbineType = TurbineType  # gas generator turbine providing all power required by compressor(s)
         # TurbineType = 'PT'  # heavy duty single spool or power turbine, providing power to external loads
@@ -47,10 +46,10 @@ class TTurbine(TTurboComponent):
         # this means Exhaust PRdes must be 1 or corresponding to some error loss (total-to-total)
         # (Exhast PR (off-design) actually is total to throat static PR)
         PRdesuntilAmbient = 1
-        agaspathcomponent = fu.get_gaspathcomponent_object_inlet_stationnr(fsys.system_model, self.stationout)
+        agaspathcomponent = fu.get_gaspathcomponent_object_inlet_stationnr(self.owner.system_model, self.stationout)
         while agaspathcomponent != None:
             PRdesuntilAmbient = PRdesuntilAmbient * agaspathcomponent.PRdes
-            agaspathcomponent = fu.get_gaspathcomponent_object_inlet_stationnr(fsys.system_model, agaspathcomponent.stationout)
+            agaspathcomponent = fu.get_gaspathcomponent_object_inlet_stationnr(self.owner.system_model, agaspathcomponent.stationout)
         return PRdesuntilAmbient
 
     def Run(self, Mode, PointTime):
@@ -159,7 +158,7 @@ class TTurbine(TTurboComponent):
                 self.shaft.PW_sum = 0
             else:
                 PRdesuntilAmbient = self.GetTotalPRdesUntilAmbient()
-                Pout = fsys.Ambient.Psa / PRdesuntilAmbient
+                Pout = self.owner.Ambient.Psa / PRdesuntilAmbient
                 self.PRdes = self.GasIn.P/Pout
                 self.PR = self.PRdes
 
@@ -180,7 +179,7 @@ class TTurbine(TTurboComponent):
 
             # reset GasOut to gaspath_conditions dictionary (because link broken by adding cooling flow to GasOut
             #                                                self.GasOut = self.GasOut + cf.GasOut)
-            fsys.gaspath_conditions[self.stationout] = self.GasOut
+            self.owner.gaspath_conditions[self.stationout] = self.GasOut
 
             self.PWdes = self.PW
 
@@ -193,15 +192,15 @@ class TTurbine(TTurboComponent):
 
             # add states and errors
             # rotor speed state is same as compressor's
-            fsys.states = np.append(fsys.states, 1)
-            self.istate_beta = fsys.states.size-1
+            self.owner.states = np.append(self.owner.states, 1)
+            self.istate_beta = self.owner.states.size-1
             # error for equation GasIn.wc = wcmap
-            fsys.errors = np.append(fsys.errors, 0)
-            self.ierror_wc = fsys.errors.size-1
+            self.owner.errors = np.append(self.owner.errors, 0)
+            self.ierror_wc = self.owner.errors.size-1
             # shaft power error
             if self.TurbineType == 'GG':
-                fsys.errors = np.append(fsys.errors, 0)
-                self.ierror_shaftpw = fsys.errors.size-1
+                self.owner.errors = np.append(self.owner.errors, 0)
+                self.ierror_shaftpw = self.owner.errors.size-1
             # calculate parameters for output
             self.N = self.Nc * fg.GetRotorspeedCorrectionFactor(self.GasIn)
         # ******************** end DP design mode *************************
@@ -209,12 +208,11 @@ class TTurbine(TTurboComponent):
         # ******************** OD off design mode *************************
         else:
             if self.TurbineType == 'GG':
-                self.N = fsys.states[self.shaft.istate] * self.Ndes
+                self.N = self.owner.states[self.shaft.istate] * self.Ndes
             self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.GasIn)
 
-            self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
+            self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, self.owner.states[self.istate_beta])
             self.W = self.Wc / fg.GetFlowCorrectionFactor(self.GasIn)
-            # fsys.errors[self.ierror_wc ] = (self.W - self.GasOut.mass) / self.Wdes
 
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
             # self.PW = fu.TurbineExpansion(self.GasIn, self.GasOut, self.PR, self.Eta, None, self.Polytropic_Eta)
@@ -226,7 +224,7 @@ class TTurbine(TTurboComponent):
                 # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
                 # self.PW = self.PW + self.dPWcl
                 self.DHW = self.DHW + self.dDHWcl
-            fsys.errors[self.ierror_wc ] = (self.W - self.GasIn.mass - self.W_cl_eff) / self.Wdes
+            self.owner.errors[self.ierror_wc ] = (self.W - self.GasIn.mass - self.W_cl_eff) / self.Wdes
 
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
             self.PW = self.DHW * self.Etamechdes
@@ -235,11 +233,11 @@ class TTurbine(TTurboComponent):
             # self.shaft.PW_sum = self.shaft.PW_sum + self.PW * self.Etamechdes
             self.shaft.PW_sum = self.shaft.PW_sum + self.PW
             if self.TurbineType == 'GG':
-                fsys.errors[self.ierror_shaftpw] = self.shaft.PW_sum / self.PWdes
+                self.owner.errors[self.ierror_shaftpw] = self.shaft.PW_sum / self.PWdes
 
             # reset GasOut to gaspath_conditions dictionary (because link broken by adding cooling flow to GasOut
             #                                                self.GasOut = self.GasOut + cf.GasOut)
-            fsys.gaspath_conditions[self.stationout] = self.GasOut
+            self.owner.gaspath_conditions[self.stationout] = self.GasOut
         # ******************** end OD off design mode *************************
 
         return self.GasOut
@@ -256,3 +254,13 @@ class TTurbine(TTurboComponent):
         if self.CoolingFlows != None:
             for coolingflow in self.CoolingFlows:
                 coolingflow.AddOutputToDict(Mode)
+
+    # 2.0.0.0
+    def get_outputs(self):
+        out = super().get_outputs()
+
+        if self.CoolingFlows != None:
+            for coolingflow in self.CoolingFlows:
+                out.update(coolingflow.get_outputs())
+
+        return out

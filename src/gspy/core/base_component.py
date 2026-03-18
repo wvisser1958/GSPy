@@ -16,18 +16,18 @@
 import numpy as np
 import cantera as ct
 from gspy.core.map import TMap
-import gspy.core.system as fsys
 from typing import Optional
 
 class TComponent:
-    def __init__(self, name, MapFileName, ControlComponent):    # Constructor of the class
+    def __init__(self, owner, name, MapFileName, ControlComponent):    # Constructor of the class
+        self.owner = owner
         self.name = name
         # 1.5 set as object parameter
         self.MapFileName = MapFileName
         if ControlComponent and getattr(ControlComponent, "name", "").strip():
             self.ControlComponentName = ControlComponent.name
         # 1.5 Necessary for fixing a wiring problem, which was exposed when developing the API
-        fsys.components[self.name] = self
+        # 1.7.0.0 fsys.components[self.name] = self
 
         # assume in most cases single map in instantiable child classes (add extra map if necessary, e.g. with f_fan)
         self.map: Optional[TMap] = None
@@ -64,4 +64,9 @@ class TComponent:
     def AddOutputToDict(self, Mode):
         raise NotImplementedError("Subclass must implement AddOutputToDict abstract method")
 
+    #  2.0.0.0
+    def get_outputs(self):
+        return {}
 
+    def add_outputs_to_dict(self):
+        self.owner.output_dict.update(self.get_outputs())
