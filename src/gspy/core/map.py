@@ -56,7 +56,7 @@ class TMap:
 
     @property
     def simresultstable(self):
-        return self.host_component.owner.OutputTable
+        return self.host_component.owner.output_table
 
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         try:

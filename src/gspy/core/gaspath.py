@@ -17,6 +17,7 @@ import numpy as np
 import cantera as ct
 from gspy.core.base_component import TComponent
 import gspy.core.sys_global as fg
+import gspy.core.utils as fu
 
 class TGaspath(TComponent):
     def __init__(self, owner, name, MapFileName, ControlComponent, stationin, stationout):    # Constructor of the class
@@ -40,13 +41,13 @@ class TGaspath(TComponent):
             # create GasInDes, GasOut cantera Quantity (GasIn already created)
             self.GasInDes = ct.Quantity(self.GasIn.phase, mass = self.GasIn.mass)
             self.GasOut = ct.Quantity(self.GasIn.phase, mass = self.GasIn.mass)
-            self.Wdes = self.GasInDes.mass
+            self.Wdes = fu.scalar(self.GasInDes.mass)
             self.Wcdes = self.Wdes * fg.GetFlowCorrectionFactor(self.GasInDes)
             self.W = self.Wdes
             self.Wc = self.Wcdes
         else:
             # v1.2
-            self.W = self.GasIn.mass
+            self.W = fu.scalar(self.GasIn.mass)
             self.Wc = self.W * fg.GetFlowCorrectionFactor(self.GasIn)
 
             self.GasOut.TPY = self.GasIn.TPY
@@ -88,7 +89,7 @@ class TGaspath(TComponent):
 
         s = self.stationin
 
-        out[f"W{s}"] = self.GasIn.mass
+        out[f"W{s}"] = fu.scalar(self.GasIn.mass)
         out[f"T{s}"] = self.GasIn.T
         out[f"P{s}"] = self.GasIn.P
         out[f"Wc{s}"] = self.Wc

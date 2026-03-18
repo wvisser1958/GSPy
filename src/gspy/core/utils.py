@@ -17,7 +17,6 @@ import numpy as np
 from math import log, exp
 from scipy.optimize import root, root_scalar
 import cantera as ct
-from gspy.core.gaspath import TGaspath as gaspath
 
 atomweightC = 12.010914
 molemassCO2 = 44.0098
@@ -236,6 +235,16 @@ def stagnation_pressure_from_quantity(q, V):
     finally:
         # Restore original phase state
         ph.TPY = T_save, P_save, Y_save
+
+#  2.0 for converting from Cantera 1-D arrays
+def scalar(x):
+    a = np.asarray(x)
+    if a.size != 1:
+        raise ValueError(f"Expected scalar-like value, got shape {a.shape}: {x!r}")
+    return float(a.squeeze())
+
+def scalar_dict(d):
+    return {k: scalar(v) for k, v in d.items()}
 
 #  under development ?
 # def static_from_total(q_tot, A=None,

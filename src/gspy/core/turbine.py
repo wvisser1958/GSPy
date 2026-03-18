@@ -224,7 +224,7 @@ class TTurbine(TTurboComponent):
                 # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
                 # self.PW = self.PW + self.dPWcl
                 self.DHW = self.DHW + self.dDHWcl
-            self.owner.errors[self.ierror_wc ] = (self.W - self.GasIn.mass - self.W_cl_eff) / self.Wdes
+            self.owner.errors[self.ierror_wc ] = (self.W - fu.scalar(self.GasIn.mass) - self.W_cl_eff) / self.Wdes
 
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
             self.PW = self.DHW * self.Etamechdes

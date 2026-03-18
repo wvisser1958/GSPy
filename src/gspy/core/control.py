@@ -61,25 +61,27 @@ class TControl(TComponent):
         self.controlpar_demand = None
         if self.OD_controlledparname != None:
             if Mode == 'DP':
-                fsys.states = np.append(fsys.states, 1)
-                self.istate_control = fsys.states.size-1
-                fsys.errors = np.append(fsys.errors, 0)
-                self.ierror_control = fsys.errors.size-1
+                self.owner.states = np.append(self.owner.states, 1)
+                self.istate_control = self.owner.states.size-1
+                self.owner.errors = np.append(self.owner.errors, 0)
+                self.ierror_control = self.owner.errors.size-1
                 #  get control parameter DP value
-                self.DP_controlparvalue = fsys.output_dict[self.OD_controlledparname]
+                self.DP_controlparvalue = self.owner.output_dict[self.OD_controlledparname]
             else:
                 # get control demanded (set point) parameter value from input
                 self.controlpar_demand = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
                 #  get control parameter current value
-                lastrownumber = len(fsys.OutputTable)
-                controlparvalue = fsys.output_dict[self.OD_controlledparname]
-                fsys.errors[self.ierror_control] = (self.controlpar_demand - controlparvalue) / self.DP_controlparvalue
+                # lastrownumber = len(self.owner.OutputTable)
+                controlparvalue = self.owner.output_dict[self.OD_controlledparname]
+                self.owner.errors[self.ierror_control] = (self.controlpar_demand - controlparvalue) / self.DP_controlparvalue
 
-    #  1.1 WV
-    def AddOutputToDict(self, Mode):
-        if Mode == 'DP':
-            fsys.output_dict["Control_input_"+self.name] = None
-            fsys.output_dict["Control_output_"+self.name] = None
+    # 2.0.0.0
+    def get_outputs(self):
+        out = super().get_outputs()
+        if self.owner.mode == 'DP':
+            out["Control_input_"+self.name] = None
+            out["Control_output_"+self.name] = None
         else:
-            fsys.output_dict["Control_input_"+self.name] = self.controlpar_demand
-            fsys.output_dict["Control_output_"+self.name] = self.Inputvalue
+            out["Control_input_"+self.name] = self.controlpar_demand
+            out["Control_output_"+self.name] = self.Inputvalue
+        return out

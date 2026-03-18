@@ -14,7 +14,6 @@
 #   Wilfried Visser
 #   Oscar Kogenhop
 
-from gspy.core import sys_global as fg
 from gspy.core.system import TSystemModel
 
 from gspy.core.control import TControl
@@ -33,7 +32,6 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-
     turbojet = TSystemModel('Turbojet')
 
     # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
@@ -88,12 +86,10 @@ def main():
                                     duct1,
                                     exhaustnozzle)
 
-    # define the gas model in f_global
-    fg.InitializeGas()
-    turbojet.ErrorTolerance = 0.0001
+    turbojet.error_tolerance = 0.0001
 
     # run the system model Design Point (DP) calculation
-    turbojet.Mode = 'DP'
+    turbojet.mode = 'DP'
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
@@ -101,7 +97,7 @@ def main():
     turbojet.Run_DP_simulation()
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
-    turbojet.Mode = 'OD'
+    turbojet.mode = 'OD'
     turbojet.inputpoints = fuelcontrol.Get_OD_inputpoints()
     print("\nOff-design (OD) results")
     print("=======================")

@@ -60,13 +60,13 @@ class TComponent:
             # print(self.name + " map with operating curve saved in " + self.map.map_figure_pathname)
             print(f"{self.name} map with operating curve saved in {self.map.map_figure_pathname}")
 
-    #  1.1 WV
-    def AddOutputToDict(self, Mode):
-        raise NotImplementedError("Subclass must implement AddOutputToDict abstract method")
+    # #  1.1 WV
+    # def AddOutputToDict(self, Mode):
+    #     raise NotImplementedError("Subclass must implement AddOutputToDict abstract method")
 
     #  2.0.0.0
     def get_outputs(self):
         return {}
 
-    def add_outputs_to_dict(self):
+    def add_outputs_to_dict(self, mode):
         self.owner.output_dict.update(self.get_outputs())

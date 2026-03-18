@@ -70,12 +70,11 @@ P_std = 101325
 T_standard_ref = 298.15 # (25°C)
 P_standard_ref = ct.one_atm  # (1 atm)
 
-h_air_ref = None
-def InitializeGas():
-    gas.TPY = T_standard_ref, P_standard_ref, s_air_composition_mass
-    global h_air_ref
-    h_air_ref = gas.enthalpy_mass
+# predetermine h_air_ref
+gas.TPY = T_standard_ref, P_standard_ref, s_air_composition_mass
+h_air_ref = gas.enthalpy_mass
 
+# functions for corrected rotor speed Nc and mass flow Wc
 # divide N by GetRotorspeedCorrectionFactor to get Nc corrected
 def GetRotorspeedCorrectionFactor(gas: ct.Quantity):
     return math.sqrt(gas.T/T_std)

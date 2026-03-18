@@ -234,8 +234,19 @@ class TCombustor(TGaspath):
                 H2O_exit_mass = fg.H2O_molar_mass * self.Wf/CHyOzMoleMass * self.HCratio/2
                 Ar_exit_mass = w_air * fg.air_Ar_fraction_mass
                 N2_exit_mass = w_air * fg.air_N2_fraction_mass
+                #  2.0 make dictionary, not string (avoid 1-d arrays instead of scalars)
                 # compose the composition string
-                product_composition_mass = f'O2:{O2_exit_mass}, CO2:{CO2_exit_mass}, H2O:{H2O_exit_mass}, AR:{Ar_exit_mass}, N2:{N2_exit_mass}'
+                # product_composition_mass = f'O2:{O2_exit_mass}, CO2:{CO2_exit_mass}, H2O:{H2O_exit_mass}, AR:{Ar_exit_mass}, N2:{N2_exit_mass}'
+                product_composition_mass = fu.scalar_dict({
+                    "O2": float(np.asarray(O2_exit_mass).squeeze()),
+                    "CO2": float(np.asarray(CO2_exit_mass).squeeze()),
+                    "H2O": float(np.asarray(H2O_exit_mass).squeeze()),
+                    "AR": float(np.asarray(Ar_exit_mass).squeeze()),
+                    "N2": float(np.asarray(N2_exit_mass).squeeze()),
+                })
+                # for debug:
+                # print(type(product_composition_mass))
+                # print(product_composition_mass)
 
                 # define enthalpy of combustion products mixture at Pref and Tref of
                 self.GasOut.TPY = fg.T_standard_ref, fg.P_standard_ref, product_composition_mass
@@ -246,7 +257,13 @@ class TCombustor(TGaspath):
                 # w_fuel * LHV_kJ_kg*1000 + w_air * (h_air_initial - fg.h_air_ref)  =   (w_air + w_fuel) * (h_prod_final - h_prod_ref)
                 # v1.3  bug fix: Etades was not accounted for
                 # h_prod_final = (self.Wf * self.LHV * 1000 + w_air * (h_air_initial-fg.h_air_ref)) / (w_air + self.Wf) + h_prod_ref
+                #  2.0
                 h_prod_final = (self.Wf * self.LHV * 1000 * self.Etades + w_air * (h_air_initial-fg.h_air_ref)) / (w_air + self.Wf) + h_prod_ref
+                # h_prod_final = float(np.asarray(
+                #     (self.Wf * self.LHV * 1000 * self.Etades + w_air * (h_air_initial - fg.h_air_ref))
+                #     / (w_air + self.Wf)
+                #     + h_prod_ref
+                # ).squeeze())
 
                 # now set exit GasOut H to h_prod_final, this will calculate GasOut.T
                 self.GasOut.HP = h_prod_final, Pin
@@ -369,7 +386,7 @@ class TCombustor(TGaspath):
             def equation(Wfiter):
                 # 1.6.0.5
                 # self.Wf=Wfiter[0]
-                self.Wf=Wfiter
+                self.Wf=fu.scalar(Wfiter)
                 return CalcEndConditions(PointTime) - self.Texit
             solution = root(equation, x0 = Wf0)
             if solution.success:
@@ -388,11 +405,6 @@ class TCombustor(TGaspath):
         super().PrintPerformance(Mode, PointTime)
         print(f"\tFuel flow                 : {self.Wf:.4f} kg/s")
         print(f"\tCombustion End Temperature: {self.GasOut.T:.2f} K")
-
-    #  1.1 WV
-    def AddOutputToDict(self, Mode):
-        super().AddOutputToDict(Mode)
-        self.owner.output_dict["Wf_"+self.name] = self.Wf
 
     # 2.0.0.0
     def get_outputs(self):

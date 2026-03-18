@@ -145,16 +145,12 @@ class TCompressorMap(TTurboMap):
 
         # Design point
         if do_plot_design_point:
-            #  1.5
-            # self.main_plot_axis.plot(self.outtable[(self.outtable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), self.outtable[(self.outtable['Mode'] == 'DP')]['Eta_is_' + str(self.host_component.name)].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
             self.main_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'DP')][eta_name + str(self.host_component.name)].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
             self.secondary_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
 
         # Operating line
         if do_plot_series:
             # Plotting Wc - PR
-            #  1.5
-            # self.main_plot_axis.plot(self.outtable[(self.outtable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(), self.outtable[(self.outtable['Mode'] == 'OD')]['Eta_is_' + str(self.host_component.name)].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
             self.main_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'OD')][eta_name + str(self.host_component.name)].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
             self.secondary_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
 

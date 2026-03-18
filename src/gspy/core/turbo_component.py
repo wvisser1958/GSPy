@@ -168,23 +168,49 @@ class TTurboComponent(TGaspath):
             self.shaft = self.owner.get_shaft(self.ShaftNr)
             self.vg_angle = self.vg_angle_des
 
-    def PrintPerformance(self, Mode, PointTime):
-        super().PrintPerformance(Mode, PointTime)
+    #  2.0
+    def print_map_data(self, map, mode):
+        if map.Ncmap!= None:
+            print(f"\tMap Corr Rotor speed : {map.Ncmap:.4f} rpm")
+        if map.Wcmapdes!= None:
+            print(f"\tDP Map Corr mass flow : {map.Wcmapdes:.3f} kg/s")
+        if map.Wcmap!= None:
+            print(f"\tMap Corr mass flow : {map.Wcmap:.3f} kg/s")
+        if map.PRmap!= None:
+            print(f"\tPR map : {map.PRmap:.4f}")
+        if map.Etamap!= None:
+            print(f"\tEta map : {map.Etamap:.4f}")
+        if mode == 'DP':
+            print(f"\tSFmap Nc : {map.SFmap_Nc :.4f}")
+            print(f"\tSFmap Wc : {map.SFmap_Wc :.4f}")
+            print(f"\tSFmap PR : {map.SFmap_PR :.4f}")
+            print(f"\tSFmap Eta: {map.SFmap_Eta :.4f}")
+
+    def PrintPerformance(self, mode, PointTime):
+        super().PrintPerformance(mode, PointTime)
         print(f"\tRotor speed  : {self.N:.0f} rpm")
         print(f"\tCorr Rotor speed : {self.Nc:.0f} rpm")
         if self.map != None:
-            if self.map.Ncmap!= None:
-                print(f"\tMap Corr Rotor speed : {self.map.Ncmap:.4f} rpm")
-            if self.map.Wcmapdes!= None:
-                print(f"\tDP Map Corr mass flow : {self.map.Wcmapdes:.3f} kg/s")
-            if self.map.Wcmap!= None:
-                print(f"\tMap Corr mass flow : {self.map.Wcmap:.3f} kg/s")
-            # if self.W!= None:
-            #     print(f"\tMap mass flow : {self.W:.3f} kg/s")
-            if self.map.PRmap!= None:
-                print(f"\tPR map : {self.map.PRmap:.4f}")
-            if self.map.Etamap!= None:
-                print(f"\tEta map : {self.map.Etamap:.4f}")
+            # if self.map.Ncmap!= None:
+            #     print(f"\tMap Corr Rotor speed : {self.map.Ncmap:.4f} rpm")
+            # if self.map.Wcmapdes!= None:
+            #     print(f"\tDP Map Corr mass flow : {self.map.Wcmapdes:.3f} kg/s")
+            # if self.map.Wcmap!= None:
+            #     print(f"\tMap Corr mass flow : {self.map.Wcmap:.3f} kg/s")
+            # # if self.W!= None:
+            # #     print(f"\tMap mass flow : {self.W:.3f} kg/s")
+            # if self.map.PRmap!= None:
+            #     print(f"\tPR map : {self.map.PRmap:.4f}")
+            # if self.map.Etamap!= None:
+            #     print(f"\tEta map : {self.map.Etamap:.4f}")
+
+            # # 1.6.0.8
+            # if Mode == 'DP':
+            #     print(f"\tSFmap Nc : {self.map.SFmap_Nc :.4f}")
+            #     print(f"\tSFmap Wc : {self.map.SFmap_Wc :.4f}")
+            #     print(f"\tSFmap PR : {self.map.SFmap_PR :.4f}")
+            #     print(f"\tSFmap Eta: {self.map.SFmap_Eta :.4f}")
+            self.print_map_data(self.map, mode)
 
         #  1.5
         if self.Etades != None:
@@ -192,29 +218,6 @@ class TTurboComponent(TGaspath):
             print(f"\tEta     : {self.Eta:.4f}")
 
         print(f"\tPW : {self.PW:.1f}")
-
-        # 1.6.0.8
-        if Mode == 'DP':
-            print(f"\tSFmap Nc : {self.map.SFmap_Nc :.4f}")
-            print(f"\tSFmap Wc : {self.map.SFmap_Wc :.4f}")
-            print(f"\tSFmap PR : {self.map.SFmap_PR :.4f}")
-            print(f"\tSFmap Eta: {self.map.SFmap_Eta :.4f}")
-
-    #  1.1 WV
-    def AddOutputToDict(self, Mode):
-        super().AddOutputToDict(Mode)
-        fsys.output_dict[f"N{self.ShaftNr}"] = self.N
-        fsys.output_dict[f"Nc{self.stationin}"] = self.Nc
-        fsys.output_dict[f"N{self.ShaftNr}%"] = self.N/self.Ndes*100
-        fsys.output_dict[f"Nc{self.stationin}%"] = self.Nc/self.Ncdes*100
-
-        # 1.5
-        if self.Eta != None:
-            fsys.output_dict["Eta_is_"+self.name] = self.Eta
-        # 1.6 WV
-        if self.vg_angle_des !=None:
-            fsys.output_dict["vg_angle_"+self.name] = self.vg_angle
-        fsys.output_dict["PW_"+self.name] = self.PW
 
     # 2.0.0.0
     def get_outputs(self):

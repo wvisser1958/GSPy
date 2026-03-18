@@ -89,7 +89,7 @@ class TExhaustNozzle(TGaspath):
             if self.Vthroat <= 0:
                 self.Vthroat = 0.001  # always assume a minimal flow velocity: 0.001 will result in a theoretical
                                     # very large exhaust area
-            self.Athroat_des = self.GasThroat.mass / self.GasThroat.phase.density / self.Vthroat
+            self.Athroat_des = fu.scalar(self.GasThroat.mass) / self.GasThroat.phase.density / self.Vthroat
             self.Athroat = self.Athroat_des
             # 1.301 now apply CV
             self.Vthroat = self.Vthroat * self.CVdes
@@ -99,12 +99,12 @@ class TExhaustNozzle(TGaspath):
             self.Pthroat, self.Tthroat, Vthroat_is, massflow = fu.calculate_expansion_to_A(self.GasIn.phase, Pin/Pout, self.Athroat)
             self.GasThroat.TP = self.Tthroat, self.Pthroat
             self.Vthroat = Vthroat_is * self.CVdes
-            self.owner.errors[self.ierror_w] = (self.GasIn.mass - massflow) / self.GasInDes.mass
+            self.owner.errors[self.ierror_w] = (fu.scalar(self.GasIn.mass) - massflow) / fu.scalar(self.GasInDes.mass)
             # 1.301 use Vthroat_is for Mach number
             # self.Mthroat = self.Vthroat / self.GasThroat.phase.sound_speed
             self.Mthroat = Vthroat_is / self.GasThroat.phase.sound_speed
         self.GasOut.TP = self.Tthroat, Pout # assume no further expansion
-        self.FG = self.CXdes * (self.GasOut.mass * self.Vthroat + self.Athroat*(self.Pthroat-Pout)) / 1000 # kN
+        self.FG = self.CXdes * (fu.scalar(self.GasOut.mass) * self.Vthroat + self.Athroat*(self.Pthroat-Pout)) / 1000 # kN
         # add gross thrust to system level thrust (note that multiple propelling nozzles may exist)
         self.owner.FG = self.owner.FG + self.FG
         self.Athroat_geom = self.Athroat / self.CDdes

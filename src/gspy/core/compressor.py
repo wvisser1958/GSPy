@@ -13,15 +13,12 @@
 # Authors
 #   Wilfried Visser
 
-import math
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
 import cantera as ct
 import gspy.core.sys_global as fg
 import gspy.core.utils as fu
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
-from gspy.core.vg_control import TVG_Control
 
 class TCompressor(TTurboComponent):
     def __init__(self, owner, name,
@@ -121,7 +118,6 @@ class TCompressor(TTurboComponent):
             self.PW = self.PW - dHW_bleeds_total
 
         self.shaft.PW_sum = self.shaft.PW_sum - self.PW
-
         return self.GasOut
 
     # v1.2
@@ -131,18 +127,10 @@ class TCompressor(TTurboComponent):
             for bleed in self.Bleeds:
                 bleed.PrintPerformance(Mode, PointTime)
 
-    def AddOutputToDict(self, Mode):
-        super().AddOutputToDict(Mode)
-        if self.Bleeds != None:
-            for bleed in self.Bleeds:
-                bleed.AddOutputToDict(Mode)
-
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()
-
         if self.Bleeds != None:
             for bleed in self.Bleeds:
                 out.update(bleed.get_outputs())
-
         return out

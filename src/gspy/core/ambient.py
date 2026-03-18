@@ -67,16 +67,7 @@ class TAmbient(TComponent):
         self.Gas_Ambient.TPY = self.Tta, self.Pta, fg.s_air_composition_mass
         self.V = self.Macha * ac.std_atm.temp2speed_of_sound(self.Tsa, speed_units = 'm/s', temp_units = 'K')
 
-    #  1.1 WV
-    def AddOutputToDict(self, Mode):
-        self.owner.output_dict["Alt"] = self.Altitude
-        self.owner.output_dict["Tsa"] = self.Tsa
-        self.owner.output_dict["Psa"] = self.Psa
-        self.owner.output_dict["Tta"] = self.Tta
-        self.owner.output_dict["Pta"] = self.Pta
-        self.owner.output_dict["Macha"] = self.Macha
-
-    # 2.0.0.0
+     # 2.0.0.0
     def get_outputs(self):
         #  outputs = super().get_outputs()
         return {

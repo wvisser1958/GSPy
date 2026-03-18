@@ -77,14 +77,14 @@ class TSystemModel:
         self.WF = 0.0
         self.PW = 0.0
 
-        self.OutputTable = None
-        self.Mode = None
-        self.ErrorTolerance = 0.0001 # default error tolerance 0.1%, override if needed in main code
+        self.output_table = None
+        self.mode = None
+        self.error_tolerance = 0.0001 # default error tolerance 0.1%, override if needed in main code
 
         # error code constants
-        self.NoError = 0
-        self.ConvergenceError = 1
-        self.ExceptionError = 2
+        self.no_error = 0
+        self.convergence_error = 1
+        self.exception_error = 2
 
         # Do print to console!
         self.VERBOSE = True
@@ -121,31 +121,31 @@ class TSystemModel:
 
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
-    def Do_Run(self, aMode, PointTime, states_par):
+    def Do_Run(self, mode, point_time, states_par):
         # global system_model, states, errors, Ambient, Control
         self.states = states_par.copy()
         self.reinit_system()
         # Ambient.Run(Mode, PointTime)
         # Ambient.AddOutputToDict(Mode)
 
-        self.output_dict['Point/Time'] = PointTime
-        self.output_dict['Mode'] = aMode
+        self.output_dict['Point/Time'] = point_time
+        self.output_dict['Mode'] = mode
 
         # 1.6 new PreRun virtual method
         for comp in self.component_run_list:
-            comp.PreRun(aMode, PointTime)
+            comp.PreRun(mode, point_time)
 
         # Run simulation code of all components in the system model
         for comp in self.component_run_list:
-            comp.Run(aMode, PointTime)
+            comp.Run(mode, point_time)
 
             # comp.AddOutputToDict(aMode)
             self.output_dict.update(comp.get_outputs())
 
         # v1.3 moved to BEFORE PostRun calls
-        self.AddSystemOutputToDict(aMode)
+        self.AddSystemOutputToDict(mode)
         for comp in self.component_run_list:
-            comp.PostRun(aMode, PointTime)
+            comp.PostRun(mode, point_time)
         return self.errors
 
     # 2.0.0.0
@@ -187,16 +187,16 @@ class TSystemModel:
                         targetresiduals,
                         dp_variables_init,
                         method='krylov',
-                        tol=self.ErrorTolerance,
+                        tol=self.error_tolerance,
                         options={'maxiter': 100}
                     )
                 except Exception as e:
-                    self.Do_Output(0, self.ExceptionError)
+                    self.Do_Output(0, self.exception_error)
                     print(f"DP target iteration exception error: {e}")
 
-            self.Do_Output(0, self.NoError)      # 0 to indicated all Ok if we get to this line of code after Do_Run
+            self.Do_Output(0, self.no_error)      # 0 to indicated all Ok if we get to this line of code after Do_Run
         except Exception as e:
-            self.Do_Output(0, self.ExceptionError)
+            self.Do_Output(0, self.exception_error)
             print(f"DP simulation: exception error: {e}")
 
     def Run_OD_simulation(self):
@@ -218,12 +218,12 @@ class TSystemModel:
                 solution = root(residuals,
                                 self.states,
                                 method = 'krylov',
-                                tol=self.ErrorTolerance,
+                                tol=self.error_tolerance,
                                 options={'maxiter': maxiter})
                                 # options={'maxiter': maxiter, 'xtol': 0.01})
                                 # options={'maxiter': maxiter, 'line_search': 'wolfe'})
                 if ipoint % self.points_output_interval == 0:
-                    self.Do_Output(self.inputpoints[ipoint], self.NoError if solution.success else self.ConvergenceError)
+                    self.Do_Output(self.inputpoints[ipoint], self.no_error if solution.success else self.convergence_error)
                 if solution.success:
                     successcount = successcount + 1
                 else:
@@ -237,7 +237,7 @@ class TSystemModel:
             # for debug
             # solution = root(residuals, [ 0.55198737,  0.71696654,  0.76224776,  0.85820746], method='krylov')
         except Exception as e:
-            self.Do_Output(self.inputpoints[ipoint], self.ExceptionError)
+            self.Do_Output(self.inputpoints[ipoint], self.exception_error)
             failedcount = failedcount + 1
             print(f"OD simulation: exception error: {e}")
 
@@ -246,8 +246,8 @@ class TSystemModel:
         # v1.2 return number of succesfully calculated points
         return successcount
 
-    def PrintPerformance(self, Mode, PointTime):
-        print(f"System performance ({Mode}) Point/Time:{PointTime}")
+    def PrintPerformance(self, mode, PointTime):
+        print(f"System performance ({mode}) Point/Time:{PointTime}")
         self.FN = self.FG - self.RD
         if (self.FG != 0) and (self.RD !=0):
             print(f"\tNet thrust: {self.FN:.2f} kN")
@@ -284,11 +284,11 @@ class TSystemModel:
             print(f"Point {PointTime}:")
 
             for comp in self.component_run_list:
-                comp.PrintPerformance(self.Mode, PointTime)
-            self.PrintPerformance(self.Mode, PointTime)
+                comp.PrintPerformance(self.mode, PointTime)
+            self.PrintPerformance(self.mode, PointTime)
 
         # add system performance
-        self.AddSystemOutputToDict(self.Mode)
+        self.AddSystemOutputToDict(self.mode)
 
         #  v1.2
         if ErrorCode == 1:
@@ -298,24 +298,24 @@ class TSystemModel:
         else:
             self.output_dict['Comment'] = ''
 
-        # add output of this point (ouptut_dict) to OutputTable
-        if self.OutputTable is None:  # add header + line 0
-            self.OutputTable = pd.DataFrame([self.output_dict])
+        # add output of this point (ouptut_dict) to output_table
+        if self.output_table is None:  # add header + line 0
+            self.output_table = pd.DataFrame([self.output_dict])
         else:
-            self.OutputTable = pd.concat([self.OutputTable, pd.DataFrame([self.output_dict])], ignore_index=True)
+            self.output_table = pd.concat([self.output_table, pd.DataFrame([self.output_dict])], ignore_index=True)
 
     def print_states_and_errors(self):
-        print(f"Nr. of states: {len(self.states)}\nNr. of errors: {len(self.errors)}")
+        print(f"Nr. of state variables: {len(self.states)}\nNr. of error equations: {len(self.errors)}")
 
     def OutputToCSV(self):
         # Export to Excel
         os.makedirs(self.output_path, exist_ok=True)
         outputcsvfilename = os.path.join(self.output_path, self.model_name + ".csv")
-        self.OutputTable.to_csv(outputcsvfilename, index=False, float_format='%.6f')
+        self.output_table.to_csv(outputcsvfilename, index=False, float_format='%.6f')
         print("output saved in "+outputcsvfilename)
 
     def Plot_X_nY_graph(self, title, filename_suffix, xcol, ycollist):
-        # Plot OutputTable data
+        # Plot output_tableable data
         # Create n subplots stacked vertically, sharing the same X-axis
         fig, axes = plt.subplots(nrows=len(ycollist), ncols=1, sharex=True, figsize=(8, 10))
         for ax in axes:
@@ -326,7 +326,7 @@ class TSystemModel:
         xname, xlabel = xcol
 
         # one-time mask for design points
-        dp_mask = (self.OutputTable["Mode"] == "DP")
+        dp_mask = (self.output_table["Mode"] == "DP")
 
         for item in ycollist:
             col   = item[0]
@@ -336,13 +336,13 @@ class TSystemModel:
             ax = axes[yaxisnr]
 
             # main line
-            ax.plot(self.OutputTable[xname], self.OutputTable[col], color=color, zorder=2)
+            ax.plot(self.output_table[xname], self.output_table[col], color=color, zorder=2)
             ax.set_ylabel(label)
 
             # screen-fixed squares at design points (only for rows where Mode == "DP")
             ax.scatter(
-                self.OutputTable.loc[dp_mask, xname],
-                self.OutputTable.loc[dp_mask, col],
+                self.output_table.loc[dp_mask, xname],
+                self.output_table.loc[dp_mask, col],
                 s=40,                    # points^2, screen-fixed size
                 marker="s",
                 facecolors="yellow",
