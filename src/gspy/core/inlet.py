@@ -46,7 +46,7 @@ class TInlet(TGaspath):
             self.PR = self.PRdes
         self.GasOut.TP = self.GasIn.T, self.GasIn.P * self.PR
         self.GasOut.mass = self.GasIn.mass
-        self.RD = self.GasIn.mass * self.owner.Ambient.V / 1000 # kN
+        self.RD = self.GasIn.mass * self.owner.ambient.V / 1000 # kN
         # add ram drag to system level ram drag (note that multiple inlets may exist)
         self.owner.RD = self.owner.RD + self.RD
         return self.GasOut

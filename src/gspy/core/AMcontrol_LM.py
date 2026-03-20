@@ -77,8 +77,8 @@ class TAMcontrol(TComponent):
         else:
             # set ambient conditions
             for ambientcondpar in self.ambientparnamelist:
-                # fsys.Ambient.__setattr__(ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
-                setattr(fsys.Ambient, ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
+                # fsys.ambient.__setattr__(ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
+                setattr(fsys.ambient, ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
 
             # set power setting
             psetcomp, psetpar = self.powersettingcomppar

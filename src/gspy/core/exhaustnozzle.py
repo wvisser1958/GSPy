@@ -40,7 +40,7 @@ class TExhaustNozzle(TGaspath):
         Sin = self.GasIn.entropy_mass
         Hin = self.GasIn.enthalpy_mass
         Pin = self.GasIn.P
-        Pout = self.owner.Ambient.Psa
+        Pout = self.owner.ambient.Psa
         # propelling nozzle, expansion flow
         # PR is nozzle PR Pout/Pin, only calculated (not given)
         # # v1.2

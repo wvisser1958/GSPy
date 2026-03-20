@@ -61,7 +61,7 @@ class TAMcontrol(TComponent):
         else:
             # set ambient conditions
             for ambientcondpar in self.ambientparnamelist:
-                setattr(self.owner.Ambient, ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
+                setattr(self.owner.ambient, ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
 
             # set power setting
             psetcomp, psetpar = self.powersettingcomppar

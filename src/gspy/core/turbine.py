@@ -158,7 +158,7 @@ class TTurbine(TTurboComponent):
                 self.shaft.PW_sum = 0
             else:
                 PRdesuntilAmbient = self.GetTotalPRdesUntilAmbient()
-                Pout = self.owner.Ambient.Psa / PRdesuntilAmbient
+                Pout = self.owner.ambient.Psa / PRdesuntilAmbient
                 self.PRdes = self.GasIn.P/Pout
                 self.PR = self.PRdes
 

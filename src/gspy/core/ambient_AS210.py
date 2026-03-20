@@ -925,7 +925,11 @@ if TComponent is not None:
         Drop-in replacement for gspy.core.ambient.TAmbient,
         but using the AS210 non-standard temperature profiles.
 
-        Constructor signature:
+        New-style constructor signature:
+            TAmbient_AS210(owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa)
+
+        The adapter also accepts the old-style 7-argument form for backward
+        compatibility:
             TAmbient_AS210(name, stationnr, Altitude, Macha, dTs, Psa, Tsa)
 
         Additional optional configuration:
@@ -933,9 +937,27 @@ if TComponent is not None:
                                humRel_in=None, humSp_in=None)
         """
 
-        def __init__(self, name, stationnr, Altitude, Macha, dTs=None, Psa=None, Tsa=None):
-            super().__init__(name, '', None)
+        def __init__(self, *args):
+            if len(args) == 8:
+                owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa = args
+            elif len(args) == 7:
+                owner = None
+                name, stationnr, Altitude, Macha, dTs, Psa, Tsa = args
+            else:
+                raise TypeError(
+                    'TAmbient_AS210 expects either 8 arguments '
+                    '(owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa) '
+                    'or 7 arguments '
+                    '(name, stationnr, Altitude, Macha, dTs, Psa, Tsa).'
+                )
+
+            super().__init__(owner, name, '', None)
             self.stationnr = stationnr
+
+            # 2.0.0.0 make sure the system model can directly access the ambient
+            # component (must be only a single Ambient component)
+            if owner is not None:
+                owner.ambient = self
 
             # Store DP conditions (GSPy convention)
             self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa)
@@ -945,12 +967,30 @@ if TComponent is not None:
             self.switchHum = 'RH'
             self.humRel_in = None
             self.humSp_in = None
+            self.outputs = None
+            self.Gas_Ambient = None
 
         # ------------------------------------------------------------------
         # User-facing configuration of AS210 day type and humidity handling
         # ------------------------------------------------------------------
         def SetConditionsAS210(self, switchDay='STANDARD', switchHum='RH',
                                humRel_in=None, humSp_in=None):
+            """
+            Configure the AS210 day profile and humidity inputs.
+
+            Parameters
+            ----------
+            switchDay : str
+                Day profile, for example 'STANDARD', 'HOT', 'COLD', 'MAXREC', ...
+            switchHum : str
+                'RH' -> use humRel_in
+                'SH' -> use humSp_in
+                '-'  -> dry
+            humRel_in : float | None
+                Relative humidity [0..1]
+            humSp_in : float | None
+                Specific humidity [kg/kg]
+            """
             self.switchDay = switchDay
             self.switchHum = switchHum
             self.humRel_in = humRel_in
@@ -981,10 +1021,10 @@ if TComponent is not None:
             # Apply DP conditions if needed (GSPy convention)
             if Mode == 'DP':
                 self.Altitude = self.Altitude_des
-                self.Macha    = self.Macha_des
-                self.dTs      = self.dTs_des
-                self.Psa      = self.Psa_des
-                self.Tsa      = self.Tsa_des
+                self.Macha = self.Macha_des
+                self.dTs = self.dTs_des
+                self.Psa = self.Psa_des
+                self.Tsa = self.Tsa_des
 
             # Build the input object for the AS210 computational model
             inputs = AmbientInputs(
@@ -1016,38 +1056,42 @@ if TComponent is not None:
             self.Pta   = O.Pt
             # Flight
             self.Macha = O.MN
-            self.V     = O.VTAS   # GSPy uses "V" = VTAS
-            # AS210-specific
-            self.TsDay = O.TsDay  # <-- REQUIRED to avoid AttributeError
-            self.VEAS  = O.VEAS
-            self.VCAS  = O.VCAS
+            self.V = O.VTAS   # GSPy uses "V" = VTAS
+            # AS210-specific outputs
+            self.TsDay = O.TsDay
+            self.dTs = O.dTs
+            self.dTsStd = O.dTsStd
+            self.humRel = O.humRel
+            self.humSp = O.humSp
+            self.VEAS = O.VEAS
+            self.VCAS = O.VCAS
 
             # --------------------------------------------------------------
             # Set the inlet state in Cantera (if available)
             # --------------------------------------------------------------
-            if ct is not None:
+            if ct is not None and self.owner is not None:
                 self.Gas_Ambient = ct.Quantity(fg.gas)
-                fsys.gaspath_conditions[self.stationnr] = self.Gas_Ambient
+                self.owner.gaspath_conditions[self.stationnr] = self.Gas_Ambient
                 self.Gas_Ambient.TPY = O.Tt, O.Pt, fg.s_air_composition_mass
             else:
                 self.Gas_Ambient = None
 
-        # ------------------------------------------------------------------
-        # Push outputs into gspy.core.system output dictionary
-        # ------------------------------------------------------------------
-        def AddOutputToDict(self, Mode):
-            fsys.output_dict["Alt"]      = getattr(self, 'Altitude', None)
-            fsys.output_dict["dTs"]      = getattr(self, 'dTs', None)
-            fsys.output_dict["dTsStd"]   = getattr(self.outputs, "dTsStd", None)
-            fsys.output_dict["Tsa"]      = getattr(self, 'Tsa', None)
-            fsys.output_dict["Psa"]      = getattr(self, 'Psa', None)
-            fsys.output_dict["Tta"]      = getattr(self, 'Tta', None)
-            fsys.output_dict["Pta"]      = getattr(self, 'Pta', None)
-            fsys.output_dict["Macha"]    = getattr(self, 'Macha', None)
-
-            # AS210-specific outputs
-            fsys.output_dict["TsDay"]    = getattr(self, 'TsDay', None)
-            fsys.output_dict["VEAS"]     = getattr(self, 'VEAS', None)
-            fsys.output_dict["VCAS"]     = getattr(self, 'VCAS', None)
-            fsys.output_dict["VTAS"]     = getattr(self, 'V', None)
-            fsys.output_dict["switchDay"]= getattr(self, 'switchDay', None)
+        # 2.0.0.0
+        def get_outputs(self):
+            outputs = {
+                "Alt": getattr(self, 'Altitude', None),
+                "dTs": getattr(self, 'dTs', None),
+                "dTsStd": getattr(self, 'dTsStd', None),
+                "Tsa": getattr(self, 'Tsa', None),
+                "Psa": getattr(self, 'Psa', None),
+                "Tta": getattr(self, 'Tta', None),
+                "Pta": getattr(self, 'Pta', None),
+                "Macha": getattr(self, 'Macha', None),
+                # AS210-specific outputs
+                "TsDay": getattr(self, 'TsDay', None),
+                "VEAS": getattr(self, 'VEAS', None),
+                "VCAS": getattr(self, 'VCAS', None),
+                "VTAS": getattr(self, 'V', None),
+                "switchDay": getattr(self, 'switchDay', None),
+            }
+            return outputs

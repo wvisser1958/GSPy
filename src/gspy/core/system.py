@@ -61,7 +61,7 @@ class TSystemModel:
         # 1.1 WV dictionary for output during iteration (e.g. for control equations)
         self.output_dict = {}
 
-        self.component_run_list = [self.ambient] # system model component list, always starting with Ambient
+        self.component_run_list = [self.ambient] # system model component list, always starting with ambient
         self.shaft_list = []
 
         self.inputpoints = np.array([], dtype=float)
@@ -149,7 +149,7 @@ class TSystemModel:
         return self.errors
 
     # 2.0.0.0
-    # self.component_run_list, always starting with Ambient
+    # self.component_run_list, always starting with ambient
     def define_comp_run_list(self, *component_list):
         self.component_run_list = [self.ambient, *component_list]
 

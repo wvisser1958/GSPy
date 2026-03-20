@@ -95,7 +95,7 @@ def main():
                                     cold_nozzle)
 
     # # create a turbojet system model
-    # fsys.system_model = [fsys.Ambient,
+    # fsys.system_model = [fsys.ambient,
 
     #                     FuelControl,
 
@@ -145,7 +145,7 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    turbofan.Ambient.SetConditions('DP', 0, 0, 0, None, None)
+    turbofan.ambient.SetConditions('DP', 0, 0, 0, None, None)
     turbofan.Run_DP_simulation()
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
@@ -156,7 +156,7 @@ def main():
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
     # conditions is desired
     # typical cruise conditions:
-    turbofan.Ambient.SetConditions('OD', 10000, 0.8, 0, None, None)
+    turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None)
     # Run OD simulation
     turbofan.Run_OD_simulation()
 

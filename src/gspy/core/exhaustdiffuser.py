@@ -41,7 +41,7 @@ class TExhaustDiffuser(TGaspath):
         Sin = self.GasIn.entropy_mass
         Hin = self.GasIn.enthalpy_mass
         Pin = self.GasIn.P
-        Pout = fsys.Ambient.Psa
+        Pout = fsys.ambient.Psa
         # diffuser with pressure loss, diffusing flow.
         # 1 - PR is rel. pressure loss proportional to Wc^2
         # in derived version, maybe make PR loss map

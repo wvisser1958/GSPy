@@ -23,8 +23,8 @@ class TAmbient(TComponent):
         super().__init__(owner, name, '', None)
         self.stationnr = stationnr
         self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa)
-        # 2.0.0.0 make sure the system model can directly access the Ambient component (must be only a single Ambient component)
-        owner.Ambient = self
+        # 2.0.0.0 make sure the system model can directly access the ambient component (must be only a single Ambient component)
+        owner.ambient = self
 
     def SetConditions(self, Mode, Altitude, Macha, dTs, Psa, Tsa):
         if Mode == 'DP':
