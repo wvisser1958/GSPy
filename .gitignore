@@ -93,3 +93,4 @@ src/gspy.egg-info/top_level.txt
 *.bak
 /output
 /.vscode/settings.json
+/*.jpg
