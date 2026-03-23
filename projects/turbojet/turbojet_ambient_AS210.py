@@ -33,7 +33,7 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turbojet = TSystemModel('Turbojet')
+    turbojet = TSystemModel('Turbojet_AS210')
     # Override ambient conditions object (to set ambient/inlet/flight conditions)
     # The ambient conditions object is an embedded object inside the system model class,
     # we now have to override the system model ambient

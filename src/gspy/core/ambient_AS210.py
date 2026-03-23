@@ -1078,15 +1078,17 @@ if TComponent is not None:
 
         # 2.0.0.0
         def get_outputs(self):
+            s = self.stationnr
+        
             outputs = {
                 "Alt": getattr(self, 'Altitude', None),
                 "dTs": getattr(self, 'dTs', None),
                 "dTsStd": getattr(self, 'dTsStd', None),
-                "Tsa": getattr(self, 'Tsa', None),
-                "Psa": getattr(self, 'Psa', None),
-                "Tta": getattr(self, 'Tta', None),
-                "Pta": getattr(self, 'Pta', None),
-                "Macha": getattr(self, 'Macha', None),
+                f"Ts{s}": getattr(self, 'Tsa', None),
+                f"Ps{s}": getattr(self, 'Psa', None),
+                f"Tt{s}": getattr(self, 'Tta', None),
+                f"Pt{s}": getattr(self, 'Pta', None),
+                f"Mach{s}": getattr(self, 'Macha', None),
                 # AS210-specific outputs
                 "TsDay": getattr(self, 'TsDay', None),
                 "VEAS": getattr(self, 'VEAS', None),
