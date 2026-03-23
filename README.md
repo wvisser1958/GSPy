@@ -29,6 +29,24 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
+### GSPy v2.0.0.0                                                     23-03-2026
+--------------------------------------------------------------------------------
+### Improvements
+--------------------------------------------------------------------------------
+- A project now must instantiate a TSystem_Model object and then call the
+  methods simular to the earlier version main program functions.
+- Ambient model object class now embedded in TSystem_Model. Default station
+  number for ambient is 'a'. Change if using
+  <system_model>.Ambient.set_station_nr if desired (e.g. to comply to AS755).
+- This means the inlet entry gas path station must now be different from the
+  ambient station. Standard would be station 1 and 2 for inlet gas path entry
+  and exit.
+- The jetsurf.yaml file with the gas properties data for Cantera is located in
+  the GSPy\data\fluid_props\ folder. The path to this file to initialze the
+  Cantera 'solution' gas properties model is now automatically resolved relative
+  to the location of the sys_global.py file in the \core sub-directory.
+- Many renamings and refactorings to more pythonic coding style.
+
 ### GSPy v1.7.0.0                                                     17-03-2026
 --------------------------------------------------------------------------------
 ### Release

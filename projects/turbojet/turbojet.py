@@ -45,7 +45,7 @@ def main():
     # FuelControl = TControl('EGTcontrol', '', 0.38, 1020, 820, -50, 'T5')
 
     # Generic gas turbine components
-    inlet1   = TInlet(turbojet, 'Inlet1',      '', None,           0,2,   19.9, 1    )
+    inlet1   = TInlet(turbojet, 'Inlet1',      '', None,           1,2,   19.9, 1    )
 
     compressor1 = TCompressor(turbojet, 'compressor1',turbojet.map_path / 'compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
     # option for polytropic efficiency, uncomment next line

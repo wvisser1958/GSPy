@@ -21,7 +21,7 @@ import gspy.core.sys_global as fg
 class TAmbient(TComponent):
     def __init__(self, owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa):    # Constructor of the class
         super().__init__(owner, name, '', None)
-        self.stationnr = stationnr
+        self.station_nr = stationnr
         self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa)
         # 2.0.0.0 make sure the system model can directly access the ambient component (must be only a single Ambient component)
         owner.ambient = self
@@ -51,7 +51,7 @@ class TAmbient(TComponent):
             # self.Gas_Ambient = ct.Solution('jetsurf.yaml')
             # create Cantera quantity object for Ambient (mass = 1 per default)
             self.Gas_Ambient = ct.Quantity(fg.gas)
-            self.owner.gaspath_conditions[self.stationnr] = self.Gas_Ambient
+            self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
         if self.Tsa == None:
             # Tsa not defined, use standard atmosphere
             self.Tsa = ac.std_atm.alt2temp(self.Altitude, alt_units='m', temp_units='K')
@@ -70,8 +70,8 @@ class TAmbient(TComponent):
      # 2.0.0.0
     def get_outputs(self):
         #  outputs = super().get_outputs()
-        s = self.stationnr
-                
+        s = self.station_nr
+
         return {
             "Alt": self.Altitude,
             f"Ts{s}": self.Tsa,
@@ -80,9 +80,9 @@ class TAmbient(TComponent):
             f"Pt{s}": self.Pta,
             f"Mach{s}": self.Macha,
         }
-    
-    def get_station(self):
-        return self.stationnr
-    
-    def set_station(self, station_string):
-        self.stationnr = station_string
+
+    def get_station_nr(self):
+        return self.station_nr
+
+    def set_station_nr(self, station_nr):
+        self.station_nr = station_nr
