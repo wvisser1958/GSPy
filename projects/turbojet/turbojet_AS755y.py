@@ -34,8 +34,8 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 
 def main():
     turbojet = TSystemModel('Turbojet_AS755')
-    # Override ambient object to set new station number
-    turbojet.ambient = TAmbient(turbojet, 'Ambient', '000', 0, 0, 0, None, None)
+    # Override ambient object station number to with new station string
+    turbojet.ambient.set_station('000')
 
     # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # FuelControl for open loop direct control of fuel flow
@@ -48,7 +48,7 @@ def main():
     # FuelControl = TControl('EGTcontrol', '', 0.38, 1020, 820, -50, 'T5')
 
     # Generic gas turbine components
-    inlet1   = TInlet(turbojet, 'Inlet1', '', None, '000','020', 19.9, 1)
+    inlet1   = TInlet(turbojet, 'Inlet1', '', None, '010','020', 19.9, 1)
 
     compressor1 = TCompressor(turbojet, 'compressor1', turbojet.map_path / 'compmap.map' , None, '020', '030', 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
     # option for polytropic efficiency, uncomment next line

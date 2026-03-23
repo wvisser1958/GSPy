@@ -53,7 +53,7 @@ class TSystemModel:
         # Tell the core where to put outputs
         fg.output_path = self.output_path
 
-        self.ambient = TAmbient(self, 'Ambient', 0, 0, 0,   0,   None,   None)
+        self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
 
         # use dictionary for gas path conditions oriented by gas path station number
         self.gaspath_conditions = {}

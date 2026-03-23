@@ -70,11 +70,19 @@ class TAmbient(TComponent):
      # 2.0.0.0
     def get_outputs(self):
         #  outputs = super().get_outputs()
+        s = self.stationnr
+                
         return {
             "Alt": self.Altitude,
-            "Tsa": self.Tsa,
-            "Psa": self.Psa,
-            "Tta": self.Tta,
-            "Pta": self.Pta,
-            "Macha": self.Macha,
+            f"Ts{s}": self.Tsa,
+            f"Ps{s}": self.Psa,
+            f"Tt{s}": self.Tta,
+            f"Pt{s}": self.Pta,
+            f"Mach{s}": self.Macha,
         }
+    
+    def get_station(self):
+        return self.stationnr
+    
+    def set_station(self, station_string):
+        self.stationnr = station_string

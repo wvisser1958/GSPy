@@ -26,6 +26,8 @@ class TInlet(TGaspath):
 
     def Run(self, Mode, PointTime):
         if Mode == 'DP':
+            # Get the ambient conditions for the inlet gas_in conditions
+            self.owner.gaspath_conditions[self.stationin] = self.owner.gaspath_conditions[self.owner.ambient.stationnr]
             self.owner.gaspath_conditions[self.stationin].mass = self.Wdes
         super().Run(Mode, PointTime)
         # self.GasIn.TP = self.GasIn.T, self.GasIn.P
