@@ -77,7 +77,8 @@ class TSystemModel:
         self.WF = 0.0
         self.PW = 0.0
 
-        self.output_table = None
+        self.reset_output()
+
         self.mode = None
         self.error_tolerance = 0.0001 # default error tolerance 0.1%, override if needed in main code
 
@@ -108,6 +109,10 @@ class TSystemModel:
             state = 1
         for error in self.errors:
             state = 0
+
+    def reset_output(self):
+        self._output_rows = []
+        self.output_table = None
 
     def reinit_system(self):
         for shaft in self.shaft_list:
@@ -194,10 +199,18 @@ class TSystemModel:
                     self.Do_Output(0, self.exception_error)
                     print(f"DP target iteration exception error: {e}")
 
+            self.targets = targets # save target information for output
+
             self.Do_Output(0, self.no_error)      # 0 to indicated all Ok if we get to this line of code after Do_Run
         except Exception as e:
             self.Do_Output(0, self.exception_error)
             print(f"DP simulation: exception error: {e}")
+
+    def print_DP_equation_solution(self):
+        if self.targets != None:
+            print(f"DP simulation equations solution:")
+            for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(self.targets):
+                print(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
 
     def Run_OD_simulation(self):
         def residuals(states):
@@ -298,14 +311,16 @@ class TSystemModel:
         else:
             self.output_dict['Comment'] = ''
 
-        # add output of this point (ouptut_dict) to output_table
-        if self.output_table is None:  # add header + line 0
-            self.output_table = pd.DataFrame([self.output_dict])
-        else:
-            self.output_table = pd.concat([self.output_table, pd.DataFrame([self.output_dict])], ignore_index=True)
+        #  2.0
+        # add output of this point (ouptut_dict) to output_rows dictionary
+        self._output_rows.append(self.output_dict.copy())
 
     def print_states_and_errors(self):
         print(f"Nr. of state variables: {len(self.states)}\nNr. of error equations: {len(self.errors)}")
+
+    def prepare_output_table(self):
+        #  collect output_rows in dataframe, for processing in OutputToCSV, Plot_X_nY_graph, PlotMaps etc.
+        self.output_table = pd.DataFrame(self._output_rows)
 
     def OutputToCSV(self):
         # Export to Excel

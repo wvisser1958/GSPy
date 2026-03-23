@@ -15,7 +15,6 @@
 
 import numpy as np
 import cantera as ct
-import gspy.core.sys_global as fg
 from gspy.core.base_component import TComponent
 
 class TControl(TComponent):
@@ -53,7 +52,7 @@ class TControl(TComponent):
                 self.Inputvalue = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
             else:
                 # input is coming from state, iterating toward value satisfying control equation
-                self.Inputvalue = self.DP_inputvalue * fsys.states[self.istate_control]
+                self.Inputvalue = self.DP_inputvalue * self.owner.states[self.istate_control]
 
     # 1.1 WV PostRun evaluates the equation for controlling parameter named OD_controlledparName to input
     def PostRun(self, Mode, PointTime):
