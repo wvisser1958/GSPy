@@ -314,7 +314,7 @@ class TSystemModel:
         self.output_table.to_csv(outputcsvfilename, index=False, float_format='%.6f')
         print("output saved in "+outputcsvfilename)
 
-    def Plot_X_nY_graph(self, title, filename_suffix, xcol, ycollist):
+    def Plot_X_nY_graph(self, title, filename_suffix, xcol, ycollist, do_show = False):
         # Plot output_tableable data
         # Create n subplots stacked vertically, sharing the same X-axis
         fig, axes = plt.subplots(nrows=len(ycollist), ncols=1, sharex=True, figsize=(8, 10))
@@ -364,9 +364,13 @@ class TSystemModel:
         # Optional: improve layout
         fig.suptitle(title, fontsize=14)
         fig.tight_layout(rect=[0, 0, 1, 0.96])
-        plt.show()
+        # 2.0.0.0
+        if do_show:
+            plt.show()
         # xyplotfilename = os.path.join(output_directory, os.path.splitext(os.path.basename(__file__))[0]) + ".jpg"
-        jpg_filename = self.model_name + filename_suffix + ".jpg"
+        # 2.0.0.0
+        # jpg_filename = self.model_name + filename_suffix + ".jpg"
+        jpg_filename = os.path.join(self.output_path, self.model_name + filename_suffix + ".jpg")
         fig.savefig(jpg_filename)
         print("x-4y plot saved in " + jpg_filename)
 

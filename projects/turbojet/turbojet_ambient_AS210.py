@@ -38,6 +38,8 @@ def main():
     # The ambient conditions object is an embedded object inside the system model class,
     # we now have to override the system model ambient
     turbojet.ambient = TAmbient_AS210(turbojet, 'Amb', '000', 0, 0, 0, None, None)
+    # No component output to terminal:
+    turbojet.VERBOSE = False
 
 # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # fuelcontrol for open loop direct control of fuel flow
@@ -126,7 +128,7 @@ def main():
     # plot nY vs X parameter
     turbojet.Plot_X_nY_graph('Engine performance vs. N [%]',
                             # suffix for filename to keep multiple plot files apart
-                            "_1",
+                            "", 
                             # common X parameter column name with label
                             ("N1%",           "Rotor speed [%]"),
                             # 4 Y paramaeter column names with labels and color
@@ -134,7 +136,10 @@ def main():
                                 ("T050",              "EGT [K]",                  "blue"),
                                 ("W020",              "Inlet mass flow [kg/s]",   "blue"),
                                 ("Wf_Brn",            "Fuel flow [kg/s]",         "blue"),
-                                ("FN",                "Net thrust [kN]",          "blue")            ])
+                                ("FN",                "Net thrust [kN]",          "blue")
+                            ],
+                            False # do_show
+                            )
 
      # Create component map plots with operating lines if available
     turbojet.PlotMaps()

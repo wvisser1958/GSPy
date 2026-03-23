@@ -609,12 +609,21 @@ for name, tab in AS210_TABLES.items():
 # ---- Helpers ----
 
 def _isa_temp(alt_m: float) -> float:
-    """ISA temperature at geometric altitude (approx) using aerocalc if available."""
+    """
+       ISA temperature at geometric altitude (approx) using aerocalc if available.
+       Fallback is only valid up to 32 km.
+    """
     if ac is not None:
         try:
-            return ac.std_atm.alt2temp(alt_m, alt_units='m', temp_units='K')
+            return ac.std_atm.alt2temp(alt_m, alt_units="m", temp_units="K")
+        except ValueError:
+            # "Proper" behavior: altitude invalid/out-of-range etc.
+            # Do NOT silently fall back to a weaker model.
+            raise
         except Exception:
+            # Any unexpected aerocalc failure -> try our fallback (best-effort)
             pass
+        
     # Fallback to piecewise ISA up to 32 km (sufficient for this use)
     # Layers: 0–11 km (L=-6.5 K/km); 11–20 km (isothermal 216.65 K); 20–32 km (+1.0 K/km)
     h = float(alt_m)
@@ -622,8 +631,10 @@ def _isa_temp(alt_m: float) -> float:
         return T0 - 0.0065 * h
     elif h <= 20_000.0:
         return 216.65
-    else:
+    elif h <= 32_000:
         return 216.65 + 0.001 * (h - 20_000.0)
+    else:
+        raise ValueError("ISA fallback implemented only up to 32 km.")
 
 
 def _interp(x: float, xs: np.ndarray, ys: np.ndarray) -> float:
@@ -926,11 +937,7 @@ if TComponent is not None:
         but using the AS210 non-standard temperature profiles.
 
         New-style constructor signature:
-            TAmbient_AS210(owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa)
-
-        The adapter also accepts the old-style 7-argument form for backward
-        compatibility:
-            TAmbient_AS210(name, stationnr, Altitude, Macha, dTs, Psa, Tsa)
+            TAmbient_AS210(owner, name, station_nr, Altitude, Macha, dTs, Psa, Tsa)
 
         Additional optional configuration:
             SetConditionsAS210(switchDay='STANDARD', switchHum='RH',
@@ -939,20 +946,15 @@ if TComponent is not None:
 
         def __init__(self, *args):
             if len(args) == 8:
-                owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa = args
-            elif len(args) == 7:
-                owner = None
-                name, stationnr, Altitude, Macha, dTs, Psa, Tsa = args
+                owner, name, station_nr, Altitude, Macha, dTs, Psa, Tsa = args
             else:
                 raise TypeError(
                     'TAmbient_AS210 expects either 8 arguments '
-                    '(owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa) '
-                    'or 7 arguments '
-                    '(name, stationnr, Altitude, Macha, dTs, Psa, Tsa).'
+                    '(owner, name, station_nr, Altitude, Macha, dTs, Psa, Tsa) '
                 )
 
             super().__init__(owner, name, '', None)
-            self.stationnr = stationnr
+            self.station_nr = station_nr
 
             # 2.0.0.0 make sure the system model can directly access the ambient
             # component (must be only a single Ambient component)
@@ -1071,14 +1073,14 @@ if TComponent is not None:
             # --------------------------------------------------------------
             if ct is not None and self.owner is not None:
                 self.Gas_Ambient = ct.Quantity(fg.gas)
-                self.owner.gaspath_conditions[self.stationnr] = self.Gas_Ambient
+                self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
                 self.Gas_Ambient.TPY = O.Tt, O.Pt, fg.s_air_composition_mass
             else:
                 self.Gas_Ambient = None
 
         # 2.0.0.0
         def get_outputs(self):
-            s = self.stationnr
+            s = self.station_nr
         
             outputs = {
                 "Alt": getattr(self, 'Altitude', None),
@@ -1089,11 +1091,11 @@ if TComponent is not None:
                 f"Tt{s}": getattr(self, 'Tta', None),
                 f"Pt{s}": getattr(self, 'Pta', None),
                 f"Mach{s}": getattr(self, 'Macha', None),
+                f"VEAS{s}": getattr(self, 'VEAS', None),
+                f"VCAS{s}": getattr(self, 'VCAS', None),
+                f"VTAS{s}": getattr(self, 'V', None),
                 # AS210-specific outputs
                 "TsDay": getattr(self, 'TsDay', None),
-                "VEAS": getattr(self, 'VEAS', None),
-                "VCAS": getattr(self, 'VCAS', None),
-                "VTAS": getattr(self, 'V', None),
                 "switchDay": getattr(self, 'switchDay', None),
             }
             return outputs
