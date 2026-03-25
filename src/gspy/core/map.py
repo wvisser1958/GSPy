@@ -23,14 +23,23 @@ import os
 from gspy.core import sys_global as fg
 
 class TMap:
-    def __init__(self, host_component, name, MapFileName, OL_xcol, OL_ycol):    # Constructor of the class
-        self.name = name
-        self.MapFileName = MapFileName
-        self.mapfile = None
-        self.maptype = None
-        self.maptitle = None
+    def __init__(self, host_component, name, map_filename, OL_xcol, OL_ycol):    # Constructor of the class
         # This is the link to the object which created the map
         self.host_component = host_component
+        self.name = name
+
+        # the filename of the map as located in TSystem_Model.maps_dir_path
+        self.map_filename = map_filename
+
+        # 2.0 standard map directory (default 'maps' subdirectory under project file)
+        self.map_dir_path = self.host_component.owner.maps_dir_path
+
+        # the textIOwrapper into which the map file data are read
+        self.map_file = None
+
+        self.map_type = None
+        self.map_title = None
+
         # The map figure object
         self.map_figure = None
         # Map size controlled from a paramter to create identical map sizes
@@ -43,16 +52,17 @@ class TMap:
         self.OL_ycol = OL_ycol
 
         # Output folder
-        # output_dir = './output/'
-        output_dir = fg.output_path
+        # # output_dir = './output/'
+        # output_dir = self.owner.output_dir_path
 
-        # Mapnaming, override or extend in child classes
-        # 1.4
-        # self.map_figure_pathname = output_dir + self.name + '.jpg'
-        self.map_figure_pathname = output_dir / (self.name + ".jpg")
-        # Create the directory if it doesn't exist
-        if not os.path.isdir(output_dir):
-            os.makedirs(output_dir)
+        # # Mapnaming, override or extend in child classes
+        # # 1.4
+        # # self.map_figure_file_path = output_dir + self.name + '.jpg'
+        self.map_figure_dir_path = self.host_component.owner.output_dir_path
+        self.map_figure_file_path = self.host_component.owner.output_dir_path / (self.name + ".jpg")
+        # # Create the directory if it doesn't exist
+        # if not os.path.isdir(output_dir):
+        #     os.makedirs(output_dir)
 
     @property
     def simresultstable(self):
@@ -60,19 +70,20 @@ class TMap:
 
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         try:
-            self.mapfile = open(filename, 'r')
+            # self.map_file = open(filename, 'r')
+            self.map_file = open(self.map_dir_path / filename, 'r')
             # Read the first line
-            line = self.mapfile.readline()
+            line = self.map_file.readline()
             line_number = 1  # Initialize line number counter
             while not '99' in line:
-                line = self.mapfile.readline()
+                line = self.map_file.readline()
             items = line.split()
-            self.maptype = items[0]
-            self.maptitle = rest_of_items = ' '.join(items[1:])
-            return self.maptype, self.maptitle, self.mapfile
+            self.map_type = items[0]
+            self.map_title = rest_of_items = ' '.join(items[1:])
+            return self.map_type, self.map_title, self.map_file
 
         except FileNotFoundError:
-            print(f"Map file '{filename}' does not exist.")
+            print(f"Map file '{self.map_dir_path / filename}' does not exist.")
 
     # Map plotting routine
     def PlotMap(self):

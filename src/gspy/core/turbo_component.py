@@ -25,13 +25,13 @@ from pathlib import Path
 from gspy.core.turbomap import TTurboMap
 
 class TTurboComponent(TGaspath):
-    def __init__(self, owner, name, MapFileName_or_dict, ControlComponent, stationin, stationout, ShaftNr,
+    def __init__(self, owner, name, map_filename_or_dict, ControlComponent, station_in, station_out, ShaftNr,
                  Ndes, Etades,
                  Ncmapdes, Betamapdes):
-        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, stationin, stationout)
+        super().__init__(owner, name, map_filename_or_dict, ControlComponent, station_in, station_out)
 
-        self.GasIn = None
-        self.GasOut = None
+        self.gas_in = None
+        self.gas_out = None
         self.ShaftNr = ShaftNr
 
         self.Ndes = Ndes
@@ -61,15 +61,15 @@ class TTurboComponent(TGaspath):
         # 1.6 Wilfried Visser, to accomodate multi-map functionality for variable geometry
         # VGparvalue is set from outside (manually of via TControl component) determining the maps in the MapFileNames list to be used for interpolation
         # type-dependent behavior for MapFileNames (renamed here from 'MapFileName' in TGaspath)
-        if isinstance(MapFileName_or_dict, dict):
+        if isinstance(map_filename_or_dict, dict):
             # MapFileName_or_dict holds VGparvaluedes in element 'design_angle' and a list of mapfilename, VGpasvalues in "maps"
             # MapFileNames is list of tuples : Map file path, VGparvalue (e.g. VSV / VIGV angle, VBV position)
-            self.vg_angle_des = MapFileName_or_dict['design_angle']           # tuple[0] holds the VGpasvalue in the design point (for scaling map in DP calculation)
+            self.vg_angle_des = map_filename_or_dict['design_angle']           # tuple[0] holds the VGpasvalue in the design point (for scaling map in DP calculation)
             self.vg_angle =self.vg_angle_des
             self.MapFileName = None
 
             self.maps_by_angle: dict[float, TTurboMap] = {}
-            maps_dict = MapFileName_or_dict["maps"]
+            maps_dict = map_filename_or_dict["maps"]
             for angle in sorted(maps_dict):
                 fn = Path(maps_dict[angle])
                 if not fn.exists():
@@ -90,10 +90,10 @@ class TTurboComponent(TGaspath):
                     "VGparvaluedes does not match any of the VGpasvalue's in the MapFileNames list")
 
         # single map from single map file path
-        elif isinstance(MapFileName_or_dict, (str, Path)):
+        elif isinstance(map_filename_or_dict, (str, Path)):
             # MapFileName_or_dict is just a single map file name/path
             # Normalize to Path internally (best practice)
-            self.MapFileName = Path(MapFileName_or_dict)
+            self.MapFileName = Path(map_filename_or_dict)
             self.map = self.CreateMap(self.MapFileName, ShaftNr, Ncmapdes, Betamapdes)
 
         else:
@@ -122,7 +122,7 @@ class TTurboComponent(TGaspath):
             for angle, tmap in self.maps_by_angle.items():
                 # only scale the map (i.e. the design point map)
                 if not (tmap is self.map):
-                    tmap.ReadMap(tmap.MapFileName)
+                    tmap.ReadMap(tmap.map_filename)
                     tmap.SetScaling(SFnc, SFwc, SFpr, SFeta)
 
     # 1.6 WV
@@ -156,13 +156,13 @@ class TTurboComponent(TGaspath):
         if self.map != None:
             self.map.PlotDualMap(use_scaled_map = True, do_plot_design_point = True, do_plot_series = True)
             # 1.4
-            # print(self.name + " map (dual) with operating curve saved in " + self.map.map_figure_pathname)
-            print(f"{self.name} map (dual) with operating curve saved in {self.map.map_figure_pathname}")
+            # print(self.name + " map (dual) with operating curve saved in " + self.map.map_figure_file_path)
+            print(f"{self.name} map (dual) with operating curve saved in {self.map.map_figure_file_path}")
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
-            self.Ncdes = self.Ndes / fg.GetRotorspeedCorrectionFactor(self.GasIn)
+            self.Ncdes = self.Ndes / fg.GetRotorspeedCorrectionFactor(self.gas_in)
             self.Nc = self.Ncdes
             self.Eta = self.Etades
             self.shaft = self.owner.get_shaft(self.ShaftNr)
@@ -224,9 +224,9 @@ class TTurboComponent(TGaspath):
         out = super().get_outputs()
 
         out[f"N{self.ShaftNr}"] = self.N
-        out[f"Nc{self.stationin}"] = self.Nc
+        out[f"Nc{self.station_in}"] = self.Nc
         out[f"N{self.ShaftNr}%"] = self.N/self.Ndes*100
-        out[f"Nc{self.stationin}%"] = self.Nc/self.Ncdes*100
+        out[f"Nc{self.station_in}%"] = self.Nc/self.Ncdes*100
 
         # 1.5
         if self.Eta != None:

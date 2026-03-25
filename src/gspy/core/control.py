@@ -33,6 +33,7 @@ class TControl(TComponent):
         self.OD_endvalue = OD_endvalue
         self.OD_pointstepvalue = OD_pointstepvalue
         self.OD_controlledparname = OD_controlledparname
+        self.controlpar_demand = None
         if (abs(OD_pointstepvalue) == 0) or ((OD_endvalue - OD_startvalue) * OD_pointstepvalue < 0):
             raise Exception("Invalid control variable begin, end and step values")
 

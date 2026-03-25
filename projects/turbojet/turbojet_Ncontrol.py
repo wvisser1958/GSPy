@@ -46,7 +46,7 @@ def main():
     # Generic gas turbine components
     inlet1   = TInlet(turbojet, 'Inlet1',      '', None,           1,2,   19.9, 1    )
 
-    compressor1 = TCompressor(turbojet, 'compressor1',turbojet.map_path / 'compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
+    compressor1 = TCompressor(turbojet, 'compressor1','compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
     # option for polytropic efficiency, uncomment next line
     # compressor1.Polytropic_Eta = 1
 
@@ -69,7 +69,7 @@ def main():
                 # fuel specified by Fuel temperature and Fuel composition (by mass)
                 #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
-    turbine1 =    TTurbine(turbojet,    'turbine1'   , turbojet.map_path / 'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
+    turbine1 =    TTurbine(turbojet,    'turbine1'   , 'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
     # option for polytropic efficiency, uncomment next line
     # turbine1.Polytropic_Eta = 1
 

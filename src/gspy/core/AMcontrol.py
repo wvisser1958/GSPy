@@ -56,7 +56,7 @@ class TAMcontrol(TComponent):
             for compmap, SFpar in self.mapmod_comps_pars_list:
                 setattr(compmap, SFpar, 1)
             # read input (points to perform AM analysis on)
-            self.am_input = pd.read_csv(self.measdatafilename)
+            self.am_input = pd.read_csv(self.owner.input_dir_path / self.measdatafilename)
             self.am_input.set_index('Point')
         else:
             # set ambient conditions

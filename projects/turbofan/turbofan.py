@@ -40,16 +40,16 @@ def main():
     # combustor Texit input, with Wf 1.11 as first guess for 1600 K DP combustor exit temperature
     fuel_control = TControl(turbofan, 'Control', '', 1.11, 1600, 1100, -50, None)
 
-    inlet = TInlet(turbofan, 'Inlet',          '', None,           0,2,   337, 1    )
+    inlet = TInlet(turbofan, 'Inlet',          '', None,           1,2,   337, 1    )
 
     # for turbofan, note that fan has 2 GasOut outputs
-    fan = TFan(turbofan, 'Fan_Bst', turbofan.map_path / 'bigfanc.map', 2, 25, 21,   1,   4880, 0.8696, 5.3, 0.95, 0.7, 2.33,
-                    turbofan.map_path / 'bigfand.map', 0.95, 0.7, 1.65,            0.8606,
-                    # cf = 1
-                    1)
+    fan = TFan(turbofan, 'Fan_Bst', 'bigfanc.map', 2, 25, 21,   1,   4880, 0.8696, 5.3, 0.95, 0.7, 2.33,
+                                    'bigfand.map', 0.95, 0.7, 1.65,            0.8606,
+                                    # cf = 1
+                                    1)
 
     # always start with the components following the 1st GasOut object
-    hpc = TCompressor(turbofan, 'HPC',turbofan.map_path / 'compmap.map', None, 25,3,   2,   14000, 0.8433, 1, 0.8, 10.9, 'GG', None)
+    hpc = TCompressor(turbofan, 'HPC', 'compmap.map', None, 25,3,   2,   14000, 0.8433, 1, 0.8, 10.9, 'GG', None)
 
     # ***************** Combustor ******************************************************
     # fuel input
@@ -69,9 +69,9 @@ def main():
                                 # fuel specified by Fuel temperature and Fuel composition (by mass)
                                 # 288.15,      None, None, None, 'CH4:5, C2H6:1', None),
 
-    hpt = TTurbine(turbofan, 'HPT', turbofan.map_path / 'turbimap.map', None, 4,45,   2,   14000, 0.8732,       1, 0.65, 1, 'GG', None)
+    hpt = TTurbine(turbofan, 'HPT', 'turbimap.map', None, 4,45,   2,   14000, 0.8732,       1, 0.65, 1, 'GG', None)
 
-    lpt = TTurbine(turbofan, 'LPT', turbofan.map_path / 'turbimap.map', None, 45,5,   1,   4480, 0.8682,       1, 0.7, 1, 'GG', None)
+    lpt = TTurbine(turbofan, 'LPT', 'turbimap.map', None, 45,5,   1,   4480, 0.8682,       1, 0.7, 1, 'GG', None)
 
 
     hot_duct = TDuct(turbofan, 'Exhduct_hot',      '', None,               5,7,   1.0                 )
@@ -159,6 +159,8 @@ def main():
     turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None)
     # Run OD simulation
     turbofan.Run_OD_simulation()
+
+    turbofan.prepare_output_table()
 
     # export OutputTable to CSV
     turbofan.OutputToCSV()

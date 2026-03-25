@@ -21,9 +21,9 @@ from gspy.core.gaspath import TGaspath
 import gspy.core.utils as fu
 
 class TCombustor(TGaspath):
-    def __init__(self, owner, name, MapFileName, ControlComponent, stationin, stationout, Wfdes, Texitdes, PRdes, Etades,
+    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, Wfdes, Texitdes, PRdes, Etades,
                  Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes, A):
-        super().__init__(owner, name, MapFileName, ControlComponent, stationin, stationout)
+        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
         self.Wfdes = Wfdes
         self.Wf = Wfdes
         # Texitdes: set as None, use None or not None to determine input type : Wf or Texit
@@ -106,7 +106,7 @@ class TCombustor(TGaspath):
         Verify constant static Pacross the reaction step in your model; mixing in a downstream
         diffuser/geometry change can contaminate the “fundamental” number.
         """
-        q_in, q_out = self.GasIn, self.GasOut
+        q_in, q_out = self.gas_in, self.gas_out
 
         # velocities from continuity (A_in = A_out = A), mass flow mass = out mass flow for both in and out
         # because also the fuel flow must be accelerated during combustion
@@ -124,7 +124,7 @@ class TCombustor(TGaspath):
 
     #    ********** under development ***************
     # def apply_rayleigh_and_fund_loss(self, A, mdot, iterate=False, iters=3):
-    #     q1, q2 = self.GasIn, self.GasOut   # q2 after your Etades equilibrium
+    #     q1, q2 = self.gas_in, self.gas_out   # q2 after your Etades equilibrium
 
     #     G = mdot / A
     #     rho1 = q1.density
@@ -146,15 +146,15 @@ class TCombustor(TGaspath):
     #     return loss
 
     #    ********** under development ***************
-    # def GasOut_total_pressure_from_static(self, T_static, P_static, T_total):
+    # def gas_out_total_pressure_from_static(self, T_static, P_static, T_total):
     #     """
     #     Compute total (stagnation) pressure p0 given static T,P and total temperature T0.
     #     Uses isentropic constraint (s = const) for a real mixture.
     #     """
     #     # Make a working copy
-    #     # self.GasOut.TP = T_static, P_static
-    #     # gas = self.GasOut.phase.clone()
-    #     gas = ct.Solution(self.GasOut.phase.source)
+    #     # self.gas_out.TP = T_static, P_static
+    #     # gas = self.gas_out.phase.clone()
+    #     gas = ct.Solution(self.gas_out.phase.source)
     #     gas.TP = T_static, P_static
     #     s_static = gas.entropy_mass
     #     Y = gas.Y.copy()
@@ -175,11 +175,11 @@ class TCombustor(TGaspath):
     #     # // momentum balance ; assume static Cin cond. calculated !
     #     # // Force at entry station:
     #     try:
-    #         q_in = self.GasIn
-    #         q_out = self.GasOut
-    #         w_out = self.GasOut.mass
+    #         q_in = self.gas_in
+    #         q_out = self.gas_out
+    #         w_out = self.gas_out.mass
     #         Ts_in, Ps_in, V_in, M_in = fu.static_from_total(q_in, A)
-    #         Fin = Ps_in *A * (1+self.GasIn.phase.cp/self.GasIn.phase.cv * M_in * M_in)
+    #         Fin = Ps_in *A * (1+self.gas_in.phase.cp/self.gas_in.phase.cv * M_in * M_in)
     #         # // Force at exit station: (account for lower Cout.Pt due to normal pressure loss
     #         # //                         already calculated
     #         # //                         without normal pressure loss, of course Fout=Fin)
@@ -188,7 +188,7 @@ class TCombustor(TGaspath):
     #         M_out = M_in
     #         Ts_out = Ts_in
     #         Ps_out = None
-    #         Pt_out_no_loss = self.GasOut.P
+    #         Pt_out_no_loss = self.gas_out.P
     #         mach1_count= 0
     #         i = 0
     #         def W_residual(mach):
@@ -209,20 +209,20 @@ class TCombustor(TGaspath):
     #         Gammasout = q_out.phase.cp/ q_out.phase.cv
     #         Ps_out = Fout / A * (1+Gammasout * np.square(M_out))
 
-    #         self.GasOut.P = self.GasOut_total_pressure_from_static(Ts_out, Ps_out, self.GasOut.T)
-    #         return (Pt_out_no_loss - self.GasOut.P) / Pt_out_no_loss
+    #         self.gas_out.P = self.gas_out_total_pressure_from_static(Ts_out, Ps_out, self.gas_out.T)
+    #         return (Pt_out_no_loss - self.gas_out.P) / Pt_out_no_loss
     #     except Exception as e:
     #         print(f"Exception error {e} in {self.name} Fund. Press. Loss calculation, Hint: increase (burner) duct cross area.")
 
     def Run(self, Mode, PointTime):
         # 1.5 Necessary for fixing a wiring problem, which was exposed when developing the API
         # combustor.py
-        if isinstance(self.Control, str):
+        if isinstance(self.control, str):
             try:
-                self.Control = self.owner.components[self.Control]   # resolve by name -> object
+                self.control = self.owner.components[self.control]   # resolve by name -> object
             except Exception as e:
                 raise ValueError(
-                    f"Combustor '{self.name}': Control '{self.Control}' cannot be resolved to an object. ({e})"
+                    f"Combustor '{self.name}': Control '{self.control}' cannot be resolved to an object. ({e})"
                 )
 
         def CalcEndConditions(PointTime):
@@ -249,8 +249,8 @@ class TCombustor(TGaspath):
                 # print(product_composition_mass)
 
                 # define enthalpy of combustion products mixture at Pref and Tref of
-                self.GasOut.TPY = fg.T_standard_ref, fg.P_standard_ref, product_composition_mass
-                h_prod_ref = self.GasOut.enthalpy_mass # get H in J/kg
+                self.gas_out.TPY = fg.T_standard_ref, fg.P_standard_ref, product_composition_mass
+                h_prod_ref = self.gas_out.enthalpy_mass # get H in J/kg
 
                 # now, calculate the final enthalpy of the products based on given LHV:
                 # from equation for conservation of energy ()"in = out"):
@@ -265,75 +265,75 @@ class TCombustor(TGaspath):
                 #     + h_prod_ref
                 # ).squeeze())
 
-                # now set exit GasOut H to h_prod_final, this will calculate GasOut.T
-                self.GasOut.HP = h_prod_final, Pin
+                # now set exit gas_out H to h_prod_final, this will calculate gas_out.T
+                self.gas_out.HP = h_prod_final, Pin
 
                 # make sure fuel mass flow added to the inlet flow:
-                self.GasOut.mass = self.GasIn.mass + self.Wf
+                self.gas_out.mass = self.gas_in.mass + self.Wf
 
                 # v 1.2 go to chemical equilibrium
-                self.GasOut.equilibrate('HP')
+                self.gas_out.equilibrate('HP')
             else:                  # fuel specification based on FuelComposition and Tfuel
                 #  1.4 test if fuel exists (DP may be virtual flow, and OD composition specified, so....)
                 # if Mode == 'DP':
                 if self.fuel == None:
-                    # create separate fuel quantity for mixing with GasIn
+                    # create separate fuel quantity for mixing with gas_in
                     self.fuel = ct.Quantity(fg.gas)
                 self.fuel.mass = self.Wf
                 if self.Tfuel == None:      # assume Tfuel equal to T of air in
-                    Tfuelin = self.GasIn.T
+                    Tfuelin = self.gas_in.T
                 else:                       # use user specified Tfuel
                     Tfuelin = self.Tfuel
-                # v1.2 set P fuel to Pout, otherwise (using GasIn.P, which is before the pressure loss)
+                # v1.2 set P fuel to Pout, otherwise (using gas_in.P, which is before the pressure loss)
                 #  the fuel pressure will increase the combustor pressure again with the TPY assignment
-                # self.fuel.TPY = Tfuelin, self.GasIn.P, self.FuelComposition
+                # self.fuel.TPY = Tfuelin, self.gas_in.P, self.FuelComposition
                 self.fuel.TPY = Tfuelin, Pin, self.FuelComposition
-                # fuel.TPY = self.GasIn.T, self.GasIn.P, self.FuelComposition
-                self.GasOut = self.GasIn + self.fuel
+                # fuel.TPY = self.gas_in.T, self.gas_in.P, self.FuelComposition
+                self.gas_out = self.gas_in + self.fuel
 
                 # 1.3
                 if self.Etades < 1.000:
                     # calculate enthalpy loss
                     # 1) Enthalpy of mixed, *unreacted* stream
-                    h_in = self.GasOut.enthalpy_mass
+                    h_in = self.gas_out.enthalpy_mass
                     # Save mixed, unreacted state
-                    GasOut_phase_saved = self.GasOut.phase.state               # stores T, P, composition, etc.
+                    gas_out_phase_saved = self.gas_out.phase.state               # stores T, P, composition, etc.
 
                     # 3) Target enthalpy that includes heat loss via Etades
-                    self.GasOut.equilibrate("TP")                   # equilibrium at fixed T (mix temp) & P
-                    dh_rxn_T = self.GasOut.enthalpy_mass - h_in     # this reflects reaction enthalpy at the mix T
+                    self.gas_out.equilibrate("TP")                   # equilibrium at fixed T (mix temp) & P
+                    dh_rxn_T = self.gas_out.enthalpy_mass - h_in     # this reflects reaction enthalpy at the mix T
 
                     # Apply efficiency (heat loss): scale the enthalpy release
                     h_target = h_in + (1-self.Etades) * dh_rxn_T
 
                     # Restore original mixed state
-                    self.GasOut.phase.state = GasOut_phase_saved
+                    self.gas_out.phase.state = gas_out_phase_saved
 
                     # 4) Set target (H,P) and equilibrate to get final state with losses
-                    self.GasOut.HP = h_target, Pin
+                    self.gas_out.HP = h_target, Pin
                 else:
-                    # v1.2 reimpose pressure Pout to GasOut
-                    self.GasOut.HP = self.GasOut.enthalpy_mass, Pin
+                    # v1.2 reimpose pressure Pout to gas_out
+                    self.gas_out.HP = self.gas_out.enthalpy_mass, Pin
 
-                self.GasOut.equilibrate("HP")
+                self.gas_out.equilibrate("HP")
 
             # pressure loss
             if (self.A == None) or (self.A ==0):
                 PRfund = 1
             else:
-                # PRfund = 1- self.fundamental_pressure_loss_rayleigh(self.A, self.GasOut.mass)
-                # PRfund = 1- self.apply_rayleigh_and_fund_loss(self.A, self.GasOut.mass)
+                # PRfund = 1- self.fundamental_pressure_loss_rayleigh(self.A, self.gas_out.mass)
+                # PRfund = 1- self.apply_rayleigh_and_fund_loss(self.A, self.gas_out.mass)
                 # PRfund = self.CalcFundamentalDp(self.A)
                 # provisional:
                     # fundamental_pressure_loss_rayleigh is under test ************
                     # may want to have option  to specify exit Mach instead and calculate A
                 PRfund = self.fundamental_pressure_loss_rayleigh(self.A)
             Pout = Pin * PRfund * self.PRdes
-            self.GasOut.HP = self.GasOut.enthalpy_mass, Pout
+            self.gas_out.HP = self.gas_out.enthalpy_mass, Pout
 
-            # we redefined GasOut, so we must reassing self.GasOut to fsys.gaspath_conditions[self.stationout]
-            self.owner.gaspath_conditions[self.stationout] = self.GasOut
-            return self.GasOut.T
+            # we redefined gas_out, so we must reassing self.gas_out to fsys.gaspath_conditions[self.station_out]
+            self.owner.gaspath_conditions[self.station_out] = self.gas_out
+            return self.gas_out.T
 
         super().Run(Mode, PointTime)
 
@@ -346,25 +346,25 @@ class TCombustor(TGaspath):
                 self.Wf = self.Wfdes
         else:
             # v1.3
-            if self.Control != None:
+            if self.control != None:
                 # 1.4
                 # if self.Texit != None: # calc Wf from Texit
-                if (self.Control.OD_controlledparname == None) and  (self.Texit != None): # calc Wf from Texit
-                    self.Texit =  self.Control.Inputvalue
+                if (self.control.OD_controlledparname == None) and  (self.Texit != None): # calc Wf from Texit
+                    self.Texit =  self.control.Inputvalue
                 else:
-                    self.Wf = self.Control.Inputvalue
+                    self.Wf = self.control.Inputvalue
                     if self.Wf < 0:
                         self.Wf = 0
             #  else Wf or Texit determined from outside by Control SetAttr
 
         # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
         self.PR = self.PRdes
-        Sin = self.GasIn.s
-        Pin = self.GasIn.P
-        # Pout = self.GasIn.P*self.PRdes
-        Pin = self.GasIn.P
-        w_air = self.GasIn.mass
-        h_air_initial = self.GasIn.enthalpy_mass
+        Sin = self.gas_in.s
+        Pin = self.gas_in.P
+        # Pout = self.gas_in.P*self.PRdes
+        Pin = self.gas_in.P
+        w_air = self.gas_in.mass
+        h_air_initial = self.gas_in.enthalpy_mass
 
         # 1.4 use separate routine, for allowing change of fuel for OD simulation cases
         # # Given parameters for the virtual fuel
@@ -381,7 +381,7 @@ class TCombustor(TGaspath):
         Wf0 = self.Wf
         #  1.4
         # if self.Texit != None:
-        if (self.Control != None) and (self.Control.OD_controlledparname == None) and  (self.Texit != None): # calc Wf from Texit
+        if (self.control != None) and (self.control.OD_controlledparname == None) and  (self.Texit != None): # calc Wf from Texit
             #  calculate Wf for given Texit, using scipy root function
             def equation(Wfiter):
                 # 1.6.0.5
@@ -399,12 +399,12 @@ class TCombustor(TGaspath):
         #  add fuel to system level total fuel flow
         self.owner.WF = self.owner.WF + self.Wf
 
-        return self.GasOut
+        return self.gas_out
 
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
         print(f"\tFuel flow                 : {self.Wf:.4f} kg/s")
-        print(f"\tCombustion End Temperature: {self.GasOut.T:.2f} K")
+        print(f"\tCombustion End Temperature: {self.gas_out.T:.2f} K")
 
     # 2.0.0.0
     def get_outputs(self):

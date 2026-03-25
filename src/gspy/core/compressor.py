@@ -24,12 +24,12 @@ class TCompressor(TTurboComponent):
     def __init__(self, owner, name,
                  MapFileName_or_dict,
                  ControlComponent,
-                 stationin, stationout, ShaftNr,
+                 station_in, station_out, ShaftNr,
                  Ndes, Etades,
                  Ncmapdes, Betamapdes, PRdes,
                  SpeedOption,
                  Bleeds):    # Constructor of the class
-        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, stationin, stationout, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes)
+        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, station_in, station_out, ShaftNr, Ndes, Etades, Ncmapdes, Betamapdes)
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
@@ -44,7 +44,7 @@ class TCompressor(TTurboComponent):
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
-            self.PW = fu.Compression(self.GasIn, self.GasOut, self.PRdes, self.Etades, self.Polytropic_Eta)
+            self.PW = fu.Compression(self.gas_in, self.gas_out, self.PRdes, self.Etades, self.Polytropic_Eta)
 
             # 1.6 WV
             # self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
@@ -62,7 +62,7 @@ class TCompressor(TTurboComponent):
                     self.istate_n = self.shaft.istate
             self.owner.states = np.append(self.owner.states, 1)
             self.istate_beta = self.owner.states.size-1
-            # error for equation GasIn.wc = wcmap
+            # error for equation gas_in.wc = wcmap
             self.owner.errors = np.append(self.owner.errors, 0)
             self.ierror_wc = self.owner.errors.size-1
             # calculate parameters for output
@@ -70,55 +70,55 @@ class TCompressor(TTurboComponent):
         else:
             if self.SpeedOption != 'CS':
                 self.N = self.owner.states[self.istate_n] * self.Ndes
-            self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.GasIn)
+            self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.gas_in)
 
             # 1.6 WV
             # self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
-            if self.Control != None:
-                  self.vg_angle = self.Control.Get_outputvalue_from_schedule(self.Nc)
+            if self.control != None:
+                  self.vg_angle = self.control.Get_outputvalue_from_schedule(self.Nc)
             self.Wc, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, self.owner.states[self.istate_beta])
 
-            self.PW = fu.Compression(self.GasIn, self.GasOut, self.PR, self.Eta, self.Polytropic_Eta)
+            self.PW = fu.Compression(self.gas_in, self.gas_out, self.PR, self.Eta, self.Polytropic_Eta)
 
-            self.W = self.Wc / fg.GetFlowCorrectionFactor(self.GasIn)
-            self.owner.errors[self.ierror_wc ] = (self.W - self.GasIn.mass) / self.Wdes
+            self.W = self.Wc / fg.GetFlowCorrectionFactor(self.gas_in)
+            self.owner.errors[self.ierror_wc ] = (self.W - self.gas_in.mass) / self.Wdes
 
             # set out flow rate to W according to map
-            # may deviate from self.GasIn.mass during iteration: this is to propagate the effect of mass flow error
+            # may deviate from self.gas_in.mass during iteration: this is to propagate the effect of mass flow error
             # to downstream components for more stable convergence in the solver (?)
-            self.GasOut.mass = self.W
+            self.gas_out.mass = self.W
 
         # v1.2 correction for bleed flows
         dW = 0
         dHW_bleeds_total = 0
-        dH = self.GasOut.enthalpy_mass - self.GasIn.enthalpy_mass
-        dP = self.GasOut.P - self.GasIn.P
+        dH = self.gas_out.enthalpy_mass - self.gas_in.enthalpy_mass
+        dP = self.gas_out.P - self.gas_in.P
         if self.Bleeds != None:
             for bleed in self.Bleeds:
                 Wbleed = bleed.bleedfraction * self.W
                 dW = dW + Wbleed
                 # dHW = dHW + (1 - bleed.dPfactor) * dH * Wbleed
-                if bleed.GasIn == None:
-                    #  define bleed inflow GasIn conditions
-                    bleed.GasIn = ct.Quantity(self.GasIn.phase, Wbleed)
+                if bleed.gas_in == None:
+                    #  define bleed inflow gas_in conditions
+                    bleed.gas_in = ct.Quantity(self.gas_in.phase, Wbleed)
                 else:
-                    bleed.GasIn.TPY = self.GasIn.T, self.GasIn.P, self.GasIn.Y
-                    bleed.GasIn.mass = Wbleed
+                    bleed.gas_in.TPY = self.gas_in.T, self.gas_in.P, self.gas_in.Y
+                    bleed.gas_in.mass = Wbleed
                 #  add to station conditions dictionary
-                self.owner.gaspath_conditions[bleed.stationin] = bleed.GasIn
+                self.owner.gaspath_conditions[bleed.station_in] = bleed.gas_in
 
                 # Compress Wbleed to bleed point
-                dHW1 = fu.Compression(self.GasIn, bleed.GasIn, (self.GasIn.P+dP*bleed.dPfactor)/self.GasIn.P, self.Eta, self.Polytropic_Eta)
+                dHW1 = fu.Compression(self.gas_in, bleed.gas_in, (self.gas_in.P+dP*bleed.dPfactor)/self.gas_in.P, self.Eta, self.Polytropic_Eta)
                 # now delta of compression power due to the bleed is
                 dHW2 = dH * Wbleed  - dHW1
                 dHW_bleeds_total = dHW_bleeds_total + dHW2
-                # run the bleed flow run code (default is simply the TGasPath method, sets bleed.GasOut to bleed.GasIn)
+                # run the bleed flow run code (default is simply the TGasPath method, sets bleed.gas_out to bleed.gas_in)
                 bleed.Run(Mode, PointTime)
-            self.GasOut.mass = self.GasOut.mass - dW
+            self.gas_out.mass = self.gas_out.mass - dW
             self.PW = self.PW - dHW_bleeds_total
 
         self.shaft.PW_sum = self.shaft.PW_sum - self.PW
-        return self.GasOut
+        return self.gas_out
 
     # v1.2
     def PrintPerformance(self, Mode, PointTime):
