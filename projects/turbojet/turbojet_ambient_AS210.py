@@ -130,6 +130,7 @@ def main():
         return
 
     # export OutputTable to CSV
+    turbojet.prepare_output_table()
     turbojet.OutputToCSV()
 
     # plot nY vs X parameter

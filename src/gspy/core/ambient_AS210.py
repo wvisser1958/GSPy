@@ -41,6 +41,16 @@ P0 = 101_325.0   # Pa, ISA MSL
 T0 = 288.15      # K, ISA MSL
 RHO0 = 1.225     # kg/m^3, ISA MSL
 
+def scale_composition_string(comp: str, factor: float) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for part in comp.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        name, value = part.split(":", 1)
+        out[name.strip()] = float(value.strip()) * factor
+    return out
+
 # =============================================================================
 # Embedded AS210 JSON tables
 # =============================================================================
@@ -1220,6 +1230,7 @@ if TComponent is not None:
             # self.VTAS_in = None
             # self.Tt_in = None
             self.outputs = None
+            self.last_inputs: Optional[AmbientInputs] = None
             self.Gas_Ambient = None
 
             # Initialize OD and DP condition storage with explicit fields that
@@ -1406,10 +1417,13 @@ if TComponent is not None:
                 VEAS_in=self.VEAS,
                 VCAS_in=self.VCAS,
                 VTAS_in=self.VTAS,
-                switchDay=self.switchDay if self.Altitude is not None else None,
+                # switchDay=self.switchDay if self.Altitude is not None else None,
+                switchDay=self.switchDay,
                 switchHum=self.switchHum,
                 switchMode=self.switchMode
             )
+
+            self.last_inputs = inputs
 
             # Execute the AS210 physics model
             engine = Ambient_AS210()
@@ -1436,57 +1450,86 @@ if TComponent is not None:
             self.humSp = O.humSp
             self.VEAS = O.VEAS
             self.VCAS = O.VCAS
+            self.VTAS = O.VTAS
 
             # --------------------------------------------------------------
             # Set the inlet state in Cantera (if available)
             # --------------------------------------------------------------
             if ct is not None and self.owner is not None:
-                self.Gas_Ambient = ct.Quantity(fg.gas)
+                gas = fg.gas
+                self.Gas_Ambient = ct.Quantity(gas)
                 self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
-                self.Gas_Ambient.TPY = O.Tt, O.Pt, fg.s_air_composition_mass
 
-                # # Build humid air composition (mass fractions)
-                # Y = {str(k): float(v) for k, v in fg.s_air_composition_mass.items()}
+                dry_comp = str(fg.s_air_composition_mass).strip()
 
-                # if O.humSp > 0.0 and 'H2O' in fg.gas.species_names:
-                #     Y_dry = 1.0 - O.humSp
+                if O.humSp > 0.0:
+                    if "H2O" not in gas.species_names:
+                        raise ValueError(
+                            "Humidity requested but H2O is not present in the Cantera gas model."
+                        )
 
-                #     for k in Y:
-                #         Y[k] *= Y_dry
+                    y_h2o = float(O.humSp)
+                    y_dry = 1.0 - y_h2o
 
-                #     Y['H2O'] = O.humSp
+                    if y_dry < 0.0 or y_h2o > 1.0:
+                        raise ValueError(
+                            f"Invalid specific humidity for Cantera composition: humSp={O.humSp}"
+                        )
 
-                # self.Gas_Ambient.TPY = O.Tt, O.Pt, Y
+                    Y = scale_composition_string(dry_comp, y_dry)
+                    Y["H2O"] = y_h2o
+
+                    # normalize for safety
+                    y_sum = sum(Y.values())
+                    if y_sum <= 0.0:
+                        raise ValueError("Invalid composition: mass fractions sum to zero.")
+                    Y = {k: v / y_sum for k, v in Y.items()}
+
+                    comp = ", ".join(f"{k}:{v:.12g}" for k, v in Y.items())
+                else:
+                    comp = dry_comp
+
+                self.Gas_Ambient.TPY = O.Tt, O.Pt, comp
             else:
                 self.Gas_Ambient = None
 
         # 2.0.0.0
         def get_outputs(self):
             s = self.station_nr
-        
+            I = self.last_inputs
+
             outputs = {
-                "Alt": getattr(self, 'Altitude', None),
-                "dTs": getattr(self, 'dTs', None),
-                "dTsStd": getattr(self, 'dTsStd', None),
+                # Explicit user/requested inputs only
+                "Alt_in": getattr(I, 'alt_in', None),
+                "dTs_in": getattr(I, 'dTs_in', None),
+                "humRel_in": getattr(I, 'humRel_in', None),
+                "humSp_in": getattr(I, 'humSp_in', None),
+                "Mach_in": getattr(I, 'MN_in', None),
+                "Ps_in": getattr(I, 'Ps_in', None),
+                "Pt_in": getattr(I, 'Pt_in', None),
+                "Ts_in": getattr(I, 'Ts_in', None),
+                "Tt_in": getattr(I, 'Tt_in', None),
+                "VEAS_in": getattr(I, 'VEAS_in', None),
+                "VCAS_in": getattr(I, 'VCAS_in', None),
+                "VTAS_in": getattr(I, 'VTAS_in', None),
+                "switchDay_in": getattr(I, 'switchDay', None),
+                "switchHum_in": getattr(I, 'switchHum', None),
+                "switchMode_in": getattr(I, 'switchMode', None),
+
+                # Solved freestream / station outputs
+                f"Alt{s}": getattr(self.outputs, 'alt', None) if self.outputs else None,
+                f"dTs{s}": getattr(self.outputs, 'dTs', None) if self.outputs else None,
+                f"dTsStd{s}": getattr(self.outputs, 'dTsStd', None) if self.outputs else None,
+                f"TsDay{s}": getattr(self.outputs, 'TsDay', None) if self.outputs else None,
+                f"humRel{s}": getattr(self.outputs, 'humRel', None) if self.outputs else None,
+                f"humSp{s}": getattr(self.outputs, 'humSp', None) if self.outputs else None,
                 f"Ts{s}": getattr(self, 'Tsa', None),
                 f"Ps{s}": getattr(self, 'Psa', None),
                 f"Tt{s}": getattr(self, 'Tta', None),
                 f"Pt{s}": getattr(self, 'Pta', None),
                 f"Mach{s}": getattr(self, 'Macha', None),
-                f"VEAS{s}": getattr(self, 'VEAS', None),
-                f"VCAS{s}": getattr(self, 'VCAS', None),
+                f"VEAS{s}": getattr(self.outputs, 'VEAS', None) if self.outputs else None,
+                f"VCAS{s}": getattr(self.outputs, 'VCAS', None) if self.outputs else None,
                 f"VTAS{s}": getattr(self, 'V', None),
-                # AS210-specific outputs
-                "TsDay": getattr(self, 'TsDay', None),
-                "switchDay": getattr(self, 'switchDay', None),
-                "switchHum": getattr(self, 'switchHum', None),
-                "switchMode": getattr(self, 'switchMode', None),
-                "humRel": getattr(self, 'humRel', None),
-                "humSp": getattr(self, 'humSp', None),
-                "Pt_in": getattr(self, 'Pta', None),
-                "Tt_in": getattr(self, 'Tta', None),
-                "VEAS_in": getattr(self, 'VEAS', None),
-                "VCAS_in": getattr(self, 'VCAS', None),
-                "VTAS_in": getattr(self, 'VTAS', None),
             }
             return outputs
