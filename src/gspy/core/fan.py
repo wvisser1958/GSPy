@@ -246,19 +246,6 @@ class TFan(TTurboComponent):
                                      "dw_to_duct"]
         return column_list
 
-    # #  1.1 WV
-    # def AddOutputToDict(self, Mode):
-    #     super().AddOutputToDict(Mode)
-    #     self.owner.output_dict["BPR_"+self.name] = self.BPR
-    #     self.owner.output_dict["crossflow_"+self.name] = self.crossflow
-    #     self.owner.output_dict["PR_core_"+self.name] = self.PR_core
-    #     self.owner.output_dict["PR_duct_"+self.name] = self.PR_duct
-    #     self.owner.output_dict["Wc_core_"+self.name] = self.Wc_core
-    #     self.owner.output_dict["Wc_duct_"+self.name] = self.Wc_duct
-    #     self.owner.output_dict["Eta_is_core_"+self.name] = self.Eta_core
-    #     self.owner.output_dict["Eta_is_duct_"+self.name] = self.Eta_duct
-    #     # test
-
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()

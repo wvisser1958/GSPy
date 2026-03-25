@@ -67,22 +67,6 @@ class TCoolingFlow(TGaspath):
         if self.DHWexp != None:
             print(f"\t\tDHW expansion: {self.DHWexp:.1f} kW")
 
-    # #  1.1 WV
-    # def AddOutputToDict(self, Mode):
-    #     super().AddOutputToDict(Mode)
-    #     fsys.output_dict[f"Fraction from bleed nr {self.frombleednumber}"]  = self.fractiontaken
-    #     fsys.output_dict[f"T{self.station_in}j"]  = self.gas_injected.T
-    #     fsys.output_dict[f"P{self.station_in}j"]  = self.gas_injected.P
-    #     #  1.6 WV
-    #     fsys.output_dict[f"W{self.station_out}"]  = self.gas_out.mass
-    #     fsys.output_dict[f"T{self.station_out}"]  = self.gas_out.T
-    #     fsys.output_dict[f"P{self.station_out}"]  = self.gas_out.P
-
-    #     if self.DHWpump != None:
-    #         fsys.output_dict[f"DHWpump{self.station_out}"]  = self.DHWpump
-    #     if self.DHWexp != None:
-    #         fsys.output_dict[f"DHWexp{self.station_out}"]  = self.DHWexp
-
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()

@@ -96,11 +96,6 @@ class TAMcontrol(TComponent):
             for i, (compmap, SFpar) in enumerate(self.mapmod_comps_pars_list, start=0):
                 print(f"\t{compmap.name}_{SFpar} {getattr(compmap, SFpar)}")
 
-    # #  1.1 WV
-    # def AddOutputToDict(self, Mode):
-    #     for i, (compmap, SFpar) in enumerate(self.mapmod_comps_pars_list, start=0):
-    #         self.owner.output_dict[compmap.name+"_"+SFpar] = getattr(compmap, SFpar)
-
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()

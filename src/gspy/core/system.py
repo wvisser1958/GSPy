@@ -152,8 +152,6 @@ class TSystemModel:
         # global system_model, states, errors, Ambient, Control
         self.states = states_par.copy()
         self.reinit_system()
-        # Ambient.Run(Mode, PointTime)
-        # Ambient.AddOutputToDict(Mode)
 
         self.output_dict['Point/Time'] = point_time
         self.output_dict['Mode'] = mode
@@ -166,7 +164,6 @@ class TSystemModel:
         for comp in self.component_run_list:
             comp.Run(mode, point_time)
 
-            # comp.AddOutputToDict(aMode)
             self.output_dict.update(comp.get_outputs())
 
         # v1.3 moved to BEFORE PostRun calls
@@ -322,10 +319,11 @@ class TSystemModel:
     # 2.0.0.0
     def get_outputs(self):
         out = {}
-        self.FN = self.FG - self.RD
-        out["FG"] = self.FG
-        out["FN"] = self.FN
-        out["RD"] = self.RD
+        if (self.FG != 0) or (self.RD !=0):
+            self.FN = self.FG - self.RD
+            out["FG"] = self.FG
+            out["FN"] = self.FN
+            out["RD"] = self.RD
         out["WF"] = self.WF
         self.PW = 0
         for shaft in self.shaft_list:

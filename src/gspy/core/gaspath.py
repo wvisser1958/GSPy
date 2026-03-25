@@ -74,15 +74,6 @@ class TGaspath(TComponent):
         print(f"\t\tTemperature: {self.gas_out.T:.1f} K")
         print(f"\t\tPressure   : {self.gas_out.P:.0f} Pa")
 
-    # #  1.1 WV
-    # def AddOutputToDict(self, Mode):
-    #     fsys.output_dict[f"W{self.station_in}"]  = self.gas_in.mass
-    #     fsys.output_dict[f"Wc{self.station_in}"] = self.Wc
-    #     fsys.output_dict[f"T{self.station_in}"]  = self.gas_in.T
-    #     fsys.output_dict[f"P{self.station_in}"]  = self.gas_in.P
-    #     if self.PR != None:
-    #         fsys.output_dict["PR_"+self.name] = self.PR
-
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()

@@ -65,12 +65,6 @@ class TExhaustDiffuser(TGaspath):
         print(f"\t\tExit static temperature: {self.gas_out.T:.1f} K")
         print(f"\t\tExit static pressure: {self.gas_out.P:.0f} Pa")
 
-    #  1.1 WV
-    # def AddOutputToDict(self, Mode):
-    #     super().AddOutputToDict(Mode)
-    #     self.owner.output_dict[f"T{self.station_out}"]  = self.gas_out.T
-    #     self.owner.output_dict[f"P{self.station_out}"]  = self.gas_out.P
-
     def get_outputs(self):
         out = super().get_outputs()
         sout = self.station_out

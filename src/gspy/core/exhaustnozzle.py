@@ -124,19 +124,6 @@ class TExhaustNozzle(TGaspath):
         print(f"\t\tThroat static pressure: {self.Pthroat:.0f} Pa")
         print(f"\tGross thrust: {self.FG:.2f} kN")
 
-    #  1.1 WV
-    # def AddOutputToDict(self, Mode):
-    #     super().AddOutputToDict(Mode)
-    #     fsys.output_dict[f"T{self.stationthroat}"]  = self.Tthroat
-    #     fsys.output_dict[f"P{self.stationthroat}"]  = self.Pthroat
-    #     fsys.output_dict[f"V{self.stationthroat}"]  = self.Vthroat
-    #     fsys.output_dict[f"Mach{self.stationthroat}"]  = self.Mthroat
-    #     fsys.output_dict[f"T{self.station_out}"]  = self.gas_out.T
-    #     fsys.output_dict[f"P{self.station_out}"]  = self.gas_out.P
-    #     fsys.output_dict[f"A{self.stationthroat}"]  = self.Athroat
-    #     fsys.output_dict[f"A{self.stationthroat}_geom"]  = self.Athroat_geom
-    #     fsys.output_dict["FG_"+self.name]  = self.FG
-
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()

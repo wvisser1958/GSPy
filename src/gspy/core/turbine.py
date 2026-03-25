@@ -249,12 +249,6 @@ class TTurbine(TTurboComponent):
             for coolingflow in self.CoolingFlows:
                 coolingflow.PrintPerformance(Mode, PointTime)
 
-    def AddOutputToDict(self, Mode):
-        super().AddOutputToDict(Mode)
-        if self.CoolingFlows != None:
-            for coolingflow in self.CoolingFlows:
-                coolingflow.AddOutputToDict(Mode)
-
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()

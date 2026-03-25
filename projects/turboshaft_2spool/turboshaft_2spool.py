@@ -105,7 +105,7 @@ def main():
                                 ("T5",              "EGT [K]",                  "blue"),
                                 ("W2",              "Inlet mass flow [kg/s]",   "blue"),
                                 ("Wf_combustor1",   "Fuel flow [kg/s]",         "blue"),
-                                ("FN",              "Net thrust [kN]",          "blue")            ])
+                                ("PW",              "Power [kW]",               "blue")            ])
 
      # Create component map plots with operating lines if available
     turboshaft_2sp.PlotMaps()
