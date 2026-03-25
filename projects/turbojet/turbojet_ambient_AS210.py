@@ -27,9 +27,12 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 
 # IMPORTANT NOTE TO THIS MODEL FILE
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# note that this model is only to serve as example and does rougly  represent the GE J85
-# note that low thrust off design performance is unrealistic due to the absence of variable bleed
-# control to maintain low speed stall margin
+# - Note that this model is only to serve as example and does rougly  represent the GE J85
+# - Note that low thrust off design performance is unrealistic due to the absence of variable bleed
+#   control to maintain low speed stall margin
+# - This demo file is to demonstrate the use of a different Ambient object, one that implements the 
+#   SAE AS210 atmospheric models
+# - It furthermore uses AS755 standard 3-digit station naming and AS5571 component modle naming
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
@@ -39,9 +42,10 @@ def main():
     # we now have to override the system model ambient
     turbojet.ambient = TAmbient_AS210(turbojet, 'Amb', '000', 0, 0, 0, None, None)
     # No component output to terminal:
-    turbojet.VERBOSE = False
+    turbojet.VERBOSE = False # If set to True, each simulation step will output data to screen, however, 
+                             # False makes the simulation much faster, the output is stored in a csv table.
 
-# Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
+    # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # fuelcontrol for open loop direct control of fuel flow
     fuelcontrol = TControl(turbojet, 'CtrlF', '', 0.38, 0.38, 0.08, -0.01, None)
 
@@ -100,11 +104,11 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    Altitude = 0
-    Mach = 0
-    dTs = 0
-    turbojet.ambient.SetConditionsAS210('STANDARD')
-    turbojet.ambient.SetConditions('DP', Altitude, Mach, dTs, None, None)
+    Altitude_val = 0
+    Mach_val = 0
+    dTs_val = 0
+    turbojet.ambient.SetConditionsAS210(switchDay='STANDARD', switchHum='RH', switchMode='ALDTMN')
+    turbojet.ambient.SetConditions('DP', Altitude=Altitude_val, Macha=Mach_val, dTs=dTs_val)
     turbojet.Run_DP_simulation()
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
@@ -114,15 +118,19 @@ def main():
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
     # conditions is desired
-    Altitude = 0
-    Mach = 0.5
-    dTs = 10
-    turbojet.ambient.SetConditionsAS210('HOT')
-    turbojet.ambient.SetConditions('OD', Altitude, Mach, dTs, None, None)
+    Altitude_val = 0
+    Mach_val = 0.5
+    dTs_val = 10
+    # turbojet.ambient.SetConditionsAS210(switchDay='STANDARD', switchHum='RH', switchMode='ALDTMN')
+    turbojet.ambient.SetConditionsAS210(switchDay='STANDARD', switchHum='RH', switchMode='PSTSTT')
+    # turbojet.ambient.SetConditions('OD', Altitude=Altitude_val, Macha=Mach_val, dTs=dTs_val)
+    turbojet.ambient.SetConditions('OD', Psa=101325.0, Tsa=298.150000, Tta=313.057500, humRel=0.5)
     # Run OD simulation
-    turbojet.Run_OD_simulation()
+    if turbojet.Run_OD_simulation() < 1:
+        return
 
     # export OutputTable to CSV
+    turbojet.prepare_output_table()
     turbojet.OutputToCSV()
 
     # plot nY vs X parameter

@@ -17,9 +17,12 @@
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 import math
+import warnings
 import numpy as np
+
+DO_WARN = False
 
 try:
     import cantera as ct
@@ -37,6 +40,16 @@ R_D = 287.05287  # J/(kg*K)
 P0 = 101_325.0   # Pa, ISA MSL
 T0 = 288.15      # K, ISA MSL
 RHO0 = 1.225     # kg/m^3, ISA MSL
+
+def scale_composition_string(comp: str, factor: float) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for part in comp.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        name, value = part.split(":", 1)
+        out[name.strip()] = float(value.strip()) * factor
+    return out
 
 # =============================================================================
 # Embedded AS210 JSON tables
@@ -761,7 +774,7 @@ def M_from_vcas(Ps: float, VCAS: float) -> float:
 # ---- API ----
 @dataclass
 class AmbientInputs:
-    alt_in: float
+    alt_in: Optional[float] = None
     dTs_in: Optional[float] = None
     humRel_in: Optional[float] = None  # 0..1
     humSp_in: Optional[float] = None   # kg/kg
@@ -774,13 +787,13 @@ class AmbientInputs:
     VCAS_in: Optional[float] = None
     VTAS_in: Optional[float] = None
     # selectors (single profile only; no blending)
-    switchDay: str = 'STANDARD'  # e.g. 'STANDARD' | 'HOT' | 'COLD' | '5PCTHOT' | ...
-    switchHum: str = 'RH'        # 'RH' -> use humRel_in, 'SH' -> use humSp_in, '-' -> dry
-    switchMode: str = 'MN'       # 'MN' | 'VTAS' | 'VEAS' | 'VCAS' | 'Tt' | 'Pt'
+    switchDay: Optional[str] = 'STANDARD'  # e.g. 'STANDARD' | 'HOT' | 'COLD' | '5PCTHOT' | ...
+    switchHum: str = 'RH'                  # 'RH' -> use humRel_in, 'SH' -> use humSp_in, '-' -> dry
+    switchMode: str = 'ALDTMN'             # AS210 6-character mode, e.g. 'ALDTMN'
 
 @dataclass
 class AmbientOutputs:
-    alt: float
+    alt: Optional[float]
     dTs: float
     dTsStd: float
     humRel: float
@@ -801,69 +814,310 @@ class Ambient_AS210:
     - Temperature day profiles from AS210 (HOT, COLD, POLAR, TROPICAL, MINREC, MAXREC,
       1/5/10/20PCTHOT/-COLD). Standard atmosphere pressure is always used for Ps vs pressure altitude.
     - Humidity handled by switchHum: 'RH' (use humRel_in), 'SH' (use humSp_in), '-' (dry).
-    - Flight condition selection via switchMode: 'MN' (preferred), 'VTAS', 'VEAS', 'VCAS', 'Tt', 'Pt'.
+    - Flight condition selection via switchMode
+    
+    The AS210 switchMode is interpreted as three 2-character selectors:
+      - chars 1-2: pressure/altitude input ('AL' or 'PS')
+      - chars 3-4: temperature input ('DT', 'TS', 'TT')
+      - chars 5-6: speed input ('MN', 'VC', 'VT')
+
+    Supported combinations implemented here:
+      - ALDTMN (commonly used option)
+      - ALDTVC
+      - ALDTVT
+      - ALTSMN
+      - PSTSMN
+      - PSTSTT
+
+    For pressure-based modes ('PS....'), no altitude is applied and switchDay is
+    ignored because it has no physical meaning without altitude.
     """
+
+    VALID_SWITCH_MODES = {
+        'ALDTMN', 'ALDTVC', 'ALDTVT', 'ALTSMN', 'PSTSMN', 'PSTSTT'
+    }
 
     def __init__(self):
         self.outputs: Optional[AmbientOutputs] = None
 
+    def _parse_switch_mode(self, switch_mode: Optional[str]) -> Tuple[str, str, str]:
+        mode = (switch_mode or 'ALDTMN').strip().upper()
+        if len(mode) != 6:
+            raise ValueError(
+                f"switchMode must be a 6-character AS210 code, got {switch_mode!r}."
+            )
+        if mode not in self.VALID_SWITCH_MODES:
+            raise ValueError(
+                f"Unsupported AS210 switchMode {mode!r}. Supported: {sorted(self.VALID_SWITCH_MODES)}"
+            )
+        return mode[:2], mode[2:4], mode[4:6]
+
+    def _resolve_pressure_altitude(self, I: AmbientInputs, press_sel: str) -> Tuple[Optional[float], float, Optional[float], Optional[float]]:
+        """Return (alt, Ps, TsDay, TsStd)."""
+        if press_sel == 'AL':
+            if I.alt_in is None:
+                raise ValueError(
+                    'switchMode requires altitude input (AL), but alt_in is None.'
+                )
+            alt = float(I.alt_in)
+            Ps = float(I.Ps_in) if I.Ps_in is not None else self._isa_pressure(alt)
+            day = str(I.switchDay or 'STANDARD')
+            TsDay = profile_temp(day, alt)
+            TsStd = _isa_temp(alt)
+            return alt, Ps, TsDay, TsStd
+
+        if press_sel == 'PS':
+            if I.Ps_in is None:
+                raise ValueError(
+                    'switchMode requires static pressure input (PS), but Ps_in is None.'
+                )
+            Ps = float(I.Ps_in)
+            # No altitude/day interpretation for PS-based modes.
+            return None, Ps, None, None
+
+        raise ValueError(f'Unsupported pressure/altitude selector {press_sel!r}.')
+
+    def _resolve_static_temperature(
+        self,
+        I: AmbientInputs,
+        temp_sel: str,
+        alt: Optional[float],
+        TsDay: Optional[float],
+    ) -> Tuple[float, float, float]:
+        """Return (Ts, dTs, dTsStd)."""
+        if temp_sel == 'DT':
+            if TsDay is None:
+                raise ValueError(
+                    'DT temperature selector requires altitude/day profile; it cannot be used with PS-based modes.'
+                )
+            Ts = TsDay + (I.dTs_in or 0.0)
+            dTs = Ts - TsDay
+            TsStd = _isa_temp(float(alt))
+            dTsStd = Ts - TsStd
+            return Ts, dTs, dTsStd
+
+        if temp_sel == 'TS':
+            if I.Ts_in is None:
+                raise ValueError(
+                    'switchMode requires static temperature input (TS), but Ts_in is None.'
+                )
+            Ts = float(I.Ts_in)
+            if TsDay is not None:
+                dTs = Ts - TsDay
+                TsStd = _isa_temp(float(alt))
+                dTsStd = Ts - TsStd
+            else:
+                dTs = 0.0
+                dTsStd = 0.0
+            return Ts, dTs, dTsStd
+
+        if temp_sel == 'TT':
+            if I.Tt_in is None:
+                raise ValueError(
+                    'switchMode requires total temperature input (TT), but Tt_in is None.'
+                )
+            # Ts will be finalized after Mach is known.
+            return math.nan, 0.0, 0.0
+
+        raise ValueError(f'Unsupported temperature selector {temp_sel!r}.')
+
+    def _resolve_mach(
+        self,
+        I: AmbientInputs,
+        speed_sel: str,
+        Ps: float,
+        Ts: float,
+        temp_sel: str,
+    ) -> float:
+        a = speed_of_sound(Ts)
+
+        if speed_sel == 'MN':
+            if I.MN_in is None:
+                raise ValueError(
+                    'switchMode requires Mach input (MN), but MN_in is None.'
+                )
+            return max(0.0, float(I.MN_in))
+
+        if speed_sel == 'VC':
+            if I.VCAS_in is None:
+                raise ValueError(
+                    'switchMode requires calibrated airspeed input (VC), but VCAS_in is None.'
+                )
+            return M_from_vcas(Ps, float(I.VCAS_in))
+
+        if speed_sel == 'VT':
+            if I.VTAS_in is None:
+                raise ValueError(
+                    'switchMode requires true airspeed input (VT), but VTAS_in is None.'
+                )
+            return max(0.0, float(I.VTAS_in) / a)
+
+        if temp_sel == 'TT':
+            if I.Tt_in is None:
+                raise ValueError(
+                    'switchMode requires total temperature input (TT), but Tt_in is None.'
+                )
+            return M_from_total_T(Ts, float(I.Tt_in))
+
+        raise ValueError(f'Unsupported speed selector {speed_sel!r}.')
+
+    def _finalize_static_temperature_for_tt(
+        self,
+        I: AmbientInputs,
+        alt: Optional[float],
+        TsDay: Optional[float],
+        MN: float,
+    ) -> Tuple[float, float, float]:
+        if I.Tt_in is None:
+            raise ValueError('Tt_in is required to derive Ts from TT-based switchMode.')
+        denom = 1.0 + 0.5 * (GAMMA - 1.0) * MN * MN
+        Ts = float(I.Tt_in) / denom
+        if TsDay is not None:
+            dTs = Ts - TsDay
+            TsStd = _isa_temp(float(alt))
+            dTsStd = Ts - TsStd
+        else:
+            dTs = 0.0
+            dTsStd = 0.0
+        return Ts, dTs, dTsStd
+
+    def _used_input_names(self, press_sel: str, temp_sel: str, speed_sel: str) -> set[str]:
+        used = {'switchMode', 'switchHum'}
+
+        if press_sel == 'AL':
+            used.add('alt_in')
+            used.add('switchDay')
+        elif press_sel == 'PS':
+            used.add('Ps_in')
+
+        if temp_sel == 'DT':
+            used.add('dTs_in')
+        elif temp_sel == 'TS':
+            used.add('Ts_in')
+        elif temp_sel == 'TT':
+            used.add('Tt_in')
+
+        if speed_sel == 'MN':
+            used.add('MN_in')
+        elif speed_sel == 'VC':
+            used.add('VCAS_in')
+        elif speed_sel == 'VT':
+            used.add('VTAS_in')
+        elif speed_sel == 'TT':
+            used.add('Tt_in')
+
+        return used
+
+    def _provided_input_names(self, I: AmbientInputs) -> set[str]:
+        candidates = {
+            'alt_in': I.alt_in,
+            'dTs_in': I.dTs_in,
+            'humRel_in': I.humRel_in,
+            'humSp_in': I.humSp_in,
+            'MN_in': I.MN_in,
+            'Ps_in': I.Ps_in,
+            'Pt_in': I.Pt_in,
+            'Ts_in': I.Ts_in,
+            'Tt_in': I.Tt_in,
+            'VEAS_in': I.VEAS_in,
+            'VCAS_in': I.VCAS_in,
+            'VTAS_in': I.VTAS_in,
+            'switchDay': I.switchDay,
+        }
+        provided = set()
+        for name, value in candidates.items():
+            if value is None:
+                continue
+            if name == 'switchDay' and str(value).upper() in ('STANDARD', 'ISA', 'STD'):
+                continue
+            provided.add(name)
+        return provided
+
+    def _required_input_names(self, press_sel: str, temp_sel: str, speed_sel: str) -> set[str]:
+        required = set()
+
+        if press_sel == 'AL':
+            required.add('alt_in')
+        elif press_sel == 'PS':
+            required.add('Ps_in')
+
+        if temp_sel == 'DT':
+            required.add('dTs_in')
+        elif temp_sel == 'TS':
+            required.add('Ts_in')
+        elif temp_sel == 'TT':
+            required.add('Tt_in')
+
+        if speed_sel == 'MN':
+            required.add('MN_in')
+        elif speed_sel == 'VC':
+            required.add('VCAS_in')
+        elif speed_sel == 'VT':
+            required.add('VTAS_in')
+        elif speed_sel == 'TT':
+            required.add('Tt_in')
+
+        return required
+
+    def _validate_mode_inputs(self, I: AmbientInputs, press_sel: str, temp_sel: str, speed_sel: str) -> None:
+        used = self._used_input_names(press_sel, temp_sel, speed_sel)
+
+        humidity_sel = (I.switchHum or 'RH').upper()
+        if humidity_sel == 'RH':
+            used.add('humRel_in')
+        elif humidity_sel == 'SH':
+            used.add('humSp_in')
+
+        provided = self._provided_input_names(I)
+        required = self._required_input_names(press_sel, temp_sel, speed_sel)
+
+        missing = sorted(name for name in required if name not in provided)
+        extras = sorted(name for name in provided if name not in used)
+
+        if missing:
+            mode = (I.switchMode or 'ALDTMN').upper()
+            raise ValueError(
+                f"switchMode {mode!r}: incorrect input parameters, required: "
+                f"{', '.join(missing)}, supplied: {', '.join(sorted(provided)) or 'none'}."
+            )
+
+        if extras and DO_WARN:
+            warnings.warn(
+                f"switchMode {(I.switchMode or 'ALDTMN').upper()!r} ignores non-applicable inputs: "
+                f"{', '.join(extras)}.",
+                stacklevel=2,
+            )
+
     # ---- Core compute ----
     def run(self, I: AmbientInputs) -> AmbientOutputs:
-        alt = float(I.alt_in)
+        press_sel, temp_sel, speed_sel = self._parse_switch_mode(I.switchMode)
+        self._validate_mode_inputs(I, press_sel, temp_sel, speed_sel)
 
-        # Day temperature at altitude (single profile)
-        TsDay = profile_temp(str(I.switchDay), alt)
-        TsStd = _isa_temp(alt)
+        alt, Ps, TsDay, TsStd = self._resolve_pressure_altitude(I, press_sel)
+        Ts, dTs, dTsStd = self._resolve_static_temperature(I, temp_sel, alt, TsDay)
 
-        # Ts
-        Ts = I.Ts_in if I.Ts_in is not None else TsDay + (I.dTs_in or 0.0)
-        dTs = Ts - TsDay
-        dTsStd = Ts - TsStd
-
-        # Ps (from ISA vs pressure altitude unless overridden)
-        Ps = I.Ps_in if I.Ps_in is not None else self._isa_pressure(alt)
-
-        # Mach / speeds
-        a = speed_of_sound(Ts)
-        MN: float
-        mode = (I.switchMode or 'MN').upper()
-
-        if mode == 'MN' and I.MN_in is not None:
-            MN = max(0.0, float(I.MN_in))
-        elif mode == 'VTAS' and I.VTAS_in is not None:
-            MN = max(0.0, float(I.VTAS_in) / a)
-        elif mode == 'VEAS' and I.VEAS_in is not None:
-            rho = rho_from_P_T(Ps, Ts)
-            vtas = vtas_from_veas_rho(float(I.VEAS_in), rho)
-            MN = max(0.0, vtas / a)
-        elif mode == 'VCAS' and I.VCAS_in is not None:
-            MN = M_from_vcas(Ps, float(I.VCAS_in))
-        elif mode == 'TT' and I.Tt_in is not None:
+        if speed_sel == 'TT':
+            # For PSTSTT, solve M from Ps + Ts + Tt.
+            if press_sel != 'PS' or temp_sel != 'TS':
+                raise ValueError(
+                    f'Unsupported TT-based AS210 combination {I.switchMode!r}.'
+                )
+            if I.Ts_in is None or I.Tt_in is None:
+                raise ValueError(
+                    'PSTSTT requires both Ts_in and Tt_in.'
+                )
+            Ts = float(I.Ts_in)
             MN = M_from_total_T(Ts, float(I.Tt_in))
-        elif mode == 'PT' and I.Pt_in is not None:
-            MN = M_from_total_P(Ps, float(I.Pt_in))
+            dTs, dTsStd = (0.0, 0.0) if TsDay is None else (Ts - TsDay, Ts - TsStd)
         else:
-            # Default: fallbacks in priority
-            if I.MN_in is not None:
-                MN = max(0.0, float(I.MN_in))
-            elif I.VTAS_in is not None:
-                MN = max(0.0, float(I.VTAS_in) / a)
-            elif I.VEAS_in is not None:
-                rho = rho_from_P_T(Ps, Ts)
-                vtas = vtas_from_veas_rho(float(I.VEAS_in), rho)
-                MN = max(0.0, vtas / a)
-            elif I.VCAS_in is not None:
-                MN = M_from_vcas(Ps, float(I.VCAS_in))
-            elif I.Tt_in is not None:
-                MN = M_from_total_T(Ts, float(I.Tt_in))
-            elif I.Pt_in is not None:
-                MN = M_from_total_P(Ps, float(I.Pt_in))
-            else:
-                MN = 0.0
+            MN = self._resolve_mach(I, speed_sel, Ps, Ts, temp_sel)
 
         # Totals
-        Tt = I.Tt_in if I.Tt_in is not None else total_T_from_M(Ts, MN)
-        Pt = I.Pt_in if I.Pt_in is not None else total_P_from_M(Ps, MN)
+        if temp_sel == 'TT' or speed_sel == 'TT':
+            Tt = float(I.Tt_in)
+        else:
+            Tt = total_T_from_M(Ts, MN)
+        Pt = total_P_from_M(Ps, MN)
 
         # Humidity
         if (I.switchHum or 'RH').upper() == 'SH' and I.humSp_in is not None:
@@ -877,10 +1131,11 @@ class Ambient_AS210:
             humSp = 0.0
 
         # Speeds
-        VTAS = I.VTAS_in if I.VTAS_in is not None else MN * a
+        a = speed_of_sound(Ts)
+        VTAS = float(I.VTAS_in) if speed_sel == 'VT' and I.VTAS_in is not None else MN * a
         rho = rho_from_P_T(Ps, Ts)
-        VEAS = I.VEAS_in if I.VEAS_in is not None else veas_from_vtas_rho(VTAS, rho)
-        VCAS = I.VCAS_in if I.VCAS_in is not None else vcas_from_M(Ps, MN)
+        VEAS = veas_from_vtas_rho(VTAS, rho)
+        VCAS = float(I.VCAS_in) if speed_sel == 'VC' and I.VCAS_in is not None else vcas_from_M(Ps, MN)
 
         self.outputs = AmbientOutputs(
             alt=alt,
@@ -893,7 +1148,7 @@ class Ambient_AS210:
             Pt=Pt,
             Ts=Ts,
             Tt=Tt,
-            TsDay=TsDay,
+            TsDay=TsDay if TsDay is not None else Ts,
             VEAS=VEAS,
             VCAS=VCAS,
             VTAS=VTAS,
@@ -940,8 +1195,9 @@ if TComponent is not None:
             TAmbient_AS210(owner, name, station_nr, Altitude, Macha, dTs, Psa, Tsa)
 
         Additional optional configuration:
-            SetConditionsAS210(switchDay='STANDARD', switchHum='RH',
-                               humRel_in=None, humSp_in=None)
+            SetConditionsAS210(self, switchDay='STANDARD', switchHum='RH',
+                               humRel_in=None, humSp_in=None, switchMode='ALDTMN',
+                               VCAS_in=None, VTAS_in=None, Tt_in=None)
         """
 
         def __init__(self, *args):
@@ -961,24 +1217,79 @@ if TComponent is not None:
             if owner is not None:
                 owner.ambient = self
 
-            # Store DP conditions (GSPy convention)
-            self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa)
+            # # Store DP conditions (GSPy convention)
+            # self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa)
 
-            # Defaults for the AS210 additions
-            self.switchDay = 'STANDARD'
-            self.switchHum = 'RH'
-            self.humRel_in = None
-            self.humSp_in = None
+            # # Defaults for the AS210 additions
+            # self.switchDay = 'STANDARD'
+            # self.switchHum = 'RH'
+            # self.switchMode = 'ALDTMN'
+            # self.humRel_in = None
+            # self.humSp_in = None
+            # self.VCAS_in = None
+            # self.VTAS_in = None
+            # self.Tt_in = None
             self.outputs = None
+            self.last_inputs: Optional[AmbientInputs] = None
             self.Gas_Ambient = None
+
+            # Initialize OD and DP condition storage with explicit fields that
+            # map directly onto AmbientInputs / AmbientOutputs terminology.
+            for suffix in ('', '_des'):
+                setattr(self, f'Altitude{suffix}', None)
+                setattr(self, f'dTs{suffix}', None)
+                setattr(self, f'humRel{suffix}', None)
+                setattr(self, f'humSp{suffix}', None)
+                setattr(self, f'Macha{suffix}', None)
+                setattr(self, f'Psa{suffix}', None)
+                setattr(self, f'Pta{suffix}', None)
+                setattr(self, f'Tsa{suffix}', None)
+                setattr(self, f'Tta{suffix}', None)
+                setattr(self, f'VEAS{suffix}', None)
+                setattr(self, f'VCAS{suffix}', None)
+                setattr(self, f'VTAS{suffix}', None)
+                setattr(self, f'switchDay{suffix}', 'STANDARD')
+                setattr(self, f'switchHum{suffix}', 'RH')
+                setattr(self, f'switchMode{suffix}', 'ALDTMN')
+
+            # Store DP conditions (GSPy convention)
+            self.SetConditions(
+                'DP',
+                Altitude=Altitude,
+                Macha=Macha,
+                dTs=dTs,
+                Psa=Psa,
+                Tsa=Tsa,
+            )
 
         # ------------------------------------------------------------------
         # User-facing configuration of AS210 day type and humidity handling
         # ------------------------------------------------------------------
-        def SetConditionsAS210(self, switchDay='STANDARD', switchHum='RH',
-                               humRel_in=None, humSp_in=None):
+        def SetConditionsAS210(
+            self,
+            Mode='OD',
+            *,
+            Altitude=None,
+            dTs=None,
+            humRel=None,
+            humSp=None,
+            Macha=None,
+            Psa=None,
+            Pta=None,
+            Tsa=None,
+            Tta=None,
+            VEAS=None,
+            VCAS=None,
+            VTAS=None,
+            switchDay='STANDARD',
+            switchHum='RH',
+            switchMode='ALDTMN',
+        ):
             """
-            Configure the AS210 day profile and humidity inputs.
+            Explicit AS210 ambient condition setter.
+
+            This mirrors the AmbientInputs fields with GSPy-style attribute names,
+            so any switchMode-required input can be provided directly by name.
 
             Parameters
             ----------
@@ -992,28 +1303,91 @@ if TComponent is not None:
                 Relative humidity [0..1]
             humSp_in : float | None
                 Specific humidity [kg/kg]
+
+            Examples
+            --------
+            self.SetConditionsAS210('OD', Altitude=3000.0, dTs=10.0, Macha=0.4)
+            self.SetConditionsAS210('OD', Altitude=3000.0, dTs=10.0, VCAS=120.0,
+                                    switchMode='ALDTVC')
             """
-            self.switchDay = switchDay
-            self.switchHum = switchHum
-            self.humRel_in = humRel_in
-            self.humSp_in = humSp_in
+            self.SetConditions(
+                Mode,
+                Altitude=Altitude,
+                dTs=dTs,
+                humRel=humRel,
+                humSp=humSp,
+                Macha=Macha,
+                Psa=Psa,
+                Pta=Pta,
+                Tsa=Tsa,
+                Tta=Tta,
+                VEAS=VEAS,
+                VCAS=VCAS,
+                VTAS=VTAS,
+                switchDay=switchDay,
+                switchHum=switchHum,
+                switchMode=switchMode,
+            )
+
+        def _clear_mode_specific_inputs(self, target=''):
+            for name in (
+                'Altitude', 'dTs', 'Macha', 'Psa', 'Pta',
+                'Tsa', 'Tta', 'VEAS', 'VCAS', 'VTAS',
+            ):
+                setattr(self, f'{name}{target}', None)
 
         # ------------------------------------------------------------------
         # Store DP or OD conditions for later use
         # ------------------------------------------------------------------
-        def SetConditions(self, Mode, Altitude, Macha, dTs, Psa, Tsa):
-            if Mode == 'DP':
-                self.Altitude_des = Altitude
-                self.Macha_des = Macha
-                self.dTs_des = dTs
-                self.Psa_des = Psa
-                self.Tsa_des = Tsa
-            else:
-                self.Altitude = Altitude
-                self.Macha = Macha
-                self.dTs = dTs
-                self.Psa = Psa
-                self.Tsa = Tsa
+        def SetConditions(
+            self,
+            Mode,
+            Altitude=None,
+            Macha=None,
+            dTs=None,
+            Psa=None,
+            Tsa=None,
+            *,
+            humRel=None,
+            humSp=None,
+            Pta=None,
+            Tta=None,
+            VEAS=None,
+            VCAS=None,
+            VTAS=None,
+            switchDay=None,
+            switchHum=None,
+            switchMode=None,
+        ):
+            target = '_des' if Mode == 'DP' else ''
+
+            if switchMode is not None:
+                current_mode = getattr(self, f'switchMode{target}', None)
+                new_mode = str(switchMode).upper()
+                if current_mode is None or str(current_mode).upper() != new_mode:
+                    self._clear_mode_specific_inputs(target)
+
+            updates = {
+                'Altitude': Altitude,
+                'dTs': dTs,
+                'humRel': humRel,
+                'humSp': humSp,
+                'Macha': Macha,
+                'Psa': Psa,
+                'Pta': Pta,
+                'Tsa': Tsa,
+                'Tta': Tta,
+                'VEAS': VEAS,
+                'VCAS': VCAS,
+                'VTAS': VTAS,
+                'switchDay': switchDay,
+                'switchHum': switchHum,
+                'switchMode': switchMode,
+            }
+
+            for name, value in updates.items():
+                if value is not None:
+                    setattr(self, f'{name}{target}', value)
 
         # ------------------------------------------------------------------
         # Core of the adapter — executed every DP or OD simulation step
@@ -1022,25 +1396,34 @@ if TComponent is not None:
 
             # Apply DP conditions if needed (GSPy convention)
             if Mode == 'DP':
-                self.Altitude = self.Altitude_des
-                self.Macha = self.Macha_des
-                self.dTs = self.dTs_des
-                self.Psa = self.Psa_des
-                self.Tsa = self.Tsa_des
+                for name in (
+                    'Altitude', 'dTs', 'humRel', 'humSp', 'Macha', 'Psa', 'Pta',
+                    'Tsa', 'Tta', 'VEAS', 'VCAS', 'VTAS',
+                    'switchDay', 'switchHum', 'switchMode',
+                ):
+                    setattr(self, name, getattr(self, f'{name}_des'))
 
             # Build the input object for the AS210 computational model
             inputs = AmbientInputs(
                 alt_in=self.Altitude,
                 dTs_in=self.dTs,
+                humRel_in=self.humRel,
+                humSp_in=self.humSp,
                 MN_in=self.Macha,
                 Ps_in=self.Psa,
+                Pt_in=self.Pta,
                 Ts_in=self.Tsa,
+                Tt_in=self.Tta,
+                VEAS_in=self.VEAS,
+                VCAS_in=self.VCAS,
+                VTAS_in=self.VTAS,
+                # switchDay=self.switchDay if self.Altitude is not None else None,
                 switchDay=self.switchDay,
                 switchHum=self.switchHum,
-                humRel_in=self.humRel_in,
-                humSp_in=self.humSp_in,
-                switchMode='MN'
+                switchMode=self.switchMode
             )
+
+            self.last_inputs = inputs
 
             # Execute the AS210 physics model
             engine = Ambient_AS210()
@@ -1067,35 +1450,86 @@ if TComponent is not None:
             self.humSp = O.humSp
             self.VEAS = O.VEAS
             self.VCAS = O.VCAS
+            self.VTAS = O.VTAS
 
             # --------------------------------------------------------------
             # Set the inlet state in Cantera (if available)
             # --------------------------------------------------------------
             if ct is not None and self.owner is not None:
-                self.Gas_Ambient = ct.Quantity(fg.gas)
+                gas = fg.gas
+                self.Gas_Ambient = ct.Quantity(gas)
                 self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
-                self.Gas_Ambient.TPY = O.Tt, O.Pt, fg.s_air_composition_mass
+
+                dry_comp = str(fg.s_air_composition_mass).strip()
+
+                if O.humSp > 0.0:
+                    if "H2O" not in gas.species_names:
+                        raise ValueError(
+                            "Humidity requested but H2O is not present in the Cantera gas model."
+                        )
+
+                    y_h2o = float(O.humSp)
+                    y_dry = 1.0 - y_h2o
+
+                    if y_dry < 0.0 or y_h2o > 1.0:
+                        raise ValueError(
+                            f"Invalid specific humidity for Cantera composition: humSp={O.humSp}"
+                        )
+
+                    Y = scale_composition_string(dry_comp, y_dry)
+                    Y["H2O"] = y_h2o
+
+                    # normalize for safety
+                    y_sum = sum(Y.values())
+                    if y_sum <= 0.0:
+                        raise ValueError("Invalid composition: mass fractions sum to zero.")
+                    Y = {k: v / y_sum for k, v in Y.items()}
+
+                    comp = ", ".join(f"{k}:{v:.12g}" for k, v in Y.items())
+                else:
+                    comp = dry_comp
+
+                self.Gas_Ambient.TPY = O.Tt, O.Pt, comp
             else:
                 self.Gas_Ambient = None
 
         # 2.0.0.0
         def get_outputs(self):
             s = self.station_nr
-        
+            I = self.last_inputs
+
             outputs = {
-                "Alt": getattr(self, 'Altitude', None),
-                "dTs": getattr(self, 'dTs', None),
-                "dTsStd": getattr(self, 'dTsStd', None),
+                # Explicit user/requested inputs only
+                "Alt_in": getattr(I, 'alt_in', None),
+                "dTs_in": getattr(I, 'dTs_in', None),
+                "humRel_in": getattr(I, 'humRel_in', None),
+                "humSp_in": getattr(I, 'humSp_in', None),
+                "Mach_in": getattr(I, 'MN_in', None),
+                "Ps_in": getattr(I, 'Ps_in', None),
+                "Pt_in": getattr(I, 'Pt_in', None),
+                "Ts_in": getattr(I, 'Ts_in', None),
+                "Tt_in": getattr(I, 'Tt_in', None),
+                "VEAS_in": getattr(I, 'VEAS_in', None),
+                "VCAS_in": getattr(I, 'VCAS_in', None),
+                "VTAS_in": getattr(I, 'VTAS_in', None),
+                "switchDay_in": getattr(I, 'switchDay', None),
+                "switchHum_in": getattr(I, 'switchHum', None),
+                "switchMode_in": getattr(I, 'switchMode', None),
+
+                # Solved freestream / station outputs
+                f"Alt{s}": getattr(self.outputs, 'alt', None) if self.outputs else None,
+                f"dTs{s}": getattr(self.outputs, 'dTs', None) if self.outputs else None,
+                f"dTsStd{s}": getattr(self.outputs, 'dTsStd', None) if self.outputs else None,
+                f"TsDay{s}": getattr(self.outputs, 'TsDay', None) if self.outputs else None,
+                f"humRel{s}": getattr(self.outputs, 'humRel', None) if self.outputs else None,
+                f"humSp{s}": getattr(self.outputs, 'humSp', None) if self.outputs else None,
                 f"Ts{s}": getattr(self, 'Tsa', None),
                 f"Ps{s}": getattr(self, 'Psa', None),
                 f"Tt{s}": getattr(self, 'Tta', None),
                 f"Pt{s}": getattr(self, 'Pta', None),
                 f"Mach{s}": getattr(self, 'Macha', None),
-                f"VEAS{s}": getattr(self, 'VEAS', None),
-                f"VCAS{s}": getattr(self, 'VCAS', None),
+                f"VEAS{s}": getattr(self.outputs, 'VEAS', None) if self.outputs else None,
+                f"VCAS{s}": getattr(self.outputs, 'VCAS', None) if self.outputs else None,
                 f"VTAS{s}": getattr(self, 'V', None),
-                # AS210-specific outputs
-                "TsDay": getattr(self, 'TsDay', None),
-                "switchDay": getattr(self, 'switchDay', None),
             }
             return outputs
