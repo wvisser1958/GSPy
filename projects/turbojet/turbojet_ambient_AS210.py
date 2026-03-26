@@ -40,7 +40,15 @@ def main():
     # Override ambient conditions object (to set ambient/inlet/flight conditions)
     # The ambient conditions object is an embedded object inside the system model class,
     # we now have to override the system model ambient
-    turbojet.ambient = TAmbient_AS210(turbojet, 'Amb', '000', 0, 0, 0, None, None)
+    turbojet.ambient = TAmbient_AS210(
+        turbojet, 'Amb', '000',
+        alt_in=0.0,
+        MN_in=0.0,
+        dTs_in=0.0,
+        switchDay='STANDARD',
+        switchHum='RH',
+        switchMode='ALDTMN',
+    )
     # No component output to terminal:
     turbojet.VERBOSE = False # If set to True, each simulation step will output data to screen, however, 
                              # False makes the simulation much faster, the output is stored in a csv table.
@@ -108,7 +116,7 @@ def main():
     Mach_val = 0
     dTs_val = 0
     turbojet.ambient.SetConditionsAS210(switchDay='STANDARD', switchHum='RH', switchMode='ALDTMN')
-    turbojet.ambient.SetConditions('DP', Altitude=Altitude_val, Macha=Mach_val, dTs=dTs_val)
+    turbojet.ambient.SetConditions('DP', alt_in=Altitude_val, MN_in=Mach_val, dTs_in=dTs_val)
     turbojet.Run_DP_simulation()
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
@@ -122,9 +130,10 @@ def main():
     Mach_val = 0.5
     dTs_val = 10
     # turbojet.ambient.SetConditionsAS210(switchDay='STANDARD', switchHum='RH', switchMode='ALDTMN')
-    turbojet.ambient.SetConditionsAS210(switchDay='STANDARD', switchHum='RH', switchMode='PSTSTT')
-    # turbojet.ambient.SetConditions('OD', Altitude=Altitude_val, Macha=Mach_val, dTs=dTs_val)
-    turbojet.ambient.SetConditions('OD', Psa=101325.0, Tsa=298.150000, Tta=313.057500, humRel=0.5)
+    # turbojet.ambient.SetConditionsAS210(switchDay='HOT', switchHum='RH', switchMode='PSTSTT')
+    turbojet.ambient.SetConditionsAS210(switchDay='HOT', switchHum='RH', switchMode='ALDTMN')
+    turbojet.ambient.SetConditions('OD', alt_in=Altitude_val, MN_in=Mach_val, dTs_in=dTs_val, humRel_in=0.5)
+    # turbojet.ambient.SetConditions('OD', Ps_in=101325.0, Ts_in=298.150000, Tt_in=313.057500, humRel_in=0.5)
     # Run OD simulation
     if turbojet.Run_OD_simulation() < 1:
         return
