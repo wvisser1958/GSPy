@@ -1,0 +1,28 @@
+For JetSurf-like chemistry but above 2000 K, I’d pick based on your fuel scope:
+
+Best fit if your chemistry is mostly small hydrocarbons (C1–C4):
+
+San Diego mechanism — 57 species, 268 reactions, 300–5000 K. Good general-purpose hydrocarbon combustion choice when you need a higher temperature ceiling than JetSurf.
+Blanquart v2.3 — 194 species, 1156 reactions, 300–3000 K. Better if you want more hydrocarbon detail than San Diego but do not need all the way to 5000 K.
+FFCM-1 — 38 species, 291 reactions, 200–5000 K, but it is designed and tested for C1 hydrocarbons, so it is excellent for methane/syngas-adjacent work, not for heavy jet-fuel surrogate chemistry.
+
+Best fit if you really need n-dodecane / diesel / jet-surrogate fuel present explicitly:
+
+Cantera’s nDodecane_Reitz.yaml is the strongest practical candidate from the standard Cantera distribution. The file is a reduced n-dodecane-PAH mechanism with 100 species and 432 reactions, and species entries in the YAML use thermo ranges extending to 5000 K.
+That makes it much more suitable than JetSurf for cases where HP equilibrium can drift above 2000 K. Your current JetSurf file is explicitly listed as 300–2000 K, so it is expected to fail once equilibrium crosses that boundary.
+
+So my actual recommendation is:
+
+If your fuel is methane / ethane / propane / butane class: use San Diego first.
+If your fuel is n-dodecane or a diesel/kerosene surrogate: try nDodecane_Reitz.yaml first. Cantera even uses n-dodecane in its engine example, which is a good sign for availability and workflow compatibility.
+If you need only equilibrium and not detailed heavy-fuel kinetics: a smaller high-T mechanism like San Diego may be more robust and much faster.
+
+One caution: AramcoMech 2.0 is not the fix for your specific temperature-limit problem here, because the Caltech mechanism page lists it at 300–2000 K, same top-end issue as JetSurf.
+
+A practical rule:
+
+Need heavy fuel fidelity: nDodecane_Reitz.yaml
+Need robust high-T combustion chemistry: San Diego
+Need natural-gas-focused chemistry: extended GRI-Mech 3.0, which is also listed at 300–5000 K but is optimized for natural gas mixtures.
+
+If you want, I can map your exact fuel and simulation type to one specific mechanism and show the Cantera code changes.

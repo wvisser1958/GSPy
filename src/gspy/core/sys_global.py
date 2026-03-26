@@ -42,6 +42,15 @@ def get_gas():
         return ct.Solution(str(path))
 gas = get_gas()
 
+print("phase Tmin, Tmax =", gas.min_temp, gas.max_temp)
+
+for sp in gas.species():
+    thermo = sp.thermo
+    if hasattr(thermo, "min_temp") and hasattr(thermo, "max_temp"):
+        if thermo.max_temp <= 2000:
+            print(sp.name, thermo.min_temp, thermo.max_temp)
+
+
 C_atom_weight = gas.atomic_weight(gas.element_index('C'))
 O_atom_weight = gas.atomic_weight(gas.element_index('O'))
 H_atom_weight = gas.atomic_weight(gas.element_index('H'))

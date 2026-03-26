@@ -163,15 +163,16 @@ class TSystemModel:
         # Run simulation code of all components in the system model
         for comp in self.component_run_list:
             comp.Run(mode, point_time)
-
+            # load comp data into the output_dict
             self.output_dict.update(comp.get_outputs())
 
-        # v1.3 moved to BEFORE PostRun calls
-        # self.AddSystemOutputToDict(mode)
+        # load system performance (self) data into the output_dict
         self.output_dict.update(self.get_outputs())
 
+        # note that anything calculated in PostRun will not end up in the output_dict !
         for comp in self.component_run_list:
             comp.PostRun(mode, point_time)
+
         return self.errors
 
     # 2.0.0.0
@@ -254,6 +255,7 @@ class TSystemModel:
             for ipoint in self.inputpoints:
                 # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
                 # fsys.Do_Output(Mode, inputpoints[ipoint])
+                rmax = 0
                 try:
                     solution = root(residuals,
                                     self.states,
@@ -332,12 +334,8 @@ class TSystemModel:
         out["PW"] = self.PW/1000
         return out
 
-    # v1.2
-    # def Do_Output(PointTime, Solution):
     def Do_Output(self, PointTime, error_code):
         # output to terminal
-        # global system_model,  OutputTable, Ambient
-
         if self.VERBOSE:
             # 1.4
             print(f"")
@@ -354,24 +352,24 @@ class TSystemModel:
         # add output of this point (ouptut_dict) to output_rows dictionary
         self._output_rows.append(self.output_dict.copy())
 
-        # add system performance
-        # self.AddSystemOutputToDict(self.mode)
-
     def print_states_and_errors(self):
         print(f"Nr. of state variables: {len(self.states)}\nNr. of error equations: {len(self.errors)}")
 
     def prepare_output_table(self):
         #  collect output_rows in dataframe, for processing in OutputToCSV, Plot_X_nY_graph, PlotMaps etc.
-        self.output_table = pd.DataFrame(self._output_rows)
+        if self.output_table is None:
+            self.output_table = pd.DataFrame(self._output_rows)
 
     def OutputToCSV(self):
         # Export to Excel
         os.makedirs(self.output_dir_path, exist_ok=True)
         outputcsvfilename = os.path.join(self.output_dir_path, self.model_name + ".csv")
+        self.prepare_output_table()
         self.output_table.to_csv(outputcsvfilename, index=False, float_format='%.6f')
         print("output saved in "+outputcsvfilename)
 
     def Plot_X_nY_graph(self, title, filename_suffix, xcol, ycollist, do_show = False):
+        self.prepare_output_table()
         # Plot output_tableable data
         # Create n subplots stacked vertically, sharing the same X-axis
         fig, axes = plt.subplots(nrows=len(ycollist), ncols=1, sharex=True, figsize=(8, 10))
@@ -432,5 +430,6 @@ class TSystemModel:
         print("x-4y plot saved in " + jpg_filename)
 
     def PlotMaps(self):
+        self.prepare_output_table()
         for comp in self.component_run_list:
            comp.PlotMaps()

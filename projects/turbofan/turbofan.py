@@ -38,6 +38,7 @@ def main():
 
     # create a control (controlling all inputs to the system model)
     # combustor Texit input, with Wf 1.11 as first guess for 1600 K DP combustor exit temperature
+    # Note that using a control to specify T4 instead of Wf significantly slows down the simulation
     fuel_control = TControl(turbofan, 'Control', '', 1.11, 1600, 1100, -50, None)
 
     inlet = TInlet(turbofan, 'Inlet',          '', None,           1,2,   337, 1    )
@@ -159,8 +160,6 @@ def main():
     turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None)
     # Run OD simulation
     turbofan.Run_OD_simulation()
-
-    turbofan.prepare_output_table()
 
     # export OutputTable to CSV
     turbofan.OutputToCSV()

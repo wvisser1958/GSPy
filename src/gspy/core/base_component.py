@@ -41,6 +41,7 @@ class TComponent:
     def Run(self, Mode, PointTime):
         raise NotImplementedError("Subclass must implement Run abstract method")
 
+    # note that anything calculated in PostRun will not end up in the output_dict !
     def PostRun(self, Mode, PointTime):
         # raise NotImplementedError("Subclass must implement Run abstract method")
         pass

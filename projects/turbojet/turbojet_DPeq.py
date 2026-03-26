@@ -113,8 +113,6 @@ def main():
     # # Run OD simulation
     # # turbojet.Run_OD_simulation()
 
-    turbojet.prepare_output_table()
-
     # export OutputTable to CSV
     turbojet.OutputToCSV()
 

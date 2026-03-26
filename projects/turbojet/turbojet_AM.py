@@ -87,7 +87,6 @@ def main():
     turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
     # Run OD simulation
     turbojet.Run_OD_simulation()
-    turbojet.prepare_output_table()
 
     # export OutputTable to CSV
     turbojet.OutputToCSV()

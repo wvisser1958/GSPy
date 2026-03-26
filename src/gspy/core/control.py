@@ -54,11 +54,12 @@ class TControl(TComponent):
             else:
                 # input is coming from state, iterating toward value satisfying control equation
                 self.Inputvalue = self.DP_inputvalue * self.owner.states[self.istate_control]
+            self.controlpar_demand = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
 
     # 1.1 WV PostRun evaluates the equation for controlling parameter named OD_controlledparName to input
+    # note that anything calculated in PostRun will not end up in the output_dict !
     def PostRun(self, Mode, PointTime):
         # super().PostRun(Mode, PointTime)
-        self.controlpar_demand = None
         if self.OD_controlledparname != None:
             if Mode == 'DP':
                 self.owner.states = np.append(self.owner.states, 1)
@@ -69,7 +70,7 @@ class TControl(TComponent):
                 self.DP_controlparvalue = self.owner.output_dict[self.OD_controlledparname]
             else:
                 # get control demanded (set point) parameter value from input
-                self.controlpar_demand = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
+                # self.controlpar_demand = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
                 #  get control parameter current value
                 # lastrownumber = len(self.owner.OutputTable)
                 controlparvalue = self.owner.output_dict[self.OD_controlledparname]
@@ -79,9 +80,9 @@ class TControl(TComponent):
     def get_outputs(self):
         out = super().get_outputs()
         if self.owner.mode == 'DP':
-            out["Control_input_"+self.name] = None
-            out["Control_output_"+self.name] = None
+            out[self.name+"_setpoint"] = None
+            out[self.name+"_input"] = None
         else:
-            out["Control_input_"+self.name] = self.controlpar_demand
-            out["Control_output_"+self.name] = self.Inputvalue
+            out[self.name+"_setpoint"] = self.controlpar_demand
+            out[self.name+"_input"] = self.Inputvalue
         return out

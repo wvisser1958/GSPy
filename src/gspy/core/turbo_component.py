@@ -191,28 +191,8 @@ class TTurboComponent(TGaspath):
         print(f"\tRotor speed  : {self.N:.0f} rpm")
         print(f"\tCorr Rotor speed : {self.Nc:.0f} rpm")
         if self.map != None:
-            # if self.map.Ncmap!= None:
-            #     print(f"\tMap Corr Rotor speed : {self.map.Ncmap:.4f} rpm")
-            # if self.map.Wcmapdes!= None:
-            #     print(f"\tDP Map Corr mass flow : {self.map.Wcmapdes:.3f} kg/s")
-            # if self.map.Wcmap!= None:
-            #     print(f"\tMap Corr mass flow : {self.map.Wcmap:.3f} kg/s")
-            # # if self.W!= None:
-            # #     print(f"\tMap mass flow : {self.W:.3f} kg/s")
-            # if self.map.PRmap!= None:
-            #     print(f"\tPR map : {self.map.PRmap:.4f}")
-            # if self.map.Etamap!= None:
-            #     print(f"\tEta map : {self.map.Etamap:.4f}")
-
-            # # 1.6.0.8
-            # if Mode == 'DP':
-            #     print(f"\tSFmap Nc : {self.map.SFmap_Nc :.4f}")
-            #     print(f"\tSFmap Wc : {self.map.SFmap_Wc :.4f}")
-            #     print(f"\tSFmap PR : {self.map.SFmap_PR :.4f}")
-            #     print(f"\tSFmap Eta: {self.map.SFmap_Eta :.4f}")
             self.print_map_data(self.map, mode)
 
-        #  1.5
         if self.Etades != None:
             print(f"\tEta des : {self.Etades:.4f}")
             print(f"\tEta     : {self.Eta:.4f}")

@@ -48,6 +48,10 @@ class TCombustor(TGaspath):
         self.fuel = None  # initialize fuel quantity for later testing if None or already assigned
         self.SetFuel(Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes)
 
+        # 2.0 for OD equation if Texit specified instead of Wf
+        self.istate_Wf = None
+        self.ierror_Texit = None
+
     #  1.4 use separate routine, for allowing change of fuel for OD simulation cases
     def SetFuel(self, aTfuel, aLHV, aHCratio, aOCratio, aFuelComposition):
         self.Tfuel = aTfuel
@@ -366,33 +370,51 @@ class TCombustor(TGaspath):
         w_air = self.gas_in.mass
         h_air_initial = self.gas_in.enthalpy_mass
 
-        # 1.4 use separate routine, for allowing change of fuel for OD simulation cases
-        # # Given parameters for the virtual fuel
-        # # virtual fuel molecule with singe C atom
-        # self.Tfuel = self.Tfueldes
-        # self.LHV = self.LHVdes          # Lower Heating Value in kJ/kg
-        # self.HCratio = self.HCratiodes  # H/C ratio for the virtual fuel
-        # self.OCratio = self.OCratiodes  # O/C ratio for the virtual fuel
-        # self.FuelComposition = self.FuelCompositiondes
-
         if (self.FuelComposition == '') or (self.FuelComposition == None):
             CHyOzMoleMass = fg.C_atom_weight + fg.H_atom_weight * self.HCratio + fg.O_atom_weight * self.OCratio
 
-        Wf0 = self.Wf
-        #  1.4
-        # if self.Texit != None:
         if (self.control != None) and (self.control.OD_controlledparname == None) and  (self.Texit != None): # calc Wf from Texit
-            #  calculate Wf for given Texit, using scipy root function
-            def equation(Wfiter):
-                # 1.6.0.5
-                # self.Wf=Wfiter[0]
-                self.Wf=fu.scalar(Wfiter)
-                return CalcEndConditions(PointTime) - self.Texit
-            solution = root(equation, x0 = Wf0)
-            if solution.success:
-                self.Wf = solution.x[0]
+            if Mode == 'DP':
+                # initial guess for Wf
+                Wf0 = self.Wfdes  # if Texit specified, Wfdes is initial guess
+                self.Wf0_OD = None
+
+                # define a state and error for subsequent OD solving for Wf making Texit match the self.Texit, e.g. set by a controller
+                # this is more stable than an internal separate loop for OD
+                # however, for DP, an internal secant solver is used to get the design Wfdes (only one iteration)
+                self.owner.states = np.append(self.owner.states, 1)
+                self.istate_Wf = self.owner.states.size-1
+                # error for equation Texit(Wf) = Text spec
+                self.owner.errors = np.append(self.owner.errors, 0)
+                self.ierror_Texit = self.owner.errors.size-1
+
+                def equation(Wfiter):
+                    # 1.6.0.5
+                    # self.Wf=Wfiter[0]
+                    self.Wf=float(Wfiter)
+                    return CalcEndConditions(PointTime) - self.Texit
+                solution = root_scalar(equation,
+
+                                        method = 'secant',
+                                        x0 = Wf0,  # Wf0 is guessed Wfdes here
+                                        x1 = 1.02 * Wf0,
+                                    xtol = 1e-6,
+                                    maxiter = 100
+                                    )
+                if solution.converged:
+                    self.Wf = solution.root
+                    self.Wfdes = self.Wf
+                else:
+                    print(f"Wf for Combustor DP Texit value of {self.Texit:.0f} not found")
             else:
-                print(f"Wf for Combustor Texit value of {self.Texit:.0f} not found")
+                # initial OD guess for Wf, e.g. for when the first OD point is far from the DP operating condition
+                if self.Wf0_OD == None: # initialize reference value for OD
+                    # assume Wf OD is proportional to the combustor inlet flow rate, e.g. when operating at high altitude while DP is at sea level
+                    self.Wf0_OD = self.Wfdes * self.gas_in.mass / self.Wdes
+                self.Wf = self.owner.states[self.istate_Wf] * self.Wf0_OD
+                Texit_iter = CalcEndConditions(PointTime)
+                self.owner.errors[self.ierror_Texit] = (Texit_iter - self.Texit)/self.Texitdes
+
         else: # just calculate Texit from Wf
             CalcEndConditions(PointTime)
 

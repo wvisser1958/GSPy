@@ -71,6 +71,7 @@ class TAMcontrol(TComponent):
             for i, (compmap, SFpar) in enumerate(self.mapmod_comps_pars_list, start=0):
                 setattr(compmap, SFpar, self.owner.states[self.first_map_mod_stateindex+i])
 
+    # note that anything calculated in PostRun will not end up in the output_dict !
     def PostRun(self, mode, PointTime):
         # super().PostRun(Mode, PointTime)
         if mode == 'DP':
