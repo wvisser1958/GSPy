@@ -66,7 +66,7 @@ def main():
     # Generic gas turbine components
     inlet1   = TInlet(turbojet, 'In', '', None, '000','020', 19.9, 1    )
 
-    compressor1 = TCompressor(turbojet, 'Cmp', turbojet.map_path / 'compmap.map' , None, '020', '030', 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
+    compressor1 = TCompressor(turbojet, 'Cmp', turbojet.maps_dir_path / 'compmap.map' , None, '020', '030', 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
     # option for polytropic efficiency, uncomment next line
     # compressor1.Polytropic_Eta = 1
 
@@ -89,7 +89,7 @@ def main():
                 # fuel specified by Fuel temperature and Fuel composition (by mass)
                 #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
-    turbine1 =    TTurbine(turbojet, 'Trb', turbojet.map_path / 'turbimap.map', None, '040', '050', 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
+    turbine1 =    TTurbine(turbojet, 'Trb', turbojet.maps_dir_path / 'turbimap.map', None, '040', '050', 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
     # option for polytropic efficiency, uncomment next line
     # turbine1.Polytropic_Eta = 1
 
@@ -145,7 +145,7 @@ def main():
     # plot nY vs X parameter
     turbojet.Plot_X_nY_graph('Engine performance vs. N [%]',
                             # suffix for filename to keep multiple plot files apart
-                            "", 
+                            "",
                             # common X parameter column name with label
                             ("N1%",           "Rotor speed [%]"),
                             # 4 Y paramaeter column names with labels and color

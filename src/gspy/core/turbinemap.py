@@ -29,21 +29,6 @@ class TTurbineMap(TTurboMap):
         # tbd : read stall line
         return amaptype, amaptitle, amapfile
 
-    # 1.6 WV obsolete now, see below
-    # def ReadPRlimits(self, mapfile, keyword):
-    #     line = mapfile.readline()
-    #     while keyword not in line.upper():
-    #         line = mapfile.readline()
-    #     line = mapfile.readline()
-    #     items = line.split()
-    #     nccount1= float(items[0])%1
-    #     nccount = round(nccount1*1000)-1
-    #     nc_values = np.empty(nccount, dtype=float)
-    #     line = mapfile.readline()
-    #     # items = line.split()
-    #     prlimits_array = np.array(list(map(float, line.split()[1:])))
-    #     return nc_values, prlimits_array
-
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         super().ReadMap(filename)
 
@@ -52,14 +37,14 @@ class TTurbineMap(TTurboMap):
         # read PR min values
         # self.nc_values, self.prmin_array = self.ReadPRlimits(self.mapfile, 'MIN PRESSURE RATIO')
         # self.nc_values, self.prmax_array = self.ReadPRlimits(self.mapfile, 'MAX PRESSURE RATIO')
-        dummy_value, self.nc_values, self.prmin_array = self.ReadNcBetaCrossTable(self.mapfile, 'MIN PRESSURE RATIO')
-        dummy_value, self.nc_values, self.prmax_array = self.ReadNcBetaCrossTable(self.mapfile, 'MAX PRESSURE RATIO')
+        dummy_value, self.nc_values, self.prmin_array = self.ReadNcBetaCrossTable(self.map_file, 'MIN PRESSURE RATIO')
+        dummy_value, self.nc_values, self.prmax_array = self.ReadNcBetaCrossTable(self.map_file, 'MAX PRESSURE RATIO')
         # convert from 2-D array with 1 row to a 1-D array
         self.prmin_array = self.prmin_array[0]
         self.prmax_array = self.prmax_array[0]
 
-        self.nc_values, self.beta_values, self.wc_array = self.ReadNcBetaCrossTable(self.mapfile, 'MASS FLOW')
-        self.nc_values, self.beta_values, self.eta_array = self.ReadNcBetaCrossTable(self.mapfile, 'EFFICIENCY')
+        self.nc_values, self.beta_values, self.wc_array = self.ReadNcBetaCrossTable(self.map_file, 'MASS FLOW')
+        self.nc_values, self.beta_values, self.eta_array = self.ReadNcBetaCrossTable(self.map_file, 'EFFICIENCY')
 
         # now calculate PR_value table:
         # Unlike with the compressor, for the turbine PR values can be calculated
@@ -159,7 +144,7 @@ class TTurbineMap(TTurboMap):
                     self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(),
                     linewidth=1.5, linestyle='solid', color='navy')
 
-        self.map_figure.savefig(self.map_figure_pathname)
+        self.map_figure.savefig(self.map_figure_file_path)
 
     def PlotDualMap(self, use_scaled_map = False, do_plot_design_point = False, do_plot_series = False, nc_labels_use_scaling = True, beta_lines = True, beta_label_side = 'end'):
         super().PlotDualMap(use_scaled_map, do_plot_design_point, do_plot_series, nc_labels_use_scaling)
@@ -217,4 +202,4 @@ class TTurbineMap(TTurboMap):
             self.secondary_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
 
         # self.dual_map_figure.tight_layout()
-        self.dual_map_figure.savefig(self.map_figure_pathname)
+        self.dual_map_figure.savefig(self.map_figure_file_path)

@@ -18,30 +18,29 @@ import cantera as ct
 import gspy.core.utils as fu
 from scipy.optimize import root_scalar
 from gspy.core.gaspath import TGaspath
-import gspy.core.sys_global as fg
-import gspy.core.system as fsys
+
 
 class TExhaustDiffuser(TGaspath):
-    def __init__(self, name, MapFileName, ControlComponent, stationin, stationthroat, stationout, CXdes, CVdes, CDdes, PRdes):    # Constructor of the class
+    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, PRdes):    # Constructor of the class
         # CXdes, CVdes, CDdes are for propelling nozzle
         # PRdes = diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
         # If PRdes <> None then a divergent diffuser expansion is calculated, with PRdes as the diffuser
         # pressure loss. PRdes must be < 1. Psout then determines the diffuser exit area A9.
-        super().__init__(name, MapFileName, ControlComponent, stationin, stationout)
+        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
         self.PRdes = PRdes
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         # add nozzle throat station
         if Mode == 'DP':
-            self.GasThroat = ct.Quantity(self.GasIn.phase, mass = self.GasIn.mass)
+            self.GasThroat = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
         else:
-            self.GasThroat.TPY = self.GasIn.TPY
-            self.GasThroat.mass = self.GasIn.mass
-        Sin = self.GasIn.entropy_mass
-        Hin = self.GasIn.enthalpy_mass
-        Pin = self.GasIn.P
-        Pout = fsys.ambient.Psa
+            self.GasThroat.TPY = self.gas_in.TPY
+            self.GasThroat.mass = self.gas_in.mass
+        Sin = self.gas_in.entropy_mass
+        Hin = self.gas_in.enthalpy_mass
+        Pin = self.gas_in.P
+        Pout = self.owner.ambient.Psa
         # diffuser with pressure loss, diffusing flow.
         # 1 - PR is rel. pressure loss proportional to Wc^2
         # in derived version, maybe make PR loss map
@@ -50,25 +49,26 @@ class TExhaustDiffuser(TGaspath):
         if Mode == 'DP':
             # diffuser
             # use GasThroat as exit here
-            self.GasThroat.TP = self.GasIn.T, Pout
-            fsys.errors = np.append(fsys.errors, 0)
-            self.ierror_p = fsys.errors.size - 1
+            self.GasThroat.TP = self.gas_in.T, Pout
+            self.owner.errors = np.append(self.owner.errors, 0)
+            self.ierror_p = self.owner.errors.size - 1
         else:
             # Off-design calculation
-            # fsys.errors[self.ierror_p] = self.GasIn.P*self.PR / Pout
-            fsys.errors[self.ierror_p] = (self.GasIn.P*self.PR - Pout) / Pout
-        self.GasOut.TP = self.GasThroat.T, Pout
-        return self.GasOut
+            # fsys.errors[self.ierror_p] = self.gas_in.P*self.PR / Pout
+            self.owner.errors[self.ierror_p] = (self.gas_in.P*self.PR - Pout) / Pout
+        self.gas_out.TP = self.GasThroat.T, Pout
+        return self.gas_out
 
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
         # Print and return the results
-        print(f"\t\tExit static temperature: {self.GasOut.T:.1f} K")
-        print(f"\t\tExit static pressure: {self.GasOut.P:.0f} Pa")
+        print(f"\t\tExit static temperature: {self.gas_out.T:.1f} K")
+        print(f"\t\tExit static pressure: {self.gas_out.P:.0f} Pa")
 
-    #  1.1 WV
-    def AddOutputToDict(self, Mode):
-        super().AddOutputToDict(Mode)
-        fsys.output_dict[f"T{self.stationout}"]  = self.GasOut.T
-        fsys.output_dict[f"P{self.stationout}"]  = self.GasOut.P
+    def get_outputs(self):
+        out = super().get_outputs()
+        sout = self.station_out
+        out[f"T{sout}"]  = self.gas_out.T
+        out[f"P{sout}"]  = self.gas_out.P
 
+        return out

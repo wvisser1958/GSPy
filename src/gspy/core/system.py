@@ -24,8 +24,7 @@ from scipy.optimize import root
 import matplotlib.pyplot as plt
 import gspy.core.sys_global as fg
 from gspy.core.ambient import TAmbient
-
-# VERBOSE = True
+from gspy.core.gaspath import TGaspath
 
 class TSystemModel:
     def __init__(self, model_name, model_root: Path | None = None):
@@ -46,12 +45,12 @@ class TSystemModel:
         self.model_root = default_root
 
         # Paths relative to the chosen model root
-        self.map_path = self.model_root / "maps"
-        self.input_path = self.model_root / "input"
-        self.output_path = self.model_root / "output"
+        self.maps_dir_path = self.model_root / "maps"
+        self.input_dir_path = self.model_root / "input"
+        self.output_dir_path = self.model_root / "output"
 
         # Tell the core where to put outputs
-        fg.output_path = self.output_path
+        # 2.0 obsolete fg.output_dir_path = self.output_dir_path
 
         self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
 
@@ -79,14 +78,31 @@ class TSystemModel:
 
         self.reset_output()
 
+        self.VERBOSE = True
+
         self.mode = None
         self.error_tolerance = 0.0001 # default error tolerance 0.1%, override if needed in main code
 
         # error code constants
         self.no_error = 0
-        self.convergence_error = 1
-        self.exception_error = 2
+        self.no_convergence_error = 1
+        self.max_iterations_exceeded_error = 2
+        self.false_convergence_error = 3
+        self.exception_error = 4
 
+        self.continue_next_OD_point_on_error = True
+
+    def get_error_text(self, error_code):
+        if error_code == self.no_convergence_error:
+            return 'Not converged'
+        elif error_code == self.max_iterations_exceeded_error:
+            return 'Max. nr. of iterations exceeded'
+        elif error_code == self.false_convergence_error:
+            return 'False Krylov convergence'
+        elif error_code == self.exception_error:
+            return 'Exception error'
+        else:
+            return ''
         # Do print to console!
         self.VERBOSE = True
 
@@ -102,6 +118,12 @@ class TSystemModel:
             if comp.name == component_name:
                 return comp
         return None  # Return None if no matching object is found
+
+    def get_component_object_by_name(self, aname):
+        return next((obj for obj in self.component_run_list if obj.name == aname), None)
+
+    def get_gaspathcomponent_object_inlet_stationnr(self, astationnr):
+        return next((obj for obj in self.component_run_list if (isinstance(obj, TGaspath)) and (obj.station_in == astationnr)), None)
 
     def reinit_states_and_errors(self):
         # global states, errors
@@ -130,8 +152,6 @@ class TSystemModel:
         # global system_model, states, errors, Ambient, Control
         self.states = states_par.copy()
         self.reinit_system()
-        # Ambient.Run(Mode, PointTime)
-        # Ambient.AddOutputToDict(Mode)
 
         self.output_dict['Point/Time'] = point_time
         self.output_dict['Mode'] = mode
@@ -144,11 +164,12 @@ class TSystemModel:
         for comp in self.component_run_list:
             comp.Run(mode, point_time)
 
-            # comp.AddOutputToDict(aMode)
             self.output_dict.update(comp.get_outputs())
 
         # v1.3 moved to BEFORE PostRun calls
-        self.AddSystemOutputToDict(mode)
+        # self.AddSystemOutputToDict(mode)
+        self.output_dict.update(self.get_outputs())
+
         for comp in self.component_run_list:
             comp.PostRun(mode, point_time)
         return self.errors
@@ -192,8 +213,13 @@ class TSystemModel:
                         targetresiduals,
                         dp_variables_init,
                         method='krylov',
-                        tol=self.error_tolerance,
-                        options={'maxiter': 100}
+                        # tol=self.error_tolerance,
+                        # options={'maxiter': 100}
+                         options={
+                                'maxiter': 100,
+                                'fatol': self.error_tolerance,     # absolute residual target
+                                'xatol': 1e-12,                     # avoid premature "small step" success
+                                }
                     )
                 except Exception as e:
                     self.Do_Output(0, self.exception_error)
@@ -222,33 +248,50 @@ class TSystemModel:
             # start with all states 1 and errors 0
             self.print_states_and_errors()
             self.reinit_states_and_errors()
-            maxiter=50
+            maxiter=100
             successcount = 0
             failedcount = 0
             for ipoint in self.inputpoints:
                 # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
                 # fsys.Do_Output(Mode, inputpoints[ipoint])
-                solution = root(residuals,
-                                self.states,
-                                method = 'krylov',
-                                tol=self.error_tolerance,
-                                options={'maxiter': maxiter})
-                                # options={'maxiter': maxiter, 'xtol': 0.01})
-                                # options={'maxiter': maxiter, 'line_search': 'wolfe'})
-                if ipoint % self.points_output_interval == 0:
-                    self.Do_Output(self.inputpoints[ipoint], self.no_error if solution.success else self.convergence_error)
-                if solution.success:
-                    successcount = successcount + 1
-                else:
+                try:
+                    solution = root(residuals,
+                                    self.states,
+                                    method = 'krylov',
+                                    # tol=self.error_tolerance,
+                                    # options={'maxiter': maxiter})
+                                        options={
+                                                'maxiter': maxiter,
+                                                'fatol': self.error_tolerance,     # absolute residual target
+                                                'xatol': 1e-12,                     # avoid premature "small step" success
+                                                }
+                                    )
+                                    # options={'maxiter': maxiter, 'xtol': 0.01})
+                                    # options={'maxiter': maxiter, 'line_search': 'wolfe'})
+                    # 2.0
+                    r = residuals(solution.x)
+                    rmax = np.max(np.abs(r))
+                    if rmax > self.error_tolerance:
+                        raise RuntimeError(f"{self.get_error_text(self.false_convergence_error)}: residual {rmax}")
+
+                    if ipoint % self.points_output_interval == 0:
+                        self.Do_Output(self.inputpoints[ipoint], self.no_error if solution.success else self.convergence_error)
+                    if solution.success:
+                        successcount = successcount + 1
+                    else:
+                        failedcount = failedcount + 1
+                        print(f"Could not find a solution for point {ipoint} with max {maxiter} iterations")
+                except Exception as e:
+                    if rmax > self.error_tolerance:
+                        error_index = self.false_convergence_error
+                    else:
+                        error_index = self.exception_error
+                    self.Do_Output(self.inputpoints[ipoint], error_index)
                     failedcount = failedcount + 1
-                    print(f"Could not find a solution for point {ipoint} with max {maxiter} iterations")
-                # for debug
-                # wf = fu.get_component_object_by_name(turbojet, 'combustor1').Wf
-                # wfpoint = np.array([inputpoints[ipoint], wf], dtype=float)
-                # point_wf_states_array = np.concatenate((wfpoint, fsys.states))
-                # savedstates = np.vstack([savedstates, point_wf_states_array])
-            # for debug
-            # solution = root(residuals, [ 0.55198737,  0.71696654,  0.76224776,  0.85820746], method='krylov')
+                    print(f"OD simulation: Error at point {ipoint}: {e}")
+                    if not self.continue_next_OD_point_on_error:
+                        break
+
         except Exception as e:
             self.Do_Output(self.inputpoints[ipoint], self.exception_error)
             failedcount = failedcount + 1
@@ -261,9 +304,11 @@ class TSystemModel:
 
     def PrintPerformance(self, mode, PointTime):
         print(f"System performance ({mode}) Point/Time:{PointTime}")
-        self.FN = self.FG - self.RD
-        if (self.FG != 0) and (self.RD !=0):
-            print(f"\tNet thrust: {self.FN:.2f} kN")
+        if (self.FG != 0) or (self.RD !=0):
+            self.FN = self.FG - self.RD
+            print(f"\tGross thrust: {self.FG:.2f} kN")
+            print(f"\tRam drag    : {self.RD:.2f} kN")
+            print(f"\tNet thrust  : {self.FN:.2f} kN")
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW = self.PW + shaft.PW_sum
@@ -271,23 +316,25 @@ class TSystemModel:
         if not math.isclose(self.PW, 0.0, abs_tol=1e-9):
             print(f"\tTotal power output : {self.PW/1000:.2f} kW")
 
-    #  1.1 WV
-    def AddSystemOutputToDict(self, Mode):
-        self.FN = self.FG - self.RD
-        self.output_dict["FG"] = self.FG
-        self.output_dict["FN"] = self.FN
-        self.output_dict["RD"] = self.RD
-        self.output_dict["WF"] = self.WF
-        self.output_dict["PW"] = self.PW
+    # 2.0.0.0
+    def get_outputs(self):
+        out = {}
+        if (self.FG != 0) or (self.RD !=0):
+            self.FN = self.FG - self.RD
+            out["FG"] = self.FG
+            out["FN"] = self.FN
+            out["RD"] = self.RD
+        out["WF"] = self.WF
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW = self.PW + shaft.PW_sum
-            self.output_dict[f"PW{shaft.ShaftNr}"] = shaft.PW_sum/1000
-        self.output_dict["PW"] = self.PW/1000
+            out[f"PW{shaft.ShaftNr}"] = shaft.PW_sum/1000
+        out["PW"] = self.PW/1000
+        return out
 
     # v1.2
     # def Do_Output(PointTime, Solution):
-    def Do_Output(self, PointTime, ErrorCode):
+    def Do_Output(self, PointTime, error_code):
         # output to terminal
         # global system_model,  OutputTable, Ambient
 
@@ -300,20 +347,15 @@ class TSystemModel:
                 comp.PrintPerformance(self.mode, PointTime)
             self.PrintPerformance(self.mode, PointTime)
 
-        # add system performance
-        self.AddSystemOutputToDict(self.mode)
-
-        #  v1.2
-        if ErrorCode == 1:
-            self.output_dict['Comment'] = 'Not converged'
-        elif ErrorCode == 2:
-            self.output_dict['Comment'] = 'Exception error'
-        else:
-            self.output_dict['Comment'] = ''
+        #  2.0
+        self.output_dict['Comment'] = self.get_error_text(error_code)
 
         #  2.0
         # add output of this point (ouptut_dict) to output_rows dictionary
         self._output_rows.append(self.output_dict.copy())
+
+        # add system performance
+        # self.AddSystemOutputToDict(self.mode)
 
     def print_states_and_errors(self):
         print(f"Nr. of state variables: {len(self.states)}\nNr. of error equations: {len(self.errors)}")
@@ -324,8 +366,8 @@ class TSystemModel:
 
     def OutputToCSV(self):
         # Export to Excel
-        os.makedirs(self.output_path, exist_ok=True)
-        outputcsvfilename = os.path.join(self.output_path, self.model_name + ".csv")
+        os.makedirs(self.output_dir_path, exist_ok=True)
+        outputcsvfilename = os.path.join(self.output_dir_path, self.model_name + ".csv")
         self.output_table.to_csv(outputcsvfilename, index=False, float_format='%.6f')
         print("output saved in "+outputcsvfilename)
 
@@ -385,7 +427,7 @@ class TSystemModel:
         # xyplotfilename = os.path.join(output_directory, os.path.splitext(os.path.basename(__file__))[0]) + ".jpg"
         # 2.0.0.0
         # jpg_filename = self.model_name + filename_suffix + ".jpg"
-        jpg_filename = os.path.join(self.output_path, self.model_name + filename_suffix + ".jpg")
+        jpg_filename = os.path.join(self.output_dir_path, self.model_name + filename_suffix + ".jpg")
         fig.savefig(jpg_filename)
         print("x-4y plot saved in " + jpg_filename)
 

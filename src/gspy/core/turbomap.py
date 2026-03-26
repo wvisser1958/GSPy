@@ -51,11 +51,11 @@ class TTurboMap(TMap):
         # Map paramter naming
         # 1.1 WV bug fix
         # self.Nc_comp_param = f"Nc{self.ShaftString}"
-        self.Nc_comp_param = f"Nc{self.host_component.stationin}"
+        self.Nc_comp_param = f"Nc{self.host_component.station_in}"
         if self.OL_xcol != '':
             self.Wc_in_param = self.OL_xcol
         else:
-            self.Wc_in_param = 'Wc' + str(self.host_component.stationin)
+            self.Wc_in_param = 'Wc' + str(self.host_component.station_in)
         if self.OL_ycol != '':
             self.PR_comp_param = self.OL_ycol
         else:
@@ -129,10 +129,10 @@ class TTurboMap(TMap):
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         amaptype, amaptitle, amapfile = super().ReadMap(filename)
         # with self.file:
-        if self.mapfile is not None:
-            line = self.mapfile.readline()
+        if self.map_file is not None:
+            line = self.map_file.readline()
             while 'REYNOLDS' not in line.upper():
-                line = self.mapfile.readline()
+                line = self.map_file.readline()
             RNI = np.empty(2, dtype=float)
             f_RNI = np.empty(2, dtype=float)
             items = line.split()
@@ -185,8 +185,8 @@ class TTurboMap(TMap):
         return nc_values, beta_values, fval_array
 
     def ReadMapAndGetScaling(self, Ncdes, Wcdes, PRdes, Etades):
-        self.ReadMap(self.MapFileName)
-        if self.mapfile is not None:
+        self.ReadMap(self.map_filename)
+        if self.map_file is not None:
             # get map scaling parameters
             # for Nc
             self.SFmap_Nc = Ncdes / self.Ncmapdes
@@ -261,11 +261,13 @@ class TTurboMap(TMap):
     # def PlotDualMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True):
     def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = False, do_plot_design_point = False, do_plot_series = False, nc_labels_use_scaling = True):
         # Store plot under a different name, override map file name
-        # reuse the map_figure_pathname and map size class parameters
+        # reuse the map_figure_file_path and map size class parameters
         # 1.4
-        # self.map_figure_pathname = './output/' + self.name + '_dual' + '.jpg'
+        # self.map_figure_file_path = './output/' + self.name + '_dual' + '.jpg'
         # 1.6.0.3 reverted
-        self.map_figure_pathname = fg.output_path / (self.name + '_dual' + '.jpg')
+        # self.map_figure_file_path = self.out fg.output_dir_path / (self.name + '_dual' + '.jpg')
+        # override default
+        self.map_figure_file_path = self.map_figure_dir_path / (self.name + '_dual' + '.jpg')
 
         # Create the subplot graph for a split turbomachinary plot
         self.dual_map_figure, (self.main_plot_axis, self.secondary_plot_axis) = plt.subplots(

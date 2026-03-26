@@ -19,21 +19,21 @@ import gspy.core.sys_global as fg
 from gspy.core.gaspath import TGaspath
 
 class TInlet(TGaspath):
-    def __init__(self, owner, name, MapFileName, ControlComponent, stationin, stationout, Wdes, PRdes):  # Constructor of the class
-        super().__init__(owner, name, MapFileName, ControlComponent, stationin, stationout)
+    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, Wdes, PRdes):  # Constructor of the class
+        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
         self.Wdes = Wdes
         self.PRdes = PRdes
 
     def Run(self, Mode, PointTime):
         if Mode == 'DP':
             # Get the ambient conditions for the inlet gas_in conditions
-            self.owner.gaspath_conditions[self.stationin] = self.owner.gaspath_conditions[self.owner.ambient.station_nr]
-            self.owner.gaspath_conditions[self.stationin].mass = self.Wdes
+            self.owner.gaspath_conditions[self.station_in] = self.owner.gaspath_conditions[self.owner.ambient.station_nr]
+            self.owner.gaspath_conditions[self.station_in].mass = self.Wdes
         super().Run(Mode, PointTime)
-        # self.GasIn.TP = self.GasIn.T, self.GasIn.P
+        # self.gas_in.TP = self.gas_in.T, self.gas_in.P
         if Mode == 'DP':
-            self.GasIn.mass = self.Wdes
-            self.wcdes = self.GasIn.mass * fg.GetFlowCorrectionFactor(self.GasIn)
+            self.gas_in.mass = self.Wdes
+            self.wcdes = self.gas_in.mass * fg.GetFlowCorrectionFactor(self.gas_in)
             self.wc = self.wcdes
             self.PR = self.PRdes
             self.owner.states = np.append(self.owner.states, 1)
@@ -42,13 +42,13 @@ class TInlet(TGaspath):
             self.wc = self.owner.states[self.istate_wc] * self.wcdes
             if self.wc < 0.001*self.wcdes:
                 self.wc = 0.001*self.wcdes
-            self.GasIn.mass = self.wc / fg.GetFlowCorrectionFactor(self.GasIn)
-            self.GasOut.TP = self.GasIn.T, self.GasIn.P * self.PRdes
+            self.gas_in.mass = self.wc / fg.GetFlowCorrectionFactor(self.gas_in)
+            self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PRdes
             # this inlet has constant PR, no OD PR yet (use manual input in code here, or make PR, Ram recovery map)
             self.PR = self.PRdes
-        self.GasOut.TP = self.GasIn.T, self.GasIn.P * self.PR
-        self.GasOut.mass = self.GasIn.mass
-        self.RD = self.GasIn.mass * self.owner.ambient.V / 1000 # kN
+        self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PR
+        self.gas_out.mass = self.gas_in.mass
+        self.RD = self.gas_in.mass * self.owner.ambient.V / 1000 # kN
         # add ram drag to system level ram drag (note that multiple inlets may exist)
         self.owner.RD = self.owner.RD + self.RD
-        return self.GasOut
+        return self.gas_out

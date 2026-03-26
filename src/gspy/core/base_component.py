@@ -19,20 +19,15 @@ from gspy.core.map import TMap
 from typing import Optional
 
 class TComponent:
-    def __init__(self, owner, name, MapFileName, ControlComponent):    # Constructor of the class
+    def __init__(self, owner, name, map_filename, control_component):    # Constructor of the class
         self.owner = owner
         self.name = name
-        # 1.5 set as object parameter
-        self.MapFileName = MapFileName
-        if ControlComponent and getattr(ControlComponent, "name", "").strip():
-            self.ControlComponentName = ControlComponent.name
-        # 1.5 Necessary for fixing a wiring problem, which was exposed when developing the API
-        # 1.7.0.0 fsys.components[self.name] = self
-
-        # assume in most cases single map in instantiable child classes (add extra map if necessary, e.g. with f_fan)
+        self.map_filename = map_filename
+        # assume in most cases single map in instantiable child classes
+        # (add extra map if necessary, e.g. with f_fan)
         self.map: Optional[TMap] = None
         # 1.1 WV
-        self.Control = ControlComponent
+        self.control = control_component
 
     # 1.6
     def PreRun(self, Mode, PointTime):
@@ -56,15 +51,8 @@ class TComponent:
     def PlotMaps(self): # Plot performance in map(s)
         if self.map != None:
             self.map.PlotMap()
-            # 1.4
-            # print(self.name + " map with operating curve saved in " + self.map.map_figure_pathname)
-            print(f"{self.name} map with operating curve saved in {self.map.map_figure_pathname}")
+            print(f"{self.name} map with operating curve saved in {self.map.map_figure_file_path}")
 
-    # #  1.1 WV
-    # def AddOutputToDict(self, Mode):
-    #     raise NotImplementedError("Subclass must implement AddOutputToDict abstract method")
-
-    #  2.0.0.0
     def get_outputs(self):
         return {}
 

@@ -36,15 +36,15 @@ def main():
     turbojet = TSystemModel('Turbojet AM')
 
     inlet1   = TInlet(turbojet, 'Inlet1',      '', None,           1,2,   19.9, 1    )
-    compressor1 = TCompressor(turbojet, 'compressor1',turbojet.map_path / 'compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
+    compressor1 = TCompressor(turbojet, 'compressor1', 'compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
     # no OD fuel input from FuelControl: constant fuel flow
     combustor1 = TCombustor(turbojet, 'combustor1', '',  None, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, '', None)
-    turbine1 =    TTurbine(turbojet,    'turbine1'   ,turbojet.map_path / 'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
+    turbine1 =    TTurbine(turbojet,    'turbine1'   , 'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
     duct1    = TDuct(turbojet, 'exhduct',      '', None,            5,7,   1.0        )
     exhaustnozzle = TExhaustNozzle(turbojet, 'exhaustnozzle',  '', None,            7,8,9, 1, 1, 1)
     amcontrol = TAMcontrol(turbojet, 'AMcontrol',
                         # input data file
-                        turbojet.input_path / "Turbojet_AMinput.csv",
+                        "Turbojet_AMinput.csv",
                         (combustor1, "Wf"),
                         ['Alt', 'dTs', 'Macha'],
                         ['T3',

@@ -19,8 +19,8 @@ import gspy.core.sys_global as fg
 from gspy.core.gaspath import TGaspath
 
 class TDuct(TGaspath):
-    def __init__(self, owner, name, MapFileName, ControlComponent, stationin, stationout, PRdes):    # Constructor of the class
-        super().__init__(owner,     name, MapFileName, ControlComponent, stationin, stationout)
+    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, PRdes):    # Constructor of the class
+        super().__init__(owner,     name, MapFileName, ControlComponent, station_in, station_out)
         self.PRdes = PRdes
 
     def Run(self, Mode, PointTime):
@@ -28,5 +28,5 @@ class TDuct(TGaspath):
         # v1.2 dprel proportional to Wc^2
         dprel = (1 - self.PRdes) * np.square(self.Wc/self.Wcdes)
         self.PR = 1 - dprel
-        self.GasOut.TP = self.GasIn.T, self.GasIn.P*self.PR
-        return self.GasOut
+        self.gas_out.TP = self.gas_in.T, self.gas_in.P*self.PR
+        return self.gas_out

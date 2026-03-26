@@ -47,22 +47,37 @@ def main():
     # Generic gas turbine components
     inlet1   = TInlet(turbojet, 'Inlet1',      '', None,           1,2,   19.9, 1    )
 
-    compressor1 = TCompressor(turbojet, 'compressor1',turbojet.map_path / 'compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
+    compressor1 = TCompressor(turbojet, 'compressor1', 'compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
     # option for polytropic efficiency, uncomment next line
     # compressor1.Polytropic_Eta = 1
 
     # OD fuel input from FuelControl
-    combustor1 = TCombustor(turbojet, 'combustor1', '',  fuelcontrol, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, None, None)
-    # Texit input
-    # TCombustor('combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
+    combustor1 = TCombustor(turbojet,    # owning system model object
+                            'combustor1',# component name
+                            '',          # map file name
+                            fuelcontrol, # fuel control component
+                            3, 4,        # station nr in and out
+                            0.38,        # Wfuel design
+                            None,        # Texit design
+                            1,           # design pressure ratio
+                            1,           # design combustor efficiency
+                            None,        # Fuel temperature K
+                            43031,       # LHV
+                            1.9167,      # HCratio
+                            0,           # OCratio
+                            None,        # Fuelcomposition
+                            None         # Cross flow area to calculate fundamental pressue loss
+                            )
+    # Texit input:
+    # TCombustor(turbojet, 'combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
                 # fuel specification examples:
                 # fuel specified by LHV, HCratio, OCratio:
                     # None,      43031, 1.9167, 0, ''),
 
                 # fuel specified by Fuel composition (by mass)
                     # NC12H26 = Dodecane ~ jet fuel, CH4 for hydrogen
-
                 # None,      None, None, None, 'NC12H26:1'),
+
                 # fuel specified by Fuel temperature and Fuel composition (by mass)
                     # 288.15,      None, None, None, 'CH4:1'),
 
@@ -70,7 +85,7 @@ def main():
                 # fuel specified by Fuel temperature and Fuel composition (by mass)
                 #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
-    turbine1 =    TTurbine(turbojet,    'turbine1'   , turbojet.map_path / 'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
+    turbine1 =    TTurbine(turbojet,    'turbine1'   , 'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
     # option for polytropic efficiency, uncomment next line
     # turbine1.Polytropic_Eta = 1
 

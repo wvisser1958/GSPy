@@ -15,7 +15,6 @@
 
 import numpy as np
 from gspy.core.turbomap import TTurboMap
-import gspy.core.system as fsys
 
 class TCompressorMap(TTurboMap):
     def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, ShaftString, Ncmapdes, Betamapdes):
@@ -29,10 +28,10 @@ class TCompressorMap(TTurboMap):
 
     def ReadMap(self, filename):
         super().ReadMap(filename)
-        self.nc_values, self.beta_values, self.wc_array = self.ReadNcBetaCrossTable(self.mapfile, 'MASS FLOW')
-        self.nc_values, self.beta_values, self.eta_array = self.ReadNcBetaCrossTable(self.mapfile, 'EFFICIENCY')
-        self.nc_values, self.beta_values, self.pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'PRESSURE RATIO')
-        dummy_value, self.sl_wc_array, self.sl_pr_array = self.ReadNcBetaCrossTable(self.mapfile, 'SURGE LINE')
+        self.nc_values, self.beta_values, self.wc_array = self.ReadNcBetaCrossTable(self.map_file, 'MASS FLOW')
+        self.nc_values, self.beta_values, self.eta_array = self.ReadNcBetaCrossTable(self.map_file, 'EFFICIENCY')
+        self.nc_values, self.beta_values, self.pr_array = self.ReadNcBetaCrossTable(self.map_file, 'PRESSURE RATIO')
+        dummy_value, self.sl_wc_array, self.sl_pr_array = self.ReadNcBetaCrossTable(self.map_file, 'SURGE LINE')
         self.DefineInterpolationFunctions()
 
     def PlotMap(self, use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, nc_labels_use_scaling = True, beta_lines = True, beta_label_side = 'end'):
@@ -96,7 +95,7 @@ class TCompressorMap(TTurboMap):
                                      self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(),
                                      linewidth=1.5, linestyle='solid', color='navy')
 
-        self.map_figure.savefig(self.map_figure_pathname)
+        self.map_figure.savefig(self.map_figure_file_path)
 
     def PlotDualMap(self, eta_name = 'Eta_is_', use_scaled_map = True, do_plot_design_point = True, do_plot_series = True, nc_labels_use_scaling = True, beta_lines = True, beta_label_side = 'end'):
         super().PlotDualMap(eta_name, use_scaled_map, do_plot_design_point, do_plot_series, nc_labels_use_scaling)
@@ -155,4 +154,4 @@ class TCompressorMap(TTurboMap):
             self.secondary_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
 
         # self.dual_map_figure.tight_layout()
-        self.dual_map_figure.savefig(self.map_figure_pathname)
+        self.dual_map_figure.savefig(self.map_figure_file_path)
