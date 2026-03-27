@@ -17,7 +17,7 @@ import math
 import numpy as np
 import cantera as ct
 import pandas as pd
-from importlib.resources import files, as_file
+import importlib.resources
 
 # standard cantera gas object for air and products is gri30.yaml,
 # i.e.:  gas = ct.Solution('gri30.yaml')
@@ -28,19 +28,9 @@ from importlib.resources import files, as_file
 #
 # note that we want only a SINGLE instance of a cantera.solution (to avoid allocation of unnecessary resources),
 # which can then server in multiple cantera quantities across multiple models
-# resolving location of jetsurf.yaml according to file structure
-# gspy/
-#     __init__.py
-#     src/core/sys_global.py
-#     data/
-#         fluid_props/
-#             jetsurf.yaml
-
-def get_gas():
-    resource = files("gspy").joinpath("../../data/fluid_props/jetsurf.yaml")
-    with as_file(resource) as path:
-        return ct.Solution(str(path))
-gas = get_gas()
+gas = ct.Solution(
+    yaml=importlib.resources.files("gspy").joinpath("data/fluid_props/jetsurf.yaml").read_text()
+)
 
 C_atom_weight = gas.atomic_weight(gas.element_index('C'))
 O_atom_weight = gas.atomic_weight(gas.element_index('O'))
