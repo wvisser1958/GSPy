@@ -35,9 +35,6 @@ from gspy.core.coolingflow import TCoolingFlow
 
 def main():
     turboshaft_2sp = TSystemModel('Turboshaft-2sp_cool')
-    # create a control (controlling inputs to the system model)
-    # components like the combustor retrieve inputs like fuel flow
-    # input fuel flow or combustor exit temperature
 
     # create FuelControl for open loop direct control of fuel flow
     fuel_control = TControl(turboshaft_2sp, 'Control', '', 2.5, 2.5, 0.5, -0.1, None)
@@ -94,9 +91,21 @@ def main():
                                    0)]
     turbine_PT =    TTurbine(turboshaft_2sp,    'PT'   , 'turbimap.map', None, 45, 5, '_pt', 3000, 0.91 , 1, 0.8, 0.99, 'PT', PTcoolingflows)
 
-    duct1    = TDuct(turboshaft_2sp, 'exhduct',      '', None,            5,7,   0.95        )
+    duct1    = TDuct(       turboshaft_2sp,     # owning system model object
+                            'exhduct',          # component name
+                            '',                 # option map file name
+                            None,               # optional control component
+                            5,7,                # station nr in and out
+                            0.95                # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+                            )
 
-    exhaust1 = TExhaustDiffuser(turboshaft_2sp, 'exhaust1',  '', None,            7, 9, 0.95)
+    exhaust1 = TExhaustDiffuser(turboshaft_2sp,         # owning system model object
+                                'exhaust1',             # component name
+                                '',                     # optional map file name
+                                None,                   # optional control component
+                                7, 9,                   # entry and exit station nr
+                                0.95                    # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+                                )
 
     # create a turbojet system model
     turboshaft_2sp.define_comp_run_list(fuel_control,
@@ -132,8 +141,6 @@ def main():
         turboshaft_2sp.ambient.SetConditions('OD', 0, 0, 0, None, None)
         # Run OD simulation
         ODpointscalculated = turboshaft_2sp.Run_OD_simulation()
-
-        turboshaft_2sp.prepare_output_table()
 
         # export OutputTable to CSV
         turboshaft_2sp.OutputToCSV()
