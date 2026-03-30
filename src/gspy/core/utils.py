@@ -165,6 +165,28 @@ def TurbineExpansion(gas_in: ct.Quantity, gas_out: ct.Quantity, PR, Eta, Wexp, E
         PW = Wexp * (gas_in.enthalpy_mass - gas_out.enthalpy_mass)
     return PW
 
+#  2.0
+# try the fastest first.
+# For your case, a good practical order is auto → vcs → gibbs.
+# Do not assume the fastest successful one is always the best-conditioned one.
+# Log solver usage so you can see where robustness problems are coming from.
+def robust_combustor_equilibrate(gas, max_iter=2000):
+    methods = [
+        ("auto",  dict()),
+        ("vcs",   dict(solver="vcs", max_iter=max_iter)),
+        ("gibbs", dict(solver="gibbs", max_iter=max_iter, estimate_equil=-1)),
+    ]
+
+    last_err = None
+    for name, kwargs in methods:
+        try:
+            gas.equilibrate("HP", **kwargs)
+            return name
+        except Exception as err:
+            last_err = err
+
+    raise RuntimeError(f"All HP equilibrium solvers failed. Last error: {last_err}")
+
 def stagnation_pressure_from_quantity(q, V):
     # Stagnation pressure p0 for a ct.Quantity state with speed V.
     # Uses h0 = h + V^2/2 and finds p0 so s(T0,p0,Y) = s(T,P,Y).

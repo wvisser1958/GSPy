@@ -33,15 +33,8 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 def main():
     turbojet = TSystemModel('Turbojet Ncontrol')
 
-    # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
-    # FuelControl for open loop direct control of fuel flow
-    fuelcontrol = TControl(turbojet, 'Ncontrol', '', 1.11, 100, 60, -5, 'N1%')
-
     # N1 rotor speed control
-    # FuelControl = TControl('Ncontrol', '', 0.38, 100, 60, -5, 'N1%')
-
-    # EGT (T5) control : instable at lower power setting due to multiple solutions at same T5
-    # FuelControl = TControl('EGTcontrol', '', 0.38, 1020, 820, -50, 'T5')
+    fuelcontrol = TControl(turbojet, 'Ncontrol', '', 0.38, 100, 60, -5, 'N1%')
 
     # Generic gas turbine components
     inlet1   = TInlet(turbojet, 'Inlet1',      '', None,           1,2,   19.9, 1    )
@@ -52,26 +45,8 @@ def main():
 
     # OD fuel input from FuelControl
     combustor1 = TCombustor(turbojet, 'combustor1', '',  fuelcontrol, 3, 4, 0.38, None, 1, 1, None,      43031, 1.9167, 0, None, None)
-    # Texit input
-    # TCombustor('combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
-                # fuel specification examples:
-                # fuel specified by LHV, HCratio, OCratio:
-                    # None,      43031, 1.9167, 0, ''),
-
-                # fuel specified by Fuel composition (by mass)
-                    # NC12H26 = Dodecane ~ jet fuel, CH4 for hydrogen
-
-                # None,      None, None, None, 'NC12H26:1'),
-                # fuel specified by Fuel temperature and Fuel composition (by mass)
-                    # 288.15,      None, None, None, 'CH4:1'),
-
-                # fuel mixtures
-                # fuel specified by Fuel temperature and Fuel composition (by mass)
-                #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
     turbine1 =    TTurbine(turbojet,    'turbine1'   , 'turbimap.map', None, 4, 5, 1, 16540, 0.88 , 1, 0.50943, 0.99, 'GG', None)
-    # option for polytropic efficiency, uncomment next line
-    # turbine1.Polytropic_Eta = 1
 
     duct1    = TDuct(turbojet, 'exhduct',      '', None,            5,7,   1.0        )
     exhaustnozzle = TExhaustNozzle(turbojet, 'exhaustnozzle',  '', None,            7,8,9, 1, 1, 1)

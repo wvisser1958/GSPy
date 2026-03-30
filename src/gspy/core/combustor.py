@@ -275,8 +275,9 @@ class TCombustor(TGaspath):
                 # make sure fuel mass flow added to the inlet flow:
                 self.gas_out.mass = self.gas_in.mass + self.Wf
 
-                # v 1.2 go to chemical equilibrium
-                self.gas_out.equilibrate('HP')
+                # 2.0
+                #  old self.gas_out.equilibrate('HP')
+                fu.robust_combustor_equilibrate(self.gas_out)
             else:                  # fuel specification based on FuelComposition and Tfuel
                 #  1.4 test if fuel exists (DP may be virtual flow, and OD composition specified, so....)
                 # if Mode == 'DP':
@@ -305,6 +306,7 @@ class TCombustor(TGaspath):
 
                     # 3) Target enthalpy that includes heat loss via Etades
                     self.gas_out.equilibrate("TP")                   # equilibrium at fixed T (mix temp) & P
+
                     dh_rxn_T = self.gas_out.enthalpy_mass - h_in     # this reflects reaction enthalpy at the mix T
 
                     # Apply efficiency (heat loss): scale the enthalpy release
@@ -319,7 +321,9 @@ class TCombustor(TGaspath):
                     # v1.2 reimpose pressure Pout to gas_out
                     self.gas_out.HP = self.gas_out.enthalpy_mass, Pin
 
-                self.gas_out.equilibrate("HP")
+                # 2.0
+                # self.gas_out.equilibrate("HP")
+                fu.robust_combustor_equilibrate(self.gas_out)
 
             # pressure loss
             if (self.A == None) or (self.A ==0):

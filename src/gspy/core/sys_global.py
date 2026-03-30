@@ -38,16 +38,19 @@ from importlib.resources import files, as_file
 
 def get_gas():
     resource = files("gspy").joinpath("../../data/fluid_props/jetsurf.yaml")
+    # resource = files("gspy").joinpath("../../data/fluid_props/jetsurf_noPAH.yaml")
     with as_file(resource) as path:
         return ct.Solution(str(path))
 gas = get_gas()
+
+# gas = ct.Solution('nDodecane_Reitz.yaml')
 
 print("phase Tmin, Tmax =", gas.min_temp, gas.max_temp)
 
 for sp in gas.species():
     thermo = sp.thermo
     if hasattr(thermo, "min_temp") and hasattr(thermo, "max_temp"):
-        if thermo.max_temp <= 2000:
+        if thermo.max_temp <= 2200:
             print(sp.name, thermo.min_temp, thermo.max_temp)
 
 

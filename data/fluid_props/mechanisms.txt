@@ -26,3 +26,419 @@ Need robust high-T combustion chemistry: San Diego
 Need natural-gas-focused chemistry: extended GRI-Mech 3.0, which is also listed at 300–5000 K but is optimized for natural gas mixtures.
 
 If you want, I can map your exact fuel and simulation type to one specific mechanism and show the Cantera code changes.
+
+
+
+On 2000 K limit only sometimes kickin in:
+I know see jetsurf_noPAH.yaml works fine . It just causes some more instability in the outside gas turbin system simulation loop (tested with starting points far from the solution). It also works at temperatures higher than 2000 K.
+However I tried again with the standard jetsurf.yaml and then it also works at temperatures higher than 2000K. See results below:
+phase Tmin, Tmax = 300.0 2000.0
+C5H5 300.0 2000.0
+Design point (DP) results
+=========================
+...
+combustor1 (DP) Point/Time:0
+        Inlet conditions:
+                Mass flow  : 19.90 kg/s
+                Temperature: 542.0 K
+                Pressure   : 701169 Pa
+        DP Corr.Mass flow  : 3.94 kg/s
+        Corr.Mass flow  : 3.94 kg/s
+        DP Pressure ratio  : 1.0000
+        Pressure ratio  : 1.0000
+        Exit conditions:
+                Temperature: 2233.4 K
+                Pressure   : 701169 Pa
+        Fuel flow                 : 1.1000 kg/s
+        Combustion End Temperature: 2233.35 K
+...
+Exit conditions Temperature is calculated by self.gas_out.equilibrate("HP") 
+
+Is it possible that only in some cases, the C5H5 radical causes the cantera iteration to crash? 
+How can this be so inconsistent?
+Thought for 11s
+
+Yes. What you’re seeing is entirely plausible.
+
+The short version is that the 2000 K limit is real for the phase data, but whether you actually crash depends on which equilibrium solver path is used, what intermediate temperatures it visits, and whether C5H5 is present in the relevant intermediate/equilibrium composition in a numerically important way. Cantera’s solvers are not all the same here. The fast ChemEquil / element-potential solver is a different algorithm from the more robust gibbs and vcs solvers. In current Cantera docs, equilibrate(..., solver='auto') tries one solver and falls back to another if needed; historically and across versions, auto behavior has differed, which is one reason these cases can feel inconsistent.
+
+What matters most is this distinction:
+
+gas.max_temp == 2000 K means the thermo parameterization is only guaranteed valid up to 2000 K for the whole phase, because one species (C5H5) tops out there.
+That does not automatically mean every HP equilibrium call must fail whenever the final reported temperature is above 2000 K.
+
+Why not? Because for HP, the robust gibbs and vcs approaches effectively solve a sequence of TP equilibrium problems inside an outer iteration on temperature/pressure. Cantera’s docs explicitly note that for gibbs and vcs, max_iter is the maximum number of outer temperature or pressure iterations when T and/or P is not fixed. By contrast, ChemEquil has an explicit range check that can throw Temperature ... outside valid range when it encounters an out-of-range temperature during its procedure.
+
+So the “inconsistency” is usually one of these:
+
+Different solver got used.
+In one run, auto may end up using a more robust route; in another, the fast element-potential path may be attempted and fail when it touches an out-of-range state. Cantera documents distinct solver options (element_potential / ChemEquil, gibbs, vcs, auto) and that auto tries solvers in sequence.
+The final state can be above 2000 K even if the numerics never “need” C5H5.
+If at the final hot lean equilibrium C5H5 is essentially zero, the solver may converge to a composition dominated by stable small species (CO2, H2O, CO, O2, N2, radicals) and never get hung up badly on C5H5. But in another case, an intermediate iterate or a different starting point can assign enough C5H5 to matter numerically, triggering the temperature-range problem or destabilizing the search. This is an inference from the documented solver differences plus your observation that the issue appears only in some cases.
+Sensitivity to starting point.
+You already observed this with your larger gas-turbine loop: far-from-solution starting points can make the trimmed mechanism less stable. That is very consistent with Cantera’s HP implementation, where non-TP equilibrium uses outer iterations on temperature/pressure and can fail with the well-known setState_HPorUV “No convergence in 500 iterations” path when the iteration wanders badly.
+
+So yes: it is absolutely possible that only some cases crash because of C5H5, while other cases with reported temperatures above 2000 K still converge.
+
+The most likely practical explanation for your specific result is:
+
+In your successful design-point combustor case, the equilibrium composition at 2233 K probably contains negligible C5H5, so the solver can still land on a reasonable answer.
+In the failed cases, the solver path likely visited an intermediate state where the fast solver or the HP outer iteration touched the 2000 K boundary in a way that exposed the C5H5 thermo limit, or the overall nonlinear loop fed Cantera a worse initial state. This is an inference, but it is strongly supported by the documented solver architecture and your “works at solution / unstable far away” observation.
+
+A good way to make this less mysterious is to force the solver and compare behavior directly:
+
+gas.equilibrate("HP", solver="gibbs", max_iter=1000)
+
+and separately:
+
+gas.equilibrate("HP", solver="vcs", max_iter=1000)
+
+If those are stable while your default call sometimes fails, then the issue is probably the default/auto path rather than the thermodynamics alone. Cantera documents these solver choices explicitly.
+
+I would also inspect whether C5H5 is actually present in the successful hot equilibrium result:
+
+print("T =", gas.T)
+print("X_C5H5 =", gas["C5H5"].X[0])
+
+If that mole fraction is tiny, that supports the explanation above.
+
+So the clean conclusion is:
+
+The mechanism is still formally capped at 2000 K.
+A converged result above 2000 K does not prove that the thermo data are valid there.
+Whether it crashes depends on solver choice, initialization, and whether C5H5 becomes numerically important along the iteration path.
+
+For engineering robustness in your turbine-loop simulation, I would strongly prefer making the solver explicit instead of relying on defaults, especially for HP:
+
+gas.equilibrate("HP", solver="gibbs", max_iter=1000)
+
+That is the first thing I’d standardize.
+
+
+so for gas turbines, you expect that fixing the solver to "gibbs" will always be more stable?
+
+Short answer: more stable → yes, always → no.
+
+But for your gas turbine HP equilibrium use case, fixing to "gibbs" is usually the right default choice.
+
+🧠 Why "gibbs" is generally more stable
+
+Cantera has fundamentally different equilibrium strategies:
+
+⚡ Fast (but fragile)
+"element_potential" / ChemEquil
+Very fast
+Assumes smooth behavior
+❌ Sensitive to:
+bad initial guesses
+strong nonlinearity
+species with tight thermo limits (like C5H5)
+🧱 Robust (but slower)
+"gibbs" (Gibbs free energy minimization)
+"vcs" (more general, multi-phase capable)
+
+✔ More stable because:
+
+Does global minimization
+Less dependent on initial guess
+Handles awkward species sets better
+Tolerates trimmed / modified mechanisms
+🔥 In your specific case (gas turbines)
+
+You have:
+
+HP equilibrium
+High temperatures (>2000 K)
+Modified mechanism (PAH trimmed)
+Iterative system loop (far-from-solution starts)
+
+👉 That is basically a worst-case scenario for ChemEquil
+
+So:
+
+Yes — "gibbs" will almost always behave more robustly in your setup
+
+⚠️ But “always stable”? No.
+
+Even "gibbs" can fail if:
+
+The mechanism is thermodynamically inconsistent
+The state is physically unreachable
+The outer HP iteration (enthalpy balance) diverges
+Initial guesses are extremely bad
+
+You already saw this with:
+
+T → ~0 K
+No convergence in 500 iterations
+
+That’s not a solver weakness — that’s the state being unreachable given the species set.
+
+⚖️ "gibbs" vs "vcs" (important)
+
+For your application:
+
+Solver	Stability	Speed	Notes
+"gibbs"	✅ High	⚡ Medium	Best default
+"vcs"	✅ Very high	🐢 Slower	Overkill unless needed
+"element_potential"	❌ Low	🚀 Fast	Avoid for HP here
+
+👉 "vcs" is even more robust than "gibbs", but usually unnecessary for single-phase gas.
+
+🔍 Why your results looked inconsistent earlier
+
+Now everything fits:
+
+Sometimes "auto" → uses fast solver → crashes at 2000 K
+Sometimes "auto" → falls back to gibbs → succeeds at 2233 K
+
+👉 That’s the “inconsistency”
+
+✅ Best practice for your system
+
+I would standardize this everywhere:
+
+gas.equilibrate("HP", solver="gibbs", max_iter=1000)
+🚀 Extra stability tricks (important for system loops)
+1. Provide a better initial temperature
+
+Instead of starting from 298 K:
+
+gas.TP = 1200, P   # closer to combustor reality
+2. Reuse previous solution (very powerful)
+
+In your turbine loop:
+
+# don't reset composition blindly
+# use previous gas state as initial guess
+gas.equilibrate("HP", solver="gibbs")
+3. Clamp temperature during iteration (optional safeguard)
+
+If your loop diverges:
+
+gas.T = max(300, min(gas.T, 4000))
+4. Monitor problematic species
+if "C5H5" in gas.species_names:
+    print("C5H5 =", gas["C5H5"].X[0])
+💡 Key insight (important)
+
+The real issue was never “JetSurf can’t go above 2000 K”
+
+It was:
+
+Some solvers + some iteration paths + one limiting species = occasional failure
+
+🧾 Bottom line
+✔ "gibbs" → much more stable for your case
+❌ Not guaranteed to never fail
+🚫 "element_potential" → avoid for HP in combustor simulations
+🧠 Your observed inconsistency = solver switching + iteration path sensitivity
+
+If you want, I can help you make your combustor block numerically bulletproof (this is a classic problem in gas turbine cycle codes).
+
+Yes. For a gas-turbine cycle code, I’d make the combustor block deterministic and conservative rather than “fast on average.”
+
+My recommendation is:
+
+gas.equilibrate("HP", solver="gibbs", max_iter=1000)
+
+That is a good default because Cantera documents gibbs as slower but more robust, while auto tries the fast element-potential solver first and only falls back if needed. For HP, max_iter controls the outer iterations on temperature or pressure, which is exactly where these combustor cases can get touchy.
+
+Here’s how I would make your combustor block more numerically bulletproof.
+
+1. Fix the solver explicitly
+
+Do not rely on auto in a large system loop.
+
+Use:
+
+gas.equilibrate("HP", solver="gibbs", max_iter=1000)
+
+Why:
+
+element_potential is faster but less robust.
+gibbs is slower but more robust.
+auto can behave differently depending on the case, which is exactly the inconsistency you observed.
+
+If gibbs still struggles in rare cases, try:
+
+gas.equilibrate("HP", solver="vcs", max_iter=2000)
+
+vcs is often even more forgiving, though typically slower. Cantera lists vcs as the non-ideal equilibrium solver and gibbs as the robust Gibbs minimization solver.
+
+2. Never start the combustor equilibrium from 298 K unless you truly mean it
+
+Your combustor inlet is already hot. Starting far away makes the outer HP iteration work much harder.
+
+Bad:
+
+gas.TP = 298.15, P
+
+Better:
+
+gas.TP = T_air_in, P_comb
+
+or even:
+
+gas.TP = max(T_air_in, 800.0), P_comb
+
+for a hot combustor branch.
+
+This matters because HP equilibrium involves outer T/P iterations, and bad starting temperatures are one common reason those iterations wander into ugly regions.
+
+3. Reuse the previous converged combustor state as the next initial guess
+
+This is one of the biggest stability wins in a cycle loop.
+
+Instead of rebuilding the gas object from scratch every time, preserve:
+
+previous temperature
+previous composition
+previous pressure
+
+Then update only what changed.
+
+Pattern:
+
+# previous converged state from last nonlinear iteration
+# gas already contains a realistic hot composition
+
+gas.P = P_comb
+gas.HP = h_target, P_comb
+gas.equilibrate("HP", solver="gibbs", max_iter=1000)
+
+or, if you must rebuild composition each time, at least initialize with the previous combustor temperature and composition.
+
+This reduces solver travel dramatically.
+
+4. Add a guarded fallback ladder
+
+For a production turbine code, I would not let one failed equilibrium call kill the whole outer loop immediately.
+
+Use a fallback sequence like this:
+
+def robust_hp_equilibrate(gas, h_target, p_target):
+    # Try best default
+    try:
+        gas.HP = h_target, p_target
+        gas.equilibrate("HP", solver="gibbs", max_iter=1000)
+        return "gibbs"
+    except Exception:
+        pass
+
+    # Retry with a better temperature guess
+    try:
+        gas.TP = max(gas.T, 1200.0), p_target
+        gas.HP = h_target, p_target
+        gas.equilibrate("HP", solver="gibbs", max_iter=2000)
+        return "gibbs-retry"
+    except Exception:
+        pass
+
+    # Final fallback
+    gas.TP = max(gas.T, 1200.0), p_target
+    gas.HP = h_target, p_target
+    gas.equilibrate("HP", solver="vcs", max_iter=2000)
+    return "vcs"
+
+That keeps the loop moving and makes failures much rarer.
+
+5. Add diagnostics whenever equilibrium fails
+
+When you get the setState_HPorUV error, Cantera is telling you the target enthalpy, current pressure, starting temperature, and current temperature because the temperature iteration itself did not converge. That error format comes directly from ThermoPhase::setState_HPorUV.
+
+Log these at failure:
+
+target enthalpy
+pressure
+current inlet composition
+equivalence ratio
+starting temperature
+fuel flow
+oxidizer flow
+previous converged state
+
+That makes it much easier to distinguish:
+
+bad initial guess
+unreachable state
+solver path issue
+mechanism issue
+6. Add a physically reasonable pre-check before HP equilibrium
+
+Before calling equilibrium, estimate whether the requested state is obviously absurd.
+
+Examples:
+
+combustor pressure must be positive and realistic
+fuel/air ratio should be inside a plausible band
+inlet enthalpy should not be grossly inconsistent with the species set
+avoid near-zero oxidizer or near-zero total flow edge cases
+
+A lot of “solver instability” in cycle codes is really edge-case state generation upstream.
+
+7. Damp the combustor update inside the outer turbine loop
+
+If the outer loop jumps fuel flow or combustor outlet temperature too aggressively, even a robust equilibrium solver can be pushed into hard regions.
+
+Use under-relaxation:
+
+T_comb_new = 0.3 * T_comb_calc + 0.7 * T_comb_old
+
+or for fuel flow:
+
+mfuel = 0.2 * mfuel_newton + 0.8 * mfuel_old
+
+If your code is solving a coupled compressor–combustor–turbine system, this often helps more than changing the chemistry solver.
+
+8. Keep one mechanism per purpose
+
+Given what you found:
+
+jetsurf.yaml can sometimes work above 2000 K
+jetsurf_noPAH.yaml is more permissive but a bit less stable in far-off conditions
+
+I would use:
+
+jetsurf.yaml for normal operating points where it converges reliably
+jetsurf_noPAH.yaml as a robustness option for hot cases or optimization sweeps
+
+But I would not treat either as “universally valid above 2000 K.” The species thermo cap is still there in the original file. A successful convergence above 2000 K does not make the thermo data formally valid there.
+
+9. My practical default combustor recipe
+
+If I were hardening your combustor model, I would do this:
+
+def combustor_equilibrium(gas, h_target, p_target):
+    # realistic initial guess
+    if gas.T < 700.0:
+        gas.TP = 1200.0, p_target
+    else:
+        gas.P = p_target
+
+    try:
+        gas.HP = h_target, p_target
+        gas.equilibrate("HP", solver="gibbs", max_iter=1000)
+        return gas, "gibbs"
+    except Exception:
+        gas.TP = max(1200.0, gas.T), p_target
+        gas.HP = h_target, p_target
+        gas.equilibrate("HP", solver="vcs", max_iter=2000)
+        return gas, "vcs"
+
+And in the outer loop:
+
+reuse previous combustor state
+under-relax fuel flow and outlet temperature
+log every fallback
+10. What I expect in practice
+
+For your application, I’d expect this ranking:
+
+Most robust overall: vcs
+Best balance of robustness and speed: gibbs
+Fastest but least reliable for HP combustors: element_potential / auto when it lands there
+
+That ranking is consistent with Cantera’s own solver descriptions.
+
+If you want, I can turn this into a drop-in Python helper class for your combustor block with retries, logging, and under-relaxation built in.

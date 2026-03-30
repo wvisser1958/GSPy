@@ -306,32 +306,39 @@ class TSystemModel:
 
     def PrintPerformance(self, mode, PointTime):
         print(f"System performance ({mode}) Point/Time:{PointTime}")
+        print(f"\tFuel flow : {self.WF:.2f} kg/s")
         if (self.FG != 0) or (self.RD !=0):
             self.FN = self.FG - self.RD
             print(f"\tGross thrust: {self.FG:.2f} kN")
             print(f"\tRam drag    : {self.RD:.2f} kN")
             print(f"\tNet thrust  : {self.FN:.2f} kN")
+            print(f"\tTSFC        : {self.WF/ self.FN:.2f} kg/s/kN")
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW = self.PW + shaft.PW_sum
             print(f"\tPower offtake shaft {shaft.ShaftNr} : {shaft.PW_sum/1000:.2f} kW")
-        if not math.isclose(self.PW, 0.0, abs_tol=1e-9):
+        if not math.isclose(self.PW, 0.0, abs_tol=1e-3):
             print(f"\tTotal power output : {self.PW/1000:.2f} kW")
+            print(f"\tSFC shaft power    : {self.WF / self.PW * 1000:.2f} kg/s/kW")
+
 
     # 2.0.0.0
     def get_outputs(self):
         out = {}
+        out["WF"] = self.WF
         if (self.FG != 0) or (self.RD !=0):
             self.FN = self.FG - self.RD
             out["FG"] = self.FG
             out["FN"] = self.FN
             out["RD"] = self.RD
-        out["WF"] = self.WF
+            # out["TSFC"] = self.WF / self.FN * 1000 # g/s/kN
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW = self.PW + shaft.PW_sum
             out[f"PW{shaft.ShaftNr}"] = shaft.PW_sum/1000
         out["PW"] = self.PW/1000
+        # if not math.isclose(self.PW, 0.0, abs_tol=1e-3):
+        #     out["SFCshaft"] = self.WF / self.PW * 1000 # kg/s/kW
         return out
 
     def Do_Output(self, PointTime, error_code):

@@ -56,19 +56,8 @@ def main():
     # fuel input
     # Texit input, Wf guess for 1500 K is 1.1 kg/s
     combustor = TCombustor(turbofan, 'Combustor',  '',  fuel_control,           3,4,   1.1 , 1500,    1, 1,
-                                # fuel specification examples:
                                 # fuel specified by LHV, HCratio, OCratio:
                                 None,      43031, 1.9167, 0, '', None)
-
-                                # fuel specified by Fuel composition (by mass)
-                                    # NC12H26 = Dodecane ~ jet fuel, CH4 for hydrogen
-                                # None,      None, None, None, 'NC12H26:1'),
-                                # fuel specified by Fuel temperature and Fuel composition (by mass)
-                                    # 288.15,      None, None, None, 'CH4:1', None),
-
-                                # fuel mixtures
-                                # fuel specified by Fuel temperature and Fuel composition (by mass)
-                                # 288.15,      None, None, None, 'CH4:5, C2H6:1', None),
 
     hpt = TTurbine(turbofan, 'HPT', 'turbimap.map', None, 4,45,   2,   14000, 0.8732,       1, 0.65, 1, 'GG', None)
 
@@ -94,52 +83,6 @@ def main():
                                     hot_nozzle,
                                     cold_duct,
                                     cold_nozzle)
-
-    # # create a turbojet system model
-    # fsys.system_model = [fsys.ambient,
-
-    #                     FuelControl,
-
-    #                     TInlet('Inlet1',          '', None,           0,2,   337, 1    ),
-
-    #                     # for turbofan, note that fan has 2 GasOut outputs
-    #                     TFan('FAN_BST',map_path / 'bigfanc.map', 2, 25, 21,   1,   4880, 0.8696, 5.3, 0.95, 0.7, 2.33,
-    #                                    map_path / 'bigfand.map', 0.95, 0.7, 1.65,            0.8606,
-    #                                    # cf = 1
-    #                                    1),
-
-    #                     # always start with the components following the 1st GasOut object
-    #                     TCompressor('HPC',map_path / 'compmap.map', None, 25,3,   2,   14000, 0.8433, 1, 0.8, 10.9, 'GG', None),
-
-    #                     # ***************** Combustor ******************************************************
-    #                     # fuel input
-    #                     # Texit input, Wf guess for 1500 K is 1.1 kg/s
-    #                     TCombustor('combustor1',  '',  FuelControl,           3,4,   1.1 , 1500,    1, 1,
-    #                                                 # fuel specification examples:
-    #                                                 # fuel specified by LHV, HCratio, OCratio:
-    #                                                 None,      43031, 1.9167, 0, '', None),
-
-    #                                                 # fuel specified by Fuel composition (by mass)
-    #                                                     # NC12H26 = Dodecane ~ jet fuel, CH4 for hydrogen
-    #                                                 # None,      None, None, None, 'NC12H26:1'),
-    #                                                 # fuel specified by Fuel temperature and Fuel composition (by mass)
-    #                                                     # 288.15,      None, None, None, 'CH4:1', None),
-
-    #                                                 # fuel mixtures
-    #                                                 # fuel specified by Fuel temperature and Fuel composition (by mass)
-    #                                                 # 288.15,      None, None, None, 'CH4:5, C2H6:1', None),
-
-    #                     TTurbine('HPT', map_path / 'turbimap.map', None, 4,45,   2,   14000, 0.8732,       1, 0.65, 1, 'GG', None),
-
-    #                     TTurbine('LPT', map_path / 'turbimap.map', None, 45,5,   1,   4480, 0.8682,       1, 0.7, 1, 'GG', None),
-
-
-    #                     TDuct('Exhduct_hot',      '', None,               5,7,   1.0                 ),
-    #                     TExhaustNozzle('HotNozzle',     '', None,           7,8,9, 1, 1, 1),
-
-    #                     # now add the list with components following the 2nd fan GasOut (i.e. the bypass duct)
-    #                     TDuct('Exhduct_cold',      '', None,               21,23,   1.0                 ),
-    #                     TExhaustNozzle('ColdNozzle',      '', None,           23,18,19, 1, 1, 1)]
 
     # run the system model Design Point (DP) calculation
     turbofan.mode = 'DP'
