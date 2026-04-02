@@ -58,11 +58,28 @@ def main():
                            )
 
     # Generic gas turbine components
-    inlet1   = TInlet(turbojet, 'Inlet1',      '', None,           1,2,   19.9, 1    )
+    inlet1   = TInlet(turbojet,                 # owning system model object
+                                'Inlet1',       # component name
+                                  '',           # map file name
+                                  None,         # optional control component
+                                  1,2,          # station nr in and out
+                                  19.9,         # design inlet mass flow
+                                  1             # design pressure ratio (PR = 1 - Ploss_relative)
+                               )
 
-    compressor1 = TCompressor(turbojet, 'compressor1', 'compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
-    # option for polytropic efficiency, uncomment next line
-    # compressor1.Polytropic_Eta = 1
+    compressor1 = TCompressor(turbojet,         # owning system model object
+                              'compressor1',    # component name
+                              'compmap.map' ,   # map file name
+                              None,             # optional control component
+                              2, 3,             # station nr in and out
+                              1,                # shaft nr
+                              16540,            # design rpm
+                              0.825,            # design efficiency
+                              1,                # map design Nc (for scaling)
+                              0.75,             # map design Beta (for scaling)
+                              6.92,             # design pressure ratio
+                              'GG',             # speed option
+                              None)             # option list of bleeds
 
     combustor1 = TCombustor(turbojet,       # owning system model object
                             'combustor1',   # component name
@@ -115,7 +132,7 @@ def main():
                             #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
     turbine1 =    TTurbine(turbojet,        # owning system model object
-                           'turbine1'       # component name
+                           'turbine1',      # component name
                            'turbimap.map',  # map file name
                            None,            # optional control component
                            4, 5,            # station nr in and out
@@ -134,7 +151,7 @@ def main():
 
     duct1    = TDuct(       turbojet,       # owning system model object
                             'exhduct',      # component name
-                            '',             # option map file name
+                            '',             # optional map file name
                             None,           # optional control component
                             5,7,            # station nr in and out
                             1.0             # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
