@@ -208,6 +208,7 @@ def plot_station_parameters(
     plot_parameters=("P", "T", "W"),
     units=None,
     scale=None,
+    adder=None,
     row_index: int = 0,
     point_time=None,
     mode=None,
@@ -242,6 +243,17 @@ def plot_station_parameters(
             )
     else:
         units = [None] * len(params)
+
+    # Validate / default adder
+    if adder is not None:
+        if len(adder) != len(params):
+            raise ValueError(
+                f"'adder' must have same length as plot_parameters ({len(params)}). "
+                f"Got {len(adder)}."
+            )
+        adder = [float(s) for s in adder]
+    else:
+        adder = [0.0] * len(params)
 
     # Validate / default scale
     if scale is not None:
@@ -353,7 +365,7 @@ def plot_station_parameters(
         return f"{param_name}({int(stream_key)})"
 
     # Plot each parameter axis: multiple lines per stream
-    for pi, (ax, p, unit, sc) in enumerate(zip(axes, params, units, scale)):
+    for pi, (ax, p, unit, sc, addr) in enumerate(zip(axes, params, units, scale, adder)):
         base_color = base_colors[pi % len(base_colors)]
 
         # label the y-axis (parameter + unit)
@@ -375,7 +387,7 @@ def plot_station_parameters(
 
         for si, stream_key in enumerate(stream_keys):
             # Build y over all locations, NaN where missing
-            y = np.array([data[p][stream_key].get(loc, np.nan) for loc in locations], dtype=float) * sc
+            y = (np.array([data[p][stream_key].get(loc, np.nan) for loc in locations], dtype=float) + addr) * sc
 
             # choose linestyle per stream, cycling
             ls = linestyles[si % len(linestyles)]
@@ -432,15 +444,22 @@ if __name__ == "__main__":
     # - Plot P, T, W for the first row in the file
     plot_station_parameters(
         # csv_path=r"./projects/turbojet/output/turbojet.csv",
-        csv_path=r"./projects/turbojet/output/turbojet.csv",
-        plot_parameters=("P", "T", "W"),
+        csv_path=r"./projects/turbojet/output/Turbojet_AS210.csv",
+        # plot_parameters=("P", "T", "W"),
+        plot_parameters=("P", "T"),
         row_index=0,
-        units=["[bar]", "[K]", "[kg/s]"],
+        # units=["[bar]", "[K]", "[kg/s]"],
+        # units=["[bar]", "[°C]", "[kg/s]"],
+        units=["[bar]", "[°C]"],
+        # adder=[0,-273.15,0],
+        adder=[0,-273.15],
         # station_gaps=[0.5, 1, 3, 1, 1, 1, 1],  # default equidistant [1, 1, 1, 1, 1, 1, 1, 1]
         # station_gaps=[1, 1, 1, 1, 1, 1, 1],  # default equidistant [1, 1, 1, 1, 1, 1, 1, 1]
-        scale=[1/100000, 1, 1],
+        # scale=[1/100000, 1, 1],
+        scale=[1/100000, 1],
         point_time=0,
         mode="DP",
+        title="Gas properties"
     )
 
     # Example with custom station spacing (gaps):
