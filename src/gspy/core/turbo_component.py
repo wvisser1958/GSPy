@@ -17,7 +17,8 @@ import math
 from abc import ABC, abstractmethod
 from bisect import bisect_left
 import cantera as ct
-import gspy.core.sys_global as fg
+# import gspy.core.sys_global as fg
+import gspy.core.utils as fu
 import gspy.core.shaft as fshaft
 import gspy.core.turbomap as TMap
 from gspy.core.gaspath import TGaspath
@@ -162,7 +163,7 @@ class TTurboComponent(TGaspath):
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
-            self.Ncdes = self.Ndes / fg.GetRotorspeedCorrectionFactor(self.gas_in)
+            self.Ncdes = self.Ndes / fu.GetRotorspeedCorrectionFactor(self.gas_in)
             self.Nc = self.Ncdes
             self.Eta = self.Etades
             self.shaft = self.owner.get_shaft(self.ShaftNr)

@@ -15,7 +15,7 @@
 
 import numpy as np
 import cantera as ct
-import gspy.core.sys_global as fg
+# import gspy.core.sys_global as fg
 from gspy.core.gaspath import TGaspath
 
 class TDuct(TGaspath):

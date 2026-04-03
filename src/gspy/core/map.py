@@ -20,7 +20,7 @@ from scipy.interpolate import griddata
 from scipy.interpolate import SmoothBivariateSpline
 from scipy.ndimage import gaussian_filter
 import os
-from gspy.core import sys_global as fg
+# from gspy.core import sys_global as fg
 
 class TMap:
     def __init__(self, host_component, name, map_filename, OL_xcol, OL_ycol):    # Constructor of the class

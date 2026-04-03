@@ -16,8 +16,10 @@
 import numpy as np
 from scipy.optimize import root, root_scalar
 import cantera as ct
-import gspy.core.sys_global as fg
+# import gspy.core.sys_global as fg
+import gspy.core.system as sys
 from gspy.core.gaspath import TGaspath
+import gspy.core.constants as c
 import gspy.core.utils as fu
 
 class TCombustor(TGaspath):
@@ -51,6 +53,18 @@ class TCombustor(TGaspath):
         # 2.0 for OD equation if Texit specified instead of Wf
         self.istate_Wf = None
         self.ierror_Texit = None
+
+        self.C_atom_weight = owner.gas.atomic_weight(owner.gas.element_index('C'))
+        self.O_atom_weight = owner.gas.atomic_weight(owner.gas.element_index('O'))
+        self.H_atom_weight = owner.gas.atomic_weight(owner.gas.element_index('H'))
+
+        self.O2_molar_mass = owner.gas.molecular_weights[owner.gas.species_index('O2')]
+        self.CO2_molar_mass = owner.gas.molecular_weights[owner.gas.species_index('CO2')]
+        self.H2O_molar_mass = owner.gas.molecular_weights[owner.gas.species_index('H2O')]
+
+        # predetermine h_air_ref
+        owner.gas.TPY = c.T_standard_ref, c.P_standard_ref, c.s_air_composition_mass
+        self.h_air_ref = owner.gas.enthalpy_mass
 
     #  1.4 use separate routine, for allowing change of fuel for OD simulation cases
     def SetFuel(self, aTfuel, aLHV, aHCratio, aOCratio, aFuelComposition):
@@ -233,11 +247,11 @@ class TCombustor(TGaspath):
             # self.GetLHV()
             if (self.FuelComposition == '') or (self.FuelComposition == None):  # fuel specification based on LHV, HC and OC mole ratio
                 # combustion product mass fractions, assuming complete combustion and air/fuel equivalence ratio >= 1
-                O2_exit_mass = w_air * fg.air_O2_fraction_mass + self.Wf/CHyOzMoleMass * (self.OCratio/2 - 1 - self.HCratio/4) * fg.O2_molar_mass
-                CO2_exit_mass = fg.CO2_molar_mass * self.Wf/CHyOzMoleMass + w_air*fg.air_CO2_fraction_mass
-                H2O_exit_mass = fg.H2O_molar_mass * self.Wf/CHyOzMoleMass * self.HCratio/2
-                Ar_exit_mass = w_air * fg.air_Ar_fraction_mass
-                N2_exit_mass = w_air * fg.air_N2_fraction_mass
+                O2_exit_mass = w_air * c.air_O2_fraction_mass + self.Wf/CHyOzMoleMass * (self.OCratio/2 - 1 - self.HCratio/4) * self.O2_molar_mass
+                CO2_exit_mass = self.CO2_molar_mass * self.Wf/CHyOzMoleMass + w_air*c.air_CO2_fraction_mass
+                H2O_exit_mass = self.H2O_molar_mass * self.Wf/CHyOzMoleMass * self.HCratio/2
+                Ar_exit_mass = w_air * c.air_Ar_fraction_mass
+                N2_exit_mass = w_air * c.air_N2_fraction_mass
                 #  2.0 make dictionary, not string (avoid 1-d arrays instead of scalars)
                 # compose the composition string
                 # product_composition_mass = f'O2:{O2_exit_mass}, CO2:{CO2_exit_mass}, H2O:{H2O_exit_mass}, AR:{Ar_exit_mass}, N2:{N2_exit_mass}'
@@ -253,18 +267,18 @@ class TCombustor(TGaspath):
                 # print(product_composition_mass)
 
                 # define enthalpy of combustion products mixture at Pref and Tref of
-                self.gas_out.TPY = fg.T_standard_ref, fg.P_standard_ref, product_composition_mass
+                self.gas_out.TPY = c.T_standard_ref, c.P_standard_ref, product_composition_mass
                 h_prod_ref = self.gas_out.enthalpy_mass # get H in J/kg
 
                 # now, calculate the final enthalpy of the products based on given LHV:
                 # from equation for conservation of energy ()"in = out"):
-                # w_fuel * LHV_kJ_kg*1000 + w_air * (h_air_initial - fg.h_air_ref)  =   (w_air + w_fuel) * (h_prod_final - h_prod_ref)
+                # w_fuel * LHV_kJ_kg*1000 + w_air * (h_air_initial - self.h_air_ref)  =   (w_air + w_fuel) * (h_prod_final - h_prod_ref)
                 # v1.3  bug fix: Etades was not accounted for
-                # h_prod_final = (self.Wf * self.LHV * 1000 + w_air * (h_air_initial-fg.h_air_ref)) / (w_air + self.Wf) + h_prod_ref
+                # h_prod_final = (self.Wf * self.LHV * 1000 + w_air * (h_air_initial-self.h_air_ref)) / (w_air + self.Wf) + h_prod_ref
                 #  2.0
-                h_prod_final = (self.Wf * self.LHV * 1000 * self.Etades + w_air * (h_air_initial-fg.h_air_ref)) / (w_air + self.Wf) + h_prod_ref
+                h_prod_final = (self.Wf * self.LHV * 1000 * self.Etades + w_air * (h_air_initial-self.h_air_ref)) / (w_air + self.Wf) + h_prod_ref
                 # h_prod_final = float(np.asarray(
-                #     (self.Wf * self.LHV * 1000 * self.Etades + w_air * (h_air_initial - fg.h_air_ref))
+                #     (self.Wf * self.LHV * 1000 * self.Etades + w_air * (h_air_initial - self.h_air_ref))
                 #     / (w_air + self.Wf)
                 #     + h_prod_ref
                 # ).squeeze())
@@ -283,7 +297,7 @@ class TCombustor(TGaspath):
                 # if Mode == 'DP':
                 if self.fuel == None:
                     # create separate fuel quantity for mixing with gas_in
-                    self.fuel = ct.Quantity(fg.gas)
+                    self.fuel = ct.Quantity(self.owner.gas)
                 self.fuel.mass = self.Wf
                 if self.Tfuel == None:      # assume Tfuel equal to T of air in
                     Tfuelin = self.gas_in.T
@@ -375,7 +389,7 @@ class TCombustor(TGaspath):
         h_air_initial = self.gas_in.enthalpy_mass
 
         if (self.FuelComposition == '') or (self.FuelComposition == None):
-            CHyOzMoleMass = fg.C_atom_weight + fg.H_atom_weight * self.HCratio + fg.O_atom_weight * self.OCratio
+            CHyOzMoleMass = self.C_atom_weight + self.H_atom_weight * self.HCratio + self.O_atom_weight * self.OCratio
 
         if (self.control != None) and (self.control.OD_controlled_parameter_name == None) and  (self.Texit != None): # calc Wf from Texit
             if Mode == 'DP':

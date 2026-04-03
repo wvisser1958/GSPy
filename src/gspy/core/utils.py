@@ -13,10 +13,12 @@
 # Authors
 #   Wilfried Visser
 
+import math
 import numpy as np
 from math import log, exp
 from scipy.optimize import root, root_scalar
 import cantera as ct
+import gspy.core.constants as c
 
 atomweightC = 12.010914
 molemassCO2 = 44.0098
@@ -25,6 +27,15 @@ molemassO2 = 31.9988
 atomweightH = 1.0079832
 atomweightN = 14
 MM_NO2 = 46.00554
+
+# functions for corrected rotor speed Nc and mass flow Wc
+# divide N by GetRotorspeedCorrectionFactor to get Nc corrected
+def GetRotorspeedCorrectionFactor(gas: ct.Quantity):
+    return math.sqrt(gas.T/c.T_std)
+
+# multiply W by GetFlowCorrectionFactor to get Wc corrected
+def GetFlowCorrectionFactor(gas: ct.Quantity):
+    return math.sqrt(gas.T/c.T_std) / (gas.P/c.P_std)
 
 def set_enthalpy(gas, target_enthalpy):
     def equation(Titer):

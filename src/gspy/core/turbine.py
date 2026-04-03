@@ -16,7 +16,7 @@
 import numpy as np
 import cantera as ct
 from scipy.optimize import root
-import gspy.core.sys_global as fg
+# import gspy.core.sys_global as fg
 import gspy.core.utils as fu
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.turbinemap import TTurbineMap
@@ -184,7 +184,7 @@ class TTurbine(TTurboComponent):
             self.PWdes = self.PW
 
             # v1.2 recalculate self.Wcdes adding cooling flow
-            self.Wcdes = (self.Wdes + self.W_cl_eff) * fg.GetFlowCorrectionFactor(self.gas_inDes)
+            self.Wcdes = (self.Wdes + self.W_cl_eff) * fu.GetFlowCorrectionFactor(self.gas_inDes)
 
             # 1.6
             # self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
@@ -202,17 +202,17 @@ class TTurbine(TTurboComponent):
                 self.owner.errors = np.append(self.owner.errors, 0)
                 self.ierror_shaftpw = self.owner.errors.size-1
             # calculate parameters for output
-            self.N = self.Nc * fg.GetRotorspeedCorrectionFactor(self.gas_in)
+            self.N = self.Nc * fu.GetRotorspeedCorrectionFactor(self.gas_in)
         # ******************** end DP design mode *************************
 
         # ******************** OD off design mode *************************
         else:
             if self.TurbineType == 'GG':
                 self.N = self.owner.states[self.shaft.istate] * self.Ndes
-            self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.gas_in)
+            self.Nc = self.N / fu.GetRotorspeedCorrectionFactor(self.gas_in)
 
             self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, self.owner.states[self.istate_beta])
-            self.W = self.Wc / fg.GetFlowCorrectionFactor(self.gas_in)
+            self.W = self.Wc / fu.GetFlowCorrectionFactor(self.gas_in)
 
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
             # self.PW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PR, self.Eta, None, self.Polytropic_Eta)

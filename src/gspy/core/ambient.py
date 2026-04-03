@@ -16,7 +16,8 @@
 import cantera as ct
 import aerocalc as ac     # !!!! install with "pip install aero-calc", see https://www.kilohotel.com/python/aerocalc/html/
 from gspy.core.base_component import TComponent
-import gspy.core.sys_global as fg
+# import gspy.core.sys_global as fg
+import gspy.core.constants as c
 
 class TAmbient(TComponent):
     def __init__(self, owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa):    # Constructor of the class
@@ -50,7 +51,8 @@ class TAmbient(TComponent):
             # create separate Cantera phase object for Ambient, to be used by components if needed
             # self.Gas_Ambient = ct.Solution('jetsurf.yaml')
             # create Cantera quantity object for Ambient (mass = 1 per default)
-            self.Gas_Ambient = ct.Quantity(fg.gas)
+            # this quantity is then further copied along the gaspath in the system model
+            self.Gas_Ambient = ct.Quantity(self.owner.gas)
             self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
         if self.Tsa == None:
             # Tsa not defined, use standard atmosphere
@@ -64,7 +66,7 @@ class TAmbient(TComponent):
         self.Tta = self.Tsa * ( 1 + 0.2 * self.Macha**2)
         self.Pta = self.Psa * ((self.Tta/self.Tsa)**3.5)
         # set values in the Gas_Ambient phase object conditions
-        self.Gas_Ambient.TPY = self.Tta, self.Pta, fg.s_air_composition_mass
+        self.Gas_Ambient.TPY = self.Tta, self.Pta, c.s_air_composition_mass
         self.V = self.Macha * ac.std_atm.temp2speed_of_sound(self.Tsa, speed_units = 'm/s', temp_units = 'K')
 
      # 2.0.0.0

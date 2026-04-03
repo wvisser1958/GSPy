@@ -15,7 +15,8 @@
 
 import numpy as np
 import cantera as ct
-import gspy.core.sys_global as fg
+# import gspy.core.sys_global as fg
+import gspy.core.utils as fu
 from gspy.core.gaspath import TGaspath
 
 class TInlet(TGaspath):
@@ -33,7 +34,7 @@ class TInlet(TGaspath):
         # self.gas_in.TP = self.gas_in.T, self.gas_in.P
         if Mode == 'DP':
             self.gas_in.mass = self.Wdes
-            self.wcdes = self.gas_in.mass * fg.GetFlowCorrectionFactor(self.gas_in)
+            self.wcdes = self.gas_in.mass * fu.GetFlowCorrectionFactor(self.gas_in)
             self.wc = self.wcdes
             self.PR = self.PRdes
             self.owner.states = np.append(self.owner.states, 1)
@@ -42,7 +43,7 @@ class TInlet(TGaspath):
             self.wc = self.owner.states[self.istate_wc] * self.wcdes
             if self.wc < 0.001*self.wcdes:
                 self.wc = 0.001*self.wcdes
-            self.gas_in.mass = self.wc / fg.GetFlowCorrectionFactor(self.gas_in)
+            self.gas_in.mass = self.wc / fu.GetFlowCorrectionFactor(self.gas_in)
             self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PRdes
             # this inlet has constant PR, no OD PR yet (use manual input in code here, or make PR, Ram recovery map)
             self.PR = self.PRdes

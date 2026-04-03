@@ -17,7 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from gspy.core.map import TMap
 from scipy.interpolate import RegularGridInterpolator
-from gspy.core import sys_global as fg
+# from gspy.core import sys_global as fg
 
 class TTurboMap(TMap):
     def __init__(self, host_component, name, MapFileName, OL_xcol, OL_Ycol, ShaftString, Ncmapdes, Betamapdes):    # Constructor of the class
@@ -265,7 +265,7 @@ class TTurboMap(TMap):
         # 1.4
         # self.map_figure_file_path = './output/' + self.name + '_dual' + '.jpg'
         # 1.6.0.3 reverted
-        # self.map_figure_file_path = self.out fg.output_dir_path / (self.name + '_dual' + '.jpg')
+        # self.map_figure_file_path = self.out fu.output_dir_path / (self.name + '_dual' + '.jpg')
         # override default
         self.map_figure_file_path = self.map_figure_dir_path / (self.name + '_dual' + '.jpg')
 

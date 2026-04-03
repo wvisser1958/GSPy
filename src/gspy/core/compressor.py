@@ -15,7 +15,7 @@
 
 import numpy as np
 import cantera as ct
-import gspy.core.sys_global as fg
+# import gspy.core.sys_global as fg
 import gspy.core.utils as fu
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
@@ -70,7 +70,7 @@ class TCompressor(TTurboComponent):
         else:
             if self.SpeedOption != 'CS':
                 self.N = self.owner.states[self.istate_n] * self.Ndes
-            self.Nc = self.N / fg.GetRotorspeedCorrectionFactor(self.gas_in)
+            self.Nc = self.N / fu.GetRotorspeedCorrectionFactor(self.gas_in)
 
             # 1.6 WV
             # self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
@@ -80,7 +80,7 @@ class TCompressor(TTurboComponent):
 
             self.PW = fu.Compression(self.gas_in, self.gas_out, self.PR, self.Eta, self.Polytropic_Eta)
 
-            self.W = self.Wc / fg.GetFlowCorrectionFactor(self.gas_in)
+            self.W = self.Wc / fu.GetFlowCorrectionFactor(self.gas_in)
             self.owner.errors[self.ierror_wc ] = (self.W - self.gas_in.mass) / self.Wdes
 
             # set out flow rate to W according to map

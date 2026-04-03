@@ -19,7 +19,7 @@ import cantera as ct
 import gspy.core.utils as fu
 from scipy.optimize import root_scalar
 from gspy.core.gaspath import TGaspath
-import gspy.core.sys_global as fg
+# import gspy.core.sys_global as fg
 
 class TExhaustNozzle(TGaspath):
     def __init__(self, owner, name, MapFileName, ControlComponent, station_in, stationthroat, station_out, CXdes, CVdes, CDdes):    # Constructor of the class

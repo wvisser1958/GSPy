@@ -32,7 +32,8 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turbojet = TSystemModel('Turbojet')
+    turbojet = TSystemModel('Turbojet',
+                            model_file = __file__)
 
     # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # FuelControl for open loop direct control of fuel flow
@@ -161,7 +162,7 @@ def main():
                                    'ExhaustNozzle', # component name
                                    '',              # option map file name
                                    None,            # optional control component
-                                   7, 8, 9,         # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle) 
+                                   7, 8, 9,         # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle)
                                                     # con-di nozzle model still to be implemented
                                    1,               # design CX thrust coefficient
                                    1,               # design CV velocity coefficient

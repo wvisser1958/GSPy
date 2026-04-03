@@ -13,8 +13,6 @@
 # Authors
 #   Wilfried Visser
 
-import numpy as np
-import cantera as ct
 from gspy.core.map import TMap
 from typing import Optional
 

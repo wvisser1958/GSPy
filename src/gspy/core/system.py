@@ -19,38 +19,67 @@ import numpy as np
 import pandas as pd
 import math
 import os
-import inspect
+import cantera as ct
 from scipy.optimize import root
 import matplotlib.pyplot as plt
-import gspy.core.sys_global as fg
+import cantera as ct
 from gspy.core.ambient import TAmbient
 from gspy.core.gaspath import TGaspath
 
+DEFAULT_YAML = "jetsurf.yaml"
+
 class TSystemModel:
-    def __init__(self, model_name, model_root: Path | None = None):
+    def __init__(self,
+                model_name: str | None,
+                *,    # force optional parameters passing by name
+                model_file: str,
+                cantera_yaml_filename: str = DEFAULT_YAML):
+
         self.initialized = False
-        if model_name is None:
-            self.model_name = Path(inspect.stack()[1].filename).stem
-        else:
-            self.model_name = model_name
+        self.model_name = Path(model_file).stem if model_name is None else model_name
         self.params = {}
 
         # Default to this file's folder if caller doesn't provide a root
-        if model_root is None:
-            caller_file = inspect.stack()[1].filename
-            default_root = Path(caller_file).resolve().parent
-        else:
-            default_root = model_root
-
-        self.model_root = default_root
+        project_dir = Path(model_file).resolve().parent
 
         # Paths relative to the chosen model root
-        self.maps_dir_path = self.model_root / "maps"
-        self.input_dir_path = self.model_root / "input"
-        self.output_dir_path = self.model_root / "output"
+        self.data_dir_path = project_dir / "data"
+        self.maps_dir_path = self.data_dir_path / "maps"
+        self.input_dir_path = project_dir / "input"
+        self.output_dir_path = project_dir / "output"
+        self.fluid_props_dir_path = self.data_dir_path / "fluid_props"
 
-        # Tell the core where to put outputs
-        # 2.0 obsolete fg.output_dir_path = self.output_dir_path
+        # initialize Cantera gas properties model
+        # 1) Try project-local YAML
+        project_yaml = self.fluid_props_dir_path / cantera_yaml_filename
+
+        if project_yaml.is_file():
+            use_yaml = project_yaml
+        else:
+            # 2) Fall back to GSPy root: .../GSPy/data/fluid_props/
+            gspy_root = project_dir.parent.parent
+            global_yaml = gspy_root / "data" / "fluid_props" / cantera_yaml_filename
+
+            if global_yaml.is_file():
+                use_yaml = global_yaml
+            else:
+                raise FileNotFoundError(
+                    f"Could not find Cantera YAML.\n\n"
+                    f"Tried project-local:\n  {project_yaml}\n\n"
+                    f"Tried global fallback:\n  {global_yaml}"
+                )
+
+        self.cantera_yaml_filename = cantera_yaml_filename
+        self.cantera_yaml_path = use_yaml
+        print(f"Using Ccantera YAML file {use_yaml}")
+        self.gas = ct.Solution(str(use_yaml))
+
+        print("phase Tmin, Tmax =", self.gas.min_temp, self.gas.max_temp)
+        for sp in self.gas.species():
+            thermo = sp.thermo
+            if hasattr(thermo, "min_temp") and hasattr(thermo, "max_temp"):
+                if thermo.max_temp <= 2200:
+                    print(sp.name, thermo.min_temp, thermo.max_temp)
 
         self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
 
