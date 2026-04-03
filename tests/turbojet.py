@@ -158,7 +158,7 @@ def main(input_dir=None, output_dir=None):
 
     # run the Off-Design (OD) simulation
     fsys.Mode = 'OD'
-    fsys.inputpoints = FuelControl.Get_OD_inputpoints()
+    fsys.inputpoints = FuelControl.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
     fsys.Ambient.SetConditions('OD', 0, 0, 0, None, None)

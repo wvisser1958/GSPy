@@ -41,7 +41,8 @@ def main():
                            0.38,                    # design point (DP) input
 
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
-                           0.38,    0.08, -0.01,    # off design (OD) input: starting value, end value and step value
+                           0.38, 0.08, -0.01,       # off design (OD) input: starting value, end value and step value OR alternatively:
+                           # 0.30, None, None,        # off design (OD) input: single input value
 
                            None                     # OD control parameter name: must be an output present in the output table
                                                     # if None: the component using it directly takes the value
@@ -68,7 +69,7 @@ def main():
                                )
 
     compressor1 = TCompressor(turbojet,         # owning system model object
-                              'compressor1',    # component name
+                              'Compressor1',    # component name
                               'compmap.map' ,   # map file name
                               None,             # optional control component
                               2, 3,             # station nr in and out
@@ -82,7 +83,7 @@ def main():
                               None)             # option list of bleeds
 
     combustor1 = TCombustor(turbojet,       # owning system model object
-                            'combustor1',   # component name
+                            'Combustor1',   # component name
                             '',             # map file name             # for future use of a combustor efficiency map
 
                             # OD fuel input from FuelControl
@@ -132,7 +133,7 @@ def main():
                             #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
     turbine1 =    TTurbine(turbojet,        # owning system model object
-                           'turbine1',      # component name
+                           'Turbine1',      # component name
                            'turbimap.map',  # map file name
                            None,            # optional control component
                            4, 5,            # station nr in and out
@@ -150,17 +151,17 @@ def main():
                         # turbine1.Polytropic_Eta = 1
 
     duct1    = TDuct(       turbojet,       # owning system model object
-                            'exhduct',      # component name
+                            'ExhDuct',      # component name
                             '',             # optional map file name
                             None,           # optional control component
-                            5,7,            # station nr in and out
+                            5, 7,           # station nr in and out
                             1.0             # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                             )
     exhaustnozzle = TExhaustNozzle(turbojet,        # owning system model object
-                                   'exhaustnozzle', # component name
+                                   'ExhaustNozzle', # component name
                                    '',              # option map file name
                                    None,            # optional control component
-                                   7,8,9,           # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle)
+                                   7, 8, 9,         # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle) 
                                                     # con-di nozzle model still to be implemented
                                    1,               # design CX thrust coefficient
                                    1,               # design CV velocity coefficient
@@ -176,7 +177,7 @@ def main():
                                     duct1,
                                     exhaustnozzle)
 
-    turbojet.error_tolerance = 0.0001
+    # turbojet.error_tolerance = 0.0001   # default iteration equation relative residual tolerance, adjust when needed
 
     # run the system model Design Point (DP) calculation
     turbojet.mode = 'DP'
@@ -188,7 +189,7 @@ def main():
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turbojet.mode = 'OD'
-    turbojet.inputpoints = fuelcontrol.Get_OD_inputpoints()
+    turbojet.inputpoints = fuelcontrol.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
@@ -210,7 +211,7 @@ def main():
                             [   ("T4",              "TIT [K]",                  "blue"),
                                 ("T5",              "EGT [K]",                  "blue"),
                                 ("W2",              "Inlet mass flow [kg/s]",   "blue"),
-                                ("Wf_combustor1",   "Fuel flow [kg/s]",         "blue"),
+                                ("Wf_Combustor1",   "Fuel flow [kg/s]",         "blue"),
                                 ("FN",              "Net thrust [kN]",          "blue")            ])
 
      # Create component map plots with operating lines if available

@@ -357,10 +357,10 @@ class TCombustor(TGaspath):
             if self.control != None:
                 # 1.4
                 # if self.Texit != None: # calc Wf from Texit
-                if (self.control.OD_controlledparname == None) and  (self.Texit != None): # calc Wf from Texit
-                    self.Texit =  self.control.Inputvalue
+                if (self.control.OD_controlled_parameter_name == None) and  (self.Texit != None): # calc Wf from Texit
+                    self.Texit =  self.control.input_value
                 else:
-                    self.Wf = self.control.Inputvalue
+                    self.Wf = self.control.input_value
                     if self.Wf < 0:
                         self.Wf = 0
             #  else Wf or Texit determined from outside by Control SetAttr
@@ -377,7 +377,7 @@ class TCombustor(TGaspath):
         if (self.FuelComposition == '') or (self.FuelComposition == None):
             CHyOzMoleMass = fg.C_atom_weight + fg.H_atom_weight * self.HCratio + fg.O_atom_weight * self.OCratio
 
-        if (self.control != None) and (self.control.OD_controlledparname == None) and  (self.Texit != None): # calc Wf from Texit
+        if (self.control != None) and (self.control.OD_controlled_parameter_name == None) and  (self.Texit != None): # calc Wf from Texit
             if Mode == 'DP':
                 # initial guess for Wf
                 Wf0 = self.Wfdes  # if Texit specified, Wfdes is initial guess

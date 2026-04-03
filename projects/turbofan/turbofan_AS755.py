@@ -116,7 +116,7 @@ def main():
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     fsys.Mode = 'OD'
-    fsys.inputpoints = FuelControl.Get_OD_inputpoints()
+    fsys.inputpoints = FuelControl.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
