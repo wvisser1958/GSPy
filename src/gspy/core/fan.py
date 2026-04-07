@@ -16,7 +16,6 @@
 import numpy as np
 import cantera as ct
 import gspy.core.utils as fu
-import gspy.core.sys_global as fg
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
 

@@ -1,62 +1,85 @@
-
 import os
 from pathlib import Path
-from ..core import sys_global as global_sys
-from ..core import system as sys
-from gspy.api.components import resolve_component_class  # <-- import your registry resolver
+
+from ..core.system import TSystemModel
+from gspy.api.components import resolve_component_class
+
 
 class BaseGasTurbineModel:
     def __init__(self, model_name, model_root: Path | None = None):
         self.initialized = False
         self.model_name = model_name
         self.params = {}
+        self.system_model_obj = None
+        self.components = []
+        self.components_by_name = {}
 
-        # Default to this file's folder if caller doesn't provide a root
         default_root = Path(__file__).resolve().parent
-        self._model_root: Path = model_root or default_root
-
-        # Paths relative to the chosen model root
-        self.map_path = self._model_root / "maps"
-        self.input_path = self._model_root / "input"
-        self.output_path = self._model_root / "output"
-
-        # Tell the core where to put outputs
-        global_sys.output_path = self.output_path
-        # Do not print to console!
-        sys.VERBOSE = False
+        self._model_root: Path = Path(model_root).resolve() if model_root else default_root
 
     def set_model_root(self, root: Path):
         self._model_root = Path(root).resolve()
-        self.map_path = self._model_root / "maps"
-        self.input_path = self._model_root / "input"
-        self.output_path = self._model_root / "output"
-        global_sys.output_path = self.output_path  # keep core in sync
+
+    @property
+    def model_file(self) -> Path:
+        return self._model_root / f"{self.model_name}.py"
+
+    @property
+    def map_path(self) -> Path:
+        if self.system_model_obj is not None:
+            return self.system_model_obj.maps_dir_path
+        return self._model_root / "data" / "maps"
+
+    @property
+    def input_path(self) -> Path:
+        if self.system_model_obj is not None:
+            return self.system_model_obj.input_dir_path
+        return self._model_root / "input"
+
+    @property
+    def output_path(self) -> Path:
+        if self.system_model_obj is not None:
+            return self.system_model_obj.output_dir_path
+        return self._model_root / "output"
 
     def initialize(self, run_mode="DP"):
-        # Declarative: build_model returns a list of dicts
+        self.system_model_obj = TSystemModel(
+            self.model_name,
+            model_file=str(self.model_file),
+            verbose=False,
+        )
+
         model_comps = self.build_model()
         components = []
+        components_by_name = {}
+        
+        self.system_model_obj.VERBOSE = False
+
         for model_comp in model_comps:
             comp_class = resolve_component_class(model_comp["type"])
-            args = [model_comp["name"]] + model_comp.get("args", [])
+            args = model_comp.get("args", [])
             kwargs = model_comp.get("kwargs", {})
-            comp = comp_class(*args, **kwargs)
+            comp = comp_class(self.system_model_obj, model_comp["name"], *args, **kwargs)
             components.append(comp)
+            components_by_name[model_comp["name"]] = comp
 
-        # Wire into core system
-        sys.system_model = components
+        self.components = components
+        self.components_by_name = components_by_name
 
-        # Optionally expose ambient in the legacy global if your core expects it
-        # (If you have multiple ambient types, adjust this check)
-        from gspy.core.ambient import TAmbient
-        ambient = next((component for component in components if isinstance(component, TAmbient)), None)
-        if ambient is not None:
-            sys.Ambient = ambient
+        # Required by the new core for resolving inter-component references by name,
+        # for example combustor control references like "Fuel Controller".
+        self.system_model_obj.components = components_by_name
 
-        global_sys.InitializeGas()
-        sys.ErrorTolerance = 0.0001
+        # Optional aliases in case other core code expects list-based access.
+        self.system_model_obj.component_list = components
+        self.system_model_obj.component_run_list_user = components
+
+        # Register execution order; TSystemModel already prepends its own ambient.
+        self.system_model_obj.define_comp_run_list(*components)
+
+
         self.initialized = True
-        self.run_mode = run_mode  # Use property setter
+        self.run_mode = run_mode
         return f"{self.model_name} initialized"
 
     def build_model(self):
@@ -66,40 +89,45 @@ class BaseGasTurbineModel:
         raise NotImplementedError("set_param() must be implemented")
 
     def run(self):
-        if not self.initialized:
+        if not self.initialized or self.system_model_obj is None:
             raise RuntimeError("Model not initialized")
 
-        if self.run_mode == 'DP':
-            sys.Run_DP_simulation()
-        elif self.run_mode == 'OD':
-            sys.Run_OD_simulation()
+        if self.run_mode == "DP":
+            return self.system_model_obj.Run_DP_simulation()
+        elif self.run_mode == "OD":
+            return self.system_model_obj.Run_OD_simulation()
         else:
             raise ValueError(f"Invalid input string value: run mode ({self.run_mode})")
 
-    def save_output_csv(self, filename: str = 'output.csv') -> str:
-        if not hasattr(self, "output_path"):
-            raise AttributeError(f"Model class must define an output path!")
+    def save_output_csv(self, filename: str = "output.csv") -> str:
+        if self.system_model_obj is None:
+            raise RuntimeError("Model not initialized")
 
         os.makedirs(self.output_path, exist_ok=True)
         csv_file_path = os.path.join(self.output_path, filename)
-        if sys.OutputTable is not None and not sys.OutputTable.empty:
-            sys.OutputTable.to_csv(csv_file_path, index=False)
+
+        self.system_model_obj.prepare_output_table()
+        if (
+            self.system_model_obj.output_table is not None
+            and not self.system_model_obj.output_table.empty
+        ):
+            self.system_model_obj.output_table.to_csv(csv_file_path, index=False)
+
         return csv_file_path
 
     @property
     def run_mode(self) -> str | None:
-        """Get the current run mode ('DP' or 'OD')."""
-        run_mode_options = ["DP", "OD"]
-        if hasattr(sys, "Mode") and sys.Mode in run_mode_options:
-            return sys.Mode
+        if self.system_model_obj is not None:
+            return self.system_model_obj.mode
         return None
 
     @run_mode.setter
     def run_mode(self, value: str):
-        """Set the model run mode ('DP' or 'OD')."""
         run_mode_options = ["DP", "OD"]
         if value in run_mode_options:
-            sys.Mode = value
+            if self.system_model_obj is None:
+                raise RuntimeError("System model object not initialized")
+            self.system_model_obj.mode = value
         else:
             raise ValueError(
                 f"Invalid input string value: run mode ({value}), allowed: {run_mode_options}"

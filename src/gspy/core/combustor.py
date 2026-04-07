@@ -97,7 +97,7 @@ class TCombustor(TGaspath):
         Y_CH4 = gas_reactants.Y[gas_reactants.species_index('CH4')]
         LHV = -(h_prod - h_react) / Y_CH4 / 1e3  # convert J/kg → kJ/kg
 
-        print(f"LHV of CH4 (H2O vapor): {LHV:.2f} kJ/kg")
+        self.owner.vprint(f"LHV of CH4 (H2O vapor): {LHV:.2f} kJ/kg")
 
     def fundamental_pressure_loss_rayleigh(self, A):
         """

@@ -27,13 +27,17 @@ from gspy.core.ambient import TAmbient
 from gspy.core.gaspath import TGaspath
 
 DEFAULT_YAML = "jetsurf.yaml"
+DEFAULT_VERBOSE = True
 
 class TSystemModel:
     def __init__(self,
                 model_name: str | None,
                 *,    # force optional parameters passing by name
                 model_file: str,
-                cantera_yaml_filename: str = DEFAULT_YAML):
+                cantera_yaml_filename: str = DEFAULT_YAML,
+                verbose: bool = DEFAULT_VERBOSE):
+
+        self.VERBOSE = verbose
 
         self.initialized = False
         self.model_name = Path(model_file).stem if model_name is None else model_name
@@ -71,15 +75,15 @@ class TSystemModel:
 
         self.cantera_yaml_filename = cantera_yaml_filename
         self.cantera_yaml_path = use_yaml
-        print(f"Using Ccantera YAML file {use_yaml}")
+        self.vprint(f"Using Ccantera YAML file {use_yaml}")
         self.gas = ct.Solution(str(use_yaml))
 
-        print("phase Tmin, Tmax =", self.gas.min_temp, self.gas.max_temp)
+        self.vprint("phase Tmin, Tmax =", self.gas.min_temp, self.gas.max_temp)
         for sp in self.gas.species():
             thermo = sp.thermo
             if hasattr(thermo, "min_temp") and hasattr(thermo, "max_temp"):
                 if thermo.max_temp <= 2200:
-                    print(sp.name, thermo.min_temp, thermo.max_temp)
+                    self.vprint(sp.name, thermo.min_temp, thermo.max_temp)
 
         self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
 
@@ -107,8 +111,6 @@ class TSystemModel:
 
         self.reset_output()
 
-        self.VERBOSE = True
-
         self.mode = None
         self.error_tolerance = 0.0001 # default error tolerance 0.1%, override if needed in main code
 
@@ -121,6 +123,10 @@ class TSystemModel:
 
         self.continue_next_OD_point_on_error = True
 
+    def vprint(self, *args, **kwargs):
+        if self.VERBOSE:
+            print(*args, **kwargs)
+            
     def get_error_text(self, error_code):
         if error_code == self.no_convergence_error:
             return 'Not converged'
@@ -264,9 +270,9 @@ class TSystemModel:
 
     def print_DP_equation_solution(self):
         if self.targets != None:
-            print(f"DP simulation equations solution:")
+            self.vprint(f"DP simulation equations solution:")
             for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(self.targets):
-                print(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
+                self.vprint(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
 
     def Run_OD_simulation(self):
         def residuals(states):
@@ -328,7 +334,7 @@ class TSystemModel:
             failedcount = failedcount + 1
             print(f"OD simulation: exception error: {e}")
 
-        print(f"{successcount} OD points calculated, {failedcount} failed")
+        self.vprint(f"{successcount} OD points calculated, {failedcount} failed")
 
         # v1.2 return number of succesfully calculated points
         return successcount
@@ -389,7 +395,7 @@ class TSystemModel:
         self._output_rows.append(self.output_dict.copy())
 
     def print_states_and_errors(self):
-        print(f"Nr. of state variables: {len(self.states)}\nNr. of error equations: {len(self.errors)}")
+        self.vprint(f"Nr. of state variables: {len(self.states)}\nNr. of error equations: {len(self.errors)}")
 
     def prepare_output_table(self):
         #  collect output_rows in dataframe, for processing in OutputToCSV, Plot_X_nY_graph, PlotMaps etc.
@@ -402,7 +408,7 @@ class TSystemModel:
         outputcsvfilename = os.path.join(self.output_dir_path, self.model_name + ".csv")
         self.prepare_output_table()
         self.output_table.to_csv(outputcsvfilename, index=False, float_format='%.6f')
-        print("output saved in "+outputcsvfilename)
+        self.vprint("output saved in "+outputcsvfilename)
 
     def Plot_X_nY_graph(self, title, filename_suffix, xcol, ycollist, do_show = False):
         self.prepare_output_table()
@@ -463,7 +469,7 @@ class TSystemModel:
         # jpg_filename = self.model_name + filename_suffix + ".jpg"
         jpg_filename = os.path.join(self.output_dir_path, self.model_name + filename_suffix + ".jpg")
         fig.savefig(jpg_filename)
-        print("x-4y plot saved in " + jpg_filename)
+        self.vprint("x-4y plot saved in " + jpg_filename)
 
     def PlotMaps(self):
         self.prepare_output_table()

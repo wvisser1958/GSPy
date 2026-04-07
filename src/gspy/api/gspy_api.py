@@ -29,7 +29,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Union, Dict, Any, List
 
-from gspy.core import system as fsys
 
 # Tiny internal storage to map set name -> parameter list
 _DATA_LISTS: Dict[str, List[str]] = {}
@@ -62,6 +61,23 @@ def _resolve_model_root(module_name: str, module_obj) -> Path | None:
         return Path(spec.origin).resolve().parent
     return None
 
+
+def _get_system_model():
+    """Return the active TSystemModel from the current API model."""
+    if _current_model is None or not getattr(_current_model, "initialized", False):
+        raise RuntimeError("Model not initialized")
+    system_model = getattr(_current_model, "system_model_obj", None)
+    if system_model is None:
+        raise RuntimeError("System model object not initialized")
+    return system_model
+
+def _get_output_table() -> pd.DataFrame:
+    """Return the current model output table, preparing it if needed."""
+    system_model = _get_system_model()
+    if hasattr(system_model, "prepare_output_table"):
+        system_model.prepare_output_table()
+    return getattr(system_model, "output_table", None)
+
 def _is_model_initialized():
     """Returns True if a model has been initialized and is marked as such."""
     return _current_model is not None and getattr(_current_model, "initialized", False)
@@ -86,14 +102,13 @@ def _get_model_components_list(verbose=False):
         dict: A dict with a "components" list containing dictionaries with
               keys: type, name, station_in, station_out.
     """
-    if _current_model is None:
-        raise RuntimeError("Model is not initialized")
-
-    if not fsys.system_model:
+    system_model = _get_system_model()
+    components_source = getattr(_current_model, "components", None) or getattr(system_model, "component_run_list", None)
+    if not components_source:
         raise RuntimeError("System model is not initialized or empty")
 
     components = []
-    for comp in fsys.system_model:
+    for comp in components_source:
         components.append({
             "type": comp.__class__.__name__,
             "name": getattr(comp, "name", "unknown"),
@@ -111,11 +126,12 @@ def _get_output_parameter_names(verbose=False) -> list:
         verbose (bool): Currently unused.
 
     Returns:
-        list: A list containing all the model parameters from the OutputTable
+        list: A list containing all the model parameters from the output table
     """
-    param_names = fsys.OutputTable.columns.tolist()
-    return param_names
-    
+    df = _get_output_table()
+    if df is None:
+        return []
+    return df.columns.tolist()
 
 def _get_parameter_value(df: pd.DataFrame, param_name: str) -> Dict[str, Any]:
     if df is None or not isinstance(df, pd.DataFrame):
@@ -298,6 +314,8 @@ def activateLog(**kwargs):
     _current_log_file = open(log_path, mode, encoding="utf-8")
     _current_log_file.write("=== API Logging Activated ===\n")
     _log_message(caller="activateLog", message=f"Logging started in '{mode}' mode", severity="INFO")
+    
+    return f"Logging activated: {log_path} (mode='{mode}')"
 
    
 def closeLog(**kwargs):
@@ -406,7 +424,7 @@ def getD(**kwargs):
     if not parameter_name:
         raise ValueError("Missing 'parameter' argument")
     else:
-        result = _get_parameter_value(fsys.OutputTable, parameter_name)
+        result = _get_parameter_value(_get_output_table(), parameter_name)
     return {'function': 'getD', 'args': kwargs, 'result': result}
 
 
@@ -449,7 +467,7 @@ def getD3Dentry(**kwargs):
 
 def getDataListD(**kwargs) -> dict:
     """
-    Retrieve values for the named parameter list from fsys.OutputTable's last row.
+    Retrieve values for the named parameter list from the current model output table's last row.
     Pass the list name via kwargs: e.g., getDataListD(name="temperatures", ...)
     """
     name = str(kwargs.get("name", "")).strip()
@@ -480,9 +498,8 @@ def getDataListD(**kwargs) -> dict:
             },
         }
 
-    # lazy access to fsys.OutputTable
     try:
-        df = fsys.OutputTable
+        df = _get_output_table()
     except Exception as e:
         return {
             "function": "getDataListD",
@@ -491,7 +508,7 @@ def getDataListD(**kwargs) -> dict:
                 "parameters": params,
                 "values": [],
                 "status": "invalid",
-                "message": f"Cannot access fsys.OutputTable: {e}",
+                "message": f"Cannot access model output table: {e}",
                 **kwargs,
             },
         }

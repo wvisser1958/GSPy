@@ -16,7 +16,6 @@
 import numpy as np
 import cantera as ct
 from gspy.core.gaspath import TGaspath
-import gspy.core.sys_global as fg
 
 class TBleedFlow(TGaspath):
     def __init__(self, owner, name, map_filename, control_component, station_in, station_out, bleednumber, bleedfractiondes, dPfactor):    # Constructor of the class
