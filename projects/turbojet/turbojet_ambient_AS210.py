@@ -17,7 +17,7 @@
 from gspy.core.system import TSystemModel
 
 from gspy.core.control import TControl
-from gspy.core.ambient_AS210 import TAmbient_AS210
+from gspy.extensions.ambient.AS210 import TAmbient_AS210
 from gspy.core.inlet import TInlet
 from gspy.core.compressor import TCompressor
 from gspy.core.combustor import TCombustor
@@ -36,7 +36,8 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turbojet = TSystemModel('Turbojet_AS210')
+    turbojet = TSystemModel('Turbojet_AS210',
+                            model_file = __file__)
     # Override ambient conditions object (to set ambient/inlet/flight conditions)
     # The ambient conditions object is an embedded object inside the system model class,
     # we now have to override the system model ambient

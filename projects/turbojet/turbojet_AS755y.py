@@ -33,7 +33,8 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turbojet = TSystemModel('Turbojet_AS755')
+    turbojet = TSystemModel('Turbojet_AS755',
+                            model_file = __file__)
     # Override ambient object station number to with new station string
     turbojet.ambient.set_station_nr('000')
 

@@ -19,8 +19,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 import math
-import warnings
 import numpy as np
+import gspy.core.constants as c
 
 DO_WARN = False
 
@@ -1232,7 +1232,6 @@ class Ambient_AS210:
 # ---- GSPy adapter (AS210) -----------------------------------------
 try:
     from gspy.core.base_component import TComponent
-    import gspy.core.sys_global as fg
 except Exception:
     TComponent = None
 
@@ -1616,11 +1615,11 @@ if TComponent is not None:
             # Set the inlet state in Cantera (if available)
             # --------------------------------------------------------------
             if ct is not None and self.owner is not None:
-                gas = fg.gas
+                gas =self.owner.gas
                 self.Gas_Ambient = ct.Quantity(gas)
                 self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
 
-                dry_comp = str(fg.s_air_composition_mass).strip()
+                dry_comp = str(c.s_air_composition_mass).strip()
 
                 if O.humSp > 0.0:
                     if "H2O" not in gas.species_names:
@@ -1710,6 +1709,30 @@ if TComponent is not None:
 
             return inputs
 
+        def _get_species_outputs(self, gas_quantity, station, basis="mass", prefix=None):
+            out = {}
+
+            if gas_quantity is None:
+                return out
+
+            gas = gas_quantity.phase
+
+            if basis == "mass":
+                values = gas.Y
+                names = gas.species_names
+                key_prefix = "Y" if prefix is None else prefix
+            elif basis == "mole":
+                values = gas.X
+                names = gas.species_names
+                key_prefix = "X" if prefix is None else prefix
+            else:
+                raise ValueError("basis must be 'mass' or 'mole'")
+
+            for species, value in zip(names, values):
+                out[f"{key_prefix}_{species}_{station}"] = float(value)
+
+            return out
+        
         def get_outputs(self):
             s = self.station_nr
             active_inputs = self._active_input_values()
@@ -1734,12 +1757,12 @@ if TComponent is not None:
                 'switchMode': active_inputs.get('switchMode'),
 
                 # Structured ambient/station outputs
-                f'TsDay': getattr(O, 'TsDay', None) if O else None,
-                f'dTsStd': getattr(O, 'dTsStd', None) if O else None,
-                f'alt': getattr(O, 'alt', None) if O else None,
-                f'dTs': getattr(O, 'dTs', None) if O else None,
-                f'humRel': getattr(O, 'humRel', None) if O else None,
-                f'humSp': getattr(O, 'humSp', None) if O else None,
+                'TsDay': getattr(O, 'TsDay', None) if O else None,
+                'dTsStd': getattr(O, 'dTsStd', None) if O else None,
+                'alt': getattr(O, 'alt', None) if O else None,
+                'dTs': getattr(O, 'dTs', None) if O else None,
+                'humRel': getattr(O, 'humRel', None) if O else None,
+                'humSp': getattr(O, 'humSp', None) if O else None,
                 f'MN{s}': getattr(O, 'MN', None) if O else None,
                 f'Ps{s}': getattr(O, 'Ps', None) if O else None,
                 f'P{s}': getattr(O, 'Pt', None) if O else None,
@@ -1749,4 +1772,7 @@ if TComponent is not None:
                 f'VCAS{s}': getattr(O, 'VCAS', None) if O else None,
                 f'VTAS{s}': getattr(O, 'VTAS', None) if O else None,
             }
+
+            # outputs.update(self._get_species_outputs(self.Gas_Ambient, s, basis="mass"))
+
             return outputs

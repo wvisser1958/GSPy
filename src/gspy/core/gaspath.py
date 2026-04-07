@@ -74,19 +74,45 @@ class TGaspath(TComponent):
         print(f"\t\tTemperature: {self.gas_out.T:.1f} K")
         print(f"\t\tPressure   : {self.gas_out.P:.0f} Pa")
 
+    def _get_species_outputs(self, gas_quantity, station, basis="mass", prefix=None):
+        out = {}
+
+        if gas_quantity is None:
+            return out
+
+        gas = gas_quantity.phase
+
+        if basis == "mass":
+            values = gas.Y
+            names = gas.species_names
+            key_prefix = "Y" if prefix is None else prefix
+        elif basis == "mole":
+            values = gas.X
+            names = gas.species_names
+            key_prefix = "X" if prefix is None else prefix
+        else:
+            raise ValueError("basis must be 'mass' or 'mole'")
+
+        for species, value in zip(names, values):
+            out[f"{key_prefix}_{species}_{station}"] = float(value)
+
+        return out
+
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()
 
-        s = self.station_in
+        s_in = self.station_in
 
-        out[f"W{s}"] = fu.scalar(self.gas_in.mass)
-        out[f"T{s}"] = self.gas_in.T
-        out[f"P{s}"] = self.gas_in.P
-        out[f"Wc{s}"] = self.Wc
+        out[f"W{s_in}"] = fu.scalar(self.gas_in.mass)
+        out[f"T{s_in}"] = self.gas_in.T
+        out[f"P{s_in}"] = self.gas_in.P
+        out[f"Wc{s_in}"] = self.Wc
 
         if self.PR is not None:
             out[f"PR_{self.name}"] = self.PR
+
+        # out.update(self._get_species_outputs(self.gas_in, s_in, basis="mass"))
 
         return out
 
