@@ -15,8 +15,6 @@
 
 import numpy as np
 import pandas as pd
-import cantera as ct
-# import gspy.core.sys_global as fg
 from gspy.core.base_component import TComponent
 
 class TAMcontrol(TComponent):

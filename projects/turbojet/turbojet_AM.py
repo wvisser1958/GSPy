@@ -33,7 +33,8 @@ from gspy.core.AMcontrol import TAMcontrol
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turbojet = TSystemModel('Turbojet AM')
+    turbojet = TSystemModel('Turbojet AM',
+                            model_file = __file__)
 
     inlet1   = TInlet(turbojet, 'Inlet1',      '', None,           1,2,   19.9, 1    )
     compressor1 = TCompressor(turbojet, 'compressor1', 'compmap.map' , None, 2, 3, 1, 16540, 0.825, 1, 0.75   , 6.92, 'GG', None)
