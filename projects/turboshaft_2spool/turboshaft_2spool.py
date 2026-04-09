@@ -32,7 +32,7 @@ from gspy.core.exhaustdiffuser import TExhaustDiffuser
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turboshaft_2sp = TSystemModel('Turboshaft-2sp')
+    turboshaft_2sp = TSystemModel('Turboshaft-2sp', model_file = __file__)
 
     # create FuelControl for open loop direct control of fuel flow
     fuel_control = TControl(turboshaft_2sp, 'Control', '', 2.5, 2.5, 0.5, -0.1, None)

@@ -34,7 +34,7 @@ from gspy.core.coolingflow import TCoolingFlow
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turboshaft_2sp = TSystemModel('Turboshaft-2sp_cool')
+    turboshaft_2sp = TSystemModel('Turboshaft-2sp_cool', model_file = __file__)
 
     # create FuelControl for open loop direct control of fuel flow
     fuel_control = TControl(turboshaft_2sp, 'Control', '', 2.5, 2.5, 0.5, -0.1, None)
