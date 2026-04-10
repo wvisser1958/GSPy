@@ -23,6 +23,11 @@ Air_composition = [
     ('Ar',  0.0129159,  0.00934,  0.0446),
     ('N2',  0.75518431, 0.78084,  3.7279)
 ]
+# mole composition
+DRY_AIR_X = {sp: x for sp, _, x, _ in Air_composition}
+# mass composition
+DRY_AIR_Y = {sp: y for sp, y, _, _ in Air_composition}
+
 s_air_composition_mass = ''
 # air_composition_moles = ''
 for species, massfraction, molefraction, O2_norm_molefraction in Air_composition:

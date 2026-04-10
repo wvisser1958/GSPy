@@ -20,26 +20,52 @@ from gspy.core.base_component import TComponent
 import gspy.core.constants as c
 
 class TAmbient(TComponent):
-    def __init__(self, owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa):    # Constructor of the class
+    def __init__(self, owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa, RH=None):
         super().__init__(owner, name, '', None)
         self.station_nr = stationnr
-        self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa)
-        # 2.0.0.0 make sure the system model can directly access the ambient component (must be only a single Ambient component)
+
+        self.humidity_mode_des = None
+        self.humidity_value_des = None
+        self.humidity_mode = None
+        self.humidity_value = None
+
+        self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa, RH=RH)
+
         owner.ambient = self
 
-    def SetConditions(self, Mode, Altitude, Macha, dTs, Psa, Tsa):
+    def SetConditions(self, Mode, Altitude, Macha, dTs, Psa, Tsa,
+                      *, RH=None, H2O_mass_pct=None, H2O_vol_pct=None):
+
+        specified = [(k, v) for k, v in {
+            'RH': RH,
+            'H2O_mass_pct': H2O_mass_pct,
+            'H2O_vol_pct': H2O_vol_pct
+        }.items() if v is not None]
+
+        if len(specified) > 1:
+            raise ValueError(
+                f"Specify only one humidity argument, got: "
+                f"{', '.join(k for k, _ in specified)}"
+            )
+
+        hum_mode, hum_value = (specified[0] if specified else (None, None))
+
         if Mode == 'DP':
             self.Altitude_des = Altitude
             self.Macha_des = Macha
             self.dTs_des = dTs
-            self.Psa_des = Psa      # if None then this will override value from standard atmosphere Alt, Machm dTs
-            self.Tsa_des = Tsa      # if None then this will override value from standard atmosphere Alt, Machm dTs
+            self.Psa_des = Psa
+            self.Tsa_des = Tsa
+            self.humidity_mode_des = hum_mode
+            self.humidity_value_des = hum_value
         else:
             self.Altitude = Altitude
             self.Macha = Macha
             self.dTs = dTs
-            self.Psa = Psa      # if None then this will override value from standard atmosphere Alt, Machm dTs
-            self.Tsa = Tsa      # if None then this will override value from standard atmosphere Alt, Machm dTs
+            self.Psa = Psa
+            self.Tsa = Tsa
+            self.humidity_mode = hum_mode
+            self.humidity_value = hum_value
 
     def Run(self, Mode, PointTime):
         if Mode == 'DP':  # alway reset de DP conditions
