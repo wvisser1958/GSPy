@@ -20,7 +20,7 @@ from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
 
 class TFan(TTurboComponent):
-    def __init__(self, owner, name, MapFileName_core, station_in, station_out_core, station_out_duct, ShaftNr,
+    def __init__(self, owner, name, MapFileName_core, station_in, station_out_core, station_out_duct, shaft_id,
                  Ndes_core, Etades_core,
                 # in TFan, Etades paramater = Etades_core
                 #          MapFileName = name of core map file
@@ -41,14 +41,14 @@ class TFan(TTurboComponent):
 
         # TTurboComponent parent class creator    no control link
         # 1.6 WV at this stage no variable geometry in this fan model, so VGparvaluedes = None and only a single map file for core and one for duct
-        super().__init__(owner, name, MapFileName_core, '', station_in, station_out_core, ShaftNr, Ndes_core, Etades_core, Ncmapdes_core, Betamapdes_core)
+        super().__init__(owner, name, MapFileName_core, '', station_in, station_out_core, shaft_id, Ndes_core, Etades_core, Ncmapdes_core, Betamapdes_core)
 
         self.station_out_duct = station_out_duct
 
         self.BPRdes = BPRdes
 
         # core side map
-        self.map_core = TCompressorMap(self, name + '_map_core', MapFileName_core, "Wc_core_"+self.name, "PR_core_"+self.name, ShaftNr, Ncmapdes_core, Betamapdes_core)
+        self.map_core = TCompressorMap(self, name + '_map_core', MapFileName_core, "Wc_core_"+self.name, "PR_core_"+self.name, shaft_id, Ncmapdes_core, Betamapdes_core)
         self.PRdes_core = PRdes_core
 
         #  1.5 set self.Etades to None, use Etadec_core instead to avoid duplicate in output
@@ -57,7 +57,7 @@ class TFan(TTurboComponent):
         self.Etades = None
 
         # duct side map
-        self.map_duct = TCompressorMap(self, name + '_map_duct', MapFileName_duct, "Wc_duct_"+self.name, "PR_duct_"+self.name, ShaftNr, Ncmapdes_duct, Betamapdes_duct)
+        self.map_duct = TCompressorMap(self, name + '_map_duct', MapFileName_duct, "Wc_duct_"+self.name, "PR_duct_"+self.name, shaft_id, Ncmapdes_duct, Betamapdes_duct)
         self.PRdes_duct = PRdes_duct
         self.Etades_duct = Etades_duct
 

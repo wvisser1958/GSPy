@@ -23,6 +23,7 @@ from gspy.core.combustor import TCombustor
 from gspy.core.turbine import TTurbine
 from gspy.core.duct import TDuct
 from gspy.core.exhaustnozzle import TExhaustNozzle
+from gspy.core.shaft_device import TPowerConsumer, TPowerProducer, TStarterGenerator
 
 # IMPORTANT NOTE TO THIS MODEL FILE
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -173,8 +174,62 @@ def main():
                                    1                # design CD discharge coefficient
                                    )
 
+    load_control = TControl(turbojet, 'PW_control', '',
+                           0,                       # design point (DP) input
+                           50, None, None,          # off design (OD) input: single input value
+
+                           None                     # OD control parameter name: must be an output present in the output table
+                           )
+
+    generator_load = TPowerConsumer(turbojet,       # owning system model object
+                                    'GeneratorLoad',# component name
+                                    '',             # optional map file name
+                                    load_control,   # control component
+                                    # None,           # optional control component, if None then no control component is used for this load, 
+                                                    # otherwise the control component must be defined before this load in the model file
+                                    1,              # shaft id
+                                    # 0               # design power in kW, used to calculate the power demand of the load at design conditions
+                                    50              # design power in kW, used to calculate the power demand of the load at design conditions
+                                    )
+    
+    generator_drive = TPowerProducer(turbojet,      # owning system model object
+                                    'MotorLoad',    # component name
+                                    '',             # optional map file name
+                                    load_control,   # control component
+                                    # None,           # optional control component, if None then no control component is used for this load, 
+                                                    # otherwise the control component must be defined before this load in the model file
+                                    1,              # shaft id
+                                    # 0               # design power in kW, used to calculate the power demand of the load at design conditions
+                                    50              # design power in kW, used to calculate the power demand of the load at design conditions
+                                    )
+    
+    startergen_load = TControl(turbojet, 'S_control', '',
+                           0,                       # design point (DP) input
+                           62.50, None, None,       # off design (OD) input: single input value, S (kVA)
+
+                           None                     # OD control parameter name: must be an output present in the output table
+                           )
+
+    starter_generator = TStarterGenerator(turbojet,      # owning system model object
+                                    'StarterGenerator',    # component name
+                                    '',             # optional map file name
+                                    startergen_load,# control component
+                                    # None,           # optional control component, if None then no control component is used for this load, 
+                                                    # otherwise the control component must be defined before this load in the model file
+                                    1,              # shaft id
+                                    0,              # design power in kVA, used to calculate the power demand of the load at design conditions
+                                    # 62.50,          # design power in kVA, used to calculate the power demand of the load at design conditions
+                                    0.8,            # power factor, used to calculate the real power demand of the load at design conditions from the apparent power
+                                    'generator'     # power mode, either 'starter' or 'generator', determines the power conversion behavior of the load
+                                    )
+    
     # create a turbojet system model
     turbojet.define_comp_run_list(  fuelcontrol,
+                                    # load_control,
+                                    # generator_load,
+                                    # generator_drive,
+                                    startergen_load,
+                                    starter_generator,
                                     inlet1,
                                     compressor1,
                                     combustor1,
@@ -201,7 +256,7 @@ def main():
     # conditions is desired
     turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
     # Run OD simulation
-    # turbojet.VERBOSE = False # suppress OD output to terminal
+    turbojet.VERBOSE = False
     turbojet.Run_OD_simulation()
 
     # export OutputTable to CSV

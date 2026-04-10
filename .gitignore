@@ -94,3 +94,4 @@ src/gspy.egg-info/top_level.txt
 /output
 /.vscode/settings.json
 /*.jpg
+/projects/turboshaft_2spool/output

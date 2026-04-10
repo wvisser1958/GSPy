@@ -32,18 +32,19 @@ from gspy.core.exhaustdiffuser import TExhaustDiffuser
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turboshaft_2sp = TSystemModel('Turboshaft-2sp')
+    turboshaft_2sp = TSystemModel('Turboshaft-2sp',
+                                  model_file = __file__)
 
     # create FuelControl for open loop direct control of fuel flow
     fuel_control = TControl(turboshaft_2sp, 'Control', '', 2.5, 2.5, 0.5, -0.1, None)
 
-    inlet1   = TInlet(turboshaft_2sp, 'Inlet1',      '', None,           0,2,   100, 0.9901311    )
+    inlet   = TInlet(turboshaft_2sp, 'Inlet',      '', None,           0,2,   100, 0.9901311    )
 
-    compressor1 = TCompressor(turboshaft_2sp, 'compressor1', 'compmap.map' , None, 2, 3, '_gg', 4780, 0.915, 1, 0.8   , 20, 'GG', None)
+    compressor = TCompressor(turboshaft_2sp, 'Compressor', 'compmap.map' , None, 2, 3, '_gg', 4780, 0.915, 1, 0.8   , 20, 'GG', None)
 
-    combustor1 = TCombustor(turboshaft_2sp, 'combustor1', '',  fuel_control, 3, 4, 2.5, None, 0.95, 0.9998, 458.15,      50025, 4, 0, 'CH4:1', None)
+    combustor = TCombustor(turboshaft_2sp, 'Combustor', '',  fuel_control, 3, 4, 2.5, None, 0.95, 0.9998, 458.15,      50025, 4, 0, 'CH4:1', None)
 
-    turbine_gg  =  TTurbine(turboshaft_2sp,
+    turbine_GG  =  TTurbine(turboshaft_2sp,
                              'GGT'   , 'turbimap.map', None, 4, 45, '_gg', 4780, 0.8 , 1, 0.50943, 0.99, 'GG', None)
 
     turbine_PT  =    TTurbine(turboshaft_2sp,    # owning system model object
@@ -61,16 +62,16 @@ def main():
                              None               # optional cooling flow list
                              )
 
-    duct1    = TDuct(       turboshaft_2sp,     # owning system model object
-                            'exhduct',          # component name
+    duct    = TDuct(       turboshaft_2sp,     # owning system model object
+                            'ExhDuct',          # component name
                             '',                 # option map file name
                             None,               # optional control component
                             5,7,                # station nr in and out
                             0.95                # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                             )
 
-    exhaust1 = TExhaustDiffuser(turboshaft_2sp,         # owning system model object
-                                'exhaust1',             # component name
+    exhaust = TExhaustDiffuser(turboshaft_2sp,         # owning system model object
+                                'Exhaust',             # component name
                                 '',                     # optional map file name
                                 None,                   # optional control component
                                 7, 9,                   # entry and exit station nr
@@ -79,13 +80,13 @@ def main():
 
     # create a turbojet system model, components in the order of calculation
     turboshaft_2sp.define_comp_run_list(fuel_control,
-                                        inlet1,
-                                        compressor1,
-                                        combustor1,
-                                        turbine_gg,
+                                        inlet,
+                                        compressor,
+                                        combustor,
+                                        turbine_GG,
                                         turbine_PT,
-                                        duct1,
-                                        exhaust1)
+                                        duct,
+                                        exhaust)
 
 
     turboshaft_2sp.ErrorTolerance = 0.001
@@ -122,7 +123,7 @@ def main():
                             [   ("T4",              "TIT [K]",                  "blue"),
                                 ("T5",              "EGT [K]",                  "blue"),
                                 ("W2",              "Inlet mass flow [kg/s]",   "blue"),
-                                ("Wf_combustor1",   "Fuel flow [kg/s]",         "blue"),
+                                ("Wf_Combustor",    "Fuel flow [kg/s]",         "blue"),
                                 ("PW",              "Power [kW]",               "blue")            ])
 
      # Create component map plots with operating lines if available

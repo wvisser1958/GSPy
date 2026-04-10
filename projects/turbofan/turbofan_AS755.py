@@ -16,11 +16,9 @@
 
 from gspy.core import sys_global as fg
 from gspy.core import system as fsys
-from gspy.core import utils as fu
 
 from gspy.core.control import TControl
 from gspy.core.ambient import TAmbient
-from gspy.core.shaft import TShaft
 from gspy.core.inlet import TInlet
 from gspy.core.fan import TFan
 from gspy.core.compressor import TCompressor
@@ -30,7 +28,6 @@ from gspy.core.duct import TDuct
 from gspy.core.exhaustnozzle import TExhaustNozzle
 
 import os
-import matplotlib.pyplot as plt
 from pathlib import Path
 
     # IMPORTANT NOTE TO THIS MODEL FILE
