@@ -14,7 +14,6 @@
 #   Wilfried Visser
 
 import numpy as np
-import cantera as ct
 from gspy.core.base_component import TComponent
 
 class TControl(TComponent):

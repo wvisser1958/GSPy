@@ -26,14 +26,14 @@ from pathlib import Path
 from gspy.core.turbomap import TTurboMap
 
 class TTurboComponent(TGaspath):
-    def __init__(self, owner, name, map_filename_or_dict, ControlComponent, station_in, station_out, ShaftNr,
+    def __init__(self, owner, name, map_filename_or_dict, ControlComponent, station_in, station_out, shaft_id,
                  Ndes, Etades,
                  Ncmapdes, Betamapdes):
         super().__init__(owner, name, map_filename_or_dict, ControlComponent, station_in, station_out)
 
         self.gas_in = None
         self.gas_out = None
-        self.ShaftNr = ShaftNr
+        self.shaft_id = shaft_id
 
         self.Ndes = Ndes
         self.N = Ndes
@@ -76,7 +76,7 @@ class TTurboComponent(TGaspath):
                 if not fn.exists():
                     raise FileNotFoundError(f"Map file for angle {angle} not found: {fn}")
                 # You implement/own this constructor (or whatever you call it)
-                self.maps_by_angle[angle] = self.CreateMap(fn, ShaftNr, Ncmapdes, Betamapdes)
+                self.maps_by_angle[angle] = self.CreateMap(fn, shaft_id, Ncmapdes, Betamapdes)
 
                 # VGparvaluedes must be one of the VGparvalue in the MapFileNameList (typically the value corresponding to the design point map),
                 # so we can set scale factors, check if this is the case
@@ -95,19 +95,19 @@ class TTurboComponent(TGaspath):
             # MapFileName_or_dict is just a single map file name/path
             # Normalize to Path internally (best practice)
             self.MapFileName = Path(map_filename_or_dict)
-            self.map = self.CreateMap(self.MapFileName, ShaftNr, Ncmapdes, Betamapdes)
+            self.map = self.CreateMap(self.MapFileName, shaft_id, Ncmapdes, Betamapdes)
 
         else:
             raise TypeError(
-                "MapFileNames must be a str, pathlib.Path, or a tuple with 0) VGparvaluedesigm, and 1) list of (VGparvalue, MapFileName)"
+                "MapFileNames must be a str, pathlib.Path, or a tuple with 0) VGparvaluedesign, and 1) list of (VGparvalue, MapFileName)"
             )
 
-        if all(shaft.ShaftNr != ShaftNr for shaft in self.owner.shaft_list):
-            self.owner.shaft_list.append(fshaft.TShaft(ShaftNr, name + ' shaft ' + str(ShaftNr)) )
+        if all(shaft.shaft_id != shaft_id for shaft in self.owner.shaft_list):
+            self.owner.shaft_list.append(fshaft.TShaft(shaft_id, name + ' shaft ' + str(shaft_id)) )
 
     # 1.6 WV
     # @abstractmethod  not abstract: not implemented in TFan child class
-    def CreateMap(self, MapFilePath, ShaftNr, Ncmapdes, Betamapdes):
+    def CreateMap(self, MapFilePath, shaft_id, Ncmapdes, Betamapdes):
         # raise NotImplementedError
         pass
 
@@ -166,7 +166,7 @@ class TTurboComponent(TGaspath):
             self.Ncdes = self.Ndes / fu.GetRotorspeedCorrectionFactor(self.gas_in)
             self.Nc = self.Ncdes
             self.Eta = self.Etades
-            self.shaft = self.owner.get_shaft(self.ShaftNr)
+            self.shaft = self.owner.get_shaft(self.shaft_id)
             self.vg_angle = self.vg_angle_des
 
     #  2.0
@@ -204,9 +204,9 @@ class TTurboComponent(TGaspath):
     def get_outputs(self):
         out = super().get_outputs()
 
-        out[f"N{self.ShaftNr}"] = self.N
+        out[f"N{self.shaft_id}"] = self.N
         out[f"Nc{self.station_in}"] = self.Nc
-        out[f"N{self.ShaftNr}%"] = self.N/self.Ndes*100
+        out[f"N{self.shaft_id}%"] = self.N/self.Ndes*100
         out[f"Nc{self.station_in}%"] = self.Nc/self.Ncdes*100
 
         # 1.5

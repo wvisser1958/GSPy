@@ -75,7 +75,7 @@ class TSystemModel:
 
         self.cantera_yaml_filename = cantera_yaml_filename
         self.cantera_yaml_path = use_yaml
-        self.vprint(f"Using Ccantera YAML file {use_yaml}")
+        self.vprint(f"Using Cantera YAML file {use_yaml}")
         self.gas = ct.Solution(str(use_yaml))
 
         self.vprint("phase Tmin, Tmax =", self.gas.min_temp, self.gas.max_temp)
@@ -141,9 +141,9 @@ class TSystemModel:
         # Do print to console!
         self.VERBOSE = True
 
-    def get_shaft(self, ShaftNr):
+    def get_shaft(self, shaft_id):
         for shaft in self.shaft_list:
-            if shaft.ShaftNr == ShaftNr:
+            if shaft.shaft_id == shaft_id:
                 return shaft
         return None  # Return None if no matching object is found
 
@@ -178,8 +178,8 @@ class TSystemModel:
         self.FG = 0.0    # Gross thrust kN
         self.FN = 0.0    # Net thrust kN
         self.RD = 0.0    # Ram drag kN
-        self.WF = 0.0    # Total fuel
-        self.PW = 0.0    # Total net output shaft power
+        self.WF = 0.0    # Total fuel kg/s
+        self.PW = 0.0    # Total net output shaft power kW
 
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
@@ -351,7 +351,7 @@ class TSystemModel:
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW = self.PW + shaft.PW_sum
-            print(f"\tPower offtake shaft {shaft.ShaftNr} : {shaft.PW_sum/1000:.2f} kW")
+            print(f"\tPower offtake shaft {shaft.shaft_id} : {shaft.PW_sum/1000:.2f} kW")
         if not math.isclose(self.PW, 0.0, abs_tol=1e-3):
             print(f"\tTotal power output : {self.PW/1000:.2f} kW")
             print(f"\tSFC shaft power    : {self.WF / self.PW * 1000:.2f} kg/s/kW")
@@ -370,7 +370,7 @@ class TSystemModel:
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW = self.PW + shaft.PW_sum
-            out[f"PW{shaft.ShaftNr}"] = shaft.PW_sum/1000
+            out[f"PW{shaft.shaft_id}"] = shaft.PW_sum/1000
         out["PW"] = self.PW/1000
         # if not math.isclose(self.PW, 0.0, abs_tol=1e-3):
         #     out["SFCshaft"] = self.WF / self.PW * 1000 # kg/s/kW

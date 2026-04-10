@@ -13,11 +13,10 @@
 # Author
 #   Wilfried Visser
 
+from scipy.optimize import root_scalar
 import numpy as np
-from scipy.optimize import root, root_scalar
 import cantera as ct
-# import gspy.core.sys_global as fg
-import gspy.core.system as sys
+
 from gspy.core.gaspath import TGaspath
 import gspy.core.constants as c
 import gspy.core.utils as fu
@@ -233,8 +232,6 @@ class TCombustor(TGaspath):
     #         print(f"Exception error {e} in {self.name} Fund. Press. Loss calculation, Hint: increase (burner) duct cross area.")
 
     def Run(self, Mode, PointTime):
-        # 1.5 Necessary for fixing a wiring problem, which was exposed when developing the API
-        # combustor.py
         if isinstance(self.control, str):
             try:
                 self.control = self.owner.components[self.control]   # resolve by name -> object

@@ -15,9 +15,10 @@
 
 import numpy as np
 
+
 class TShaft:
-    def __init__(self, ShaftNr, name):    # Constructor of the class
-        self.ShaftNr = ShaftNr
+    def __init__(self, shaft_id, name):  # Constructor of the class
+        self.shaft_id = shaft_id
         self.name = name
         self.PW_sum = 0
         # 1.5
