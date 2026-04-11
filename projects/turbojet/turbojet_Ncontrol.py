@@ -31,11 +31,21 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turbojet = TSystemModel('Turbojet Ncontrol')
+    turbojet = TSystemModel('Turbojet Ncontrol', model_file = __file__)
 
-    # N1 rotor speed control
-    fuelcontrol = TControl(turbojet, 'Ncontrol', '', 0.38, 100, 60, -5, 'N1%')
-
+    # N1 rotor speed control, used by combustor
+    fuelcontrol = TControl(turbojet, 'Fcontrol', '',
+                           0.38,                    # design point (DP) input for combustor
+                           100, 60, -5,             # off design (OD) input: starting value, end value and step value OR alternatively:
+                           'N1%'                    # OD control parameter name: must be an output present in the output table
+                                                    # if None: the component using it directly takes the value
+                                                    # if specified with parameter name, an equation is added forcing the parameter to match the input values
+                                                    # and the component using it makes it's input a free state variable
+                                                    # e.g. specify 'N1' to control rotor speed, with the combustor turning the Wf into a free state variable
+                                                    # alternative: EGT (T5) control example:
+                                                    # FuelControl = TControl('EGTcontrol', '', 0.38, 1020, 820, -50, 'T5')
+                                                    # note that for a gas turbine, this method may well become instable at lower power setting due to multiple solutions at same T5
+                           )
     # Generic gas turbine components
     inlet1   = TInlet(turbojet, 'Inlet1',      '', None,           1,2,   19.9, 1    )
 
