@@ -13,10 +13,11 @@
 # Authors
 #   Wilfried Visser
 
+from abc import ABC, abstractmethod
 from gspy.core.map import TMap
 from typing import Optional
 
-class TComponent:
+class TComponent(ABC):
     def __init__(self, owner, name, map_filename, control_component):    # Constructor of the class
         self.owner = owner
         self.name = name
@@ -36,6 +37,7 @@ class TComponent:
         #     pass
         pass
 
+    @abstractmethod
     def Run(self, Mode, PointTime):
         raise NotImplementedError("Subclass must implement Run abstract method")
 

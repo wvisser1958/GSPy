@@ -32,7 +32,6 @@ class TCompressor(TTurboComponent):
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
-
         self.Bleeds = Bleeds
 
     # 1.6 virtual method CreateMap will be called in ancestor TTurboComponent

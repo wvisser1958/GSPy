@@ -14,15 +14,15 @@
 #   Wilfried Visser
 #   Oscar Kogenhop
 
-from pathlib import Path
 import numpy as np
 import pandas as pd
 import math
 import os
 import cantera as ct
-from scipy.optimize import root
 import matplotlib.pyplot as plt
 import cantera as ct
+from pathlib import Path
+from scipy.optimize import root
 from gspy.core.ambient import TAmbient
 from gspy.core.gaspath import TGaspath
 

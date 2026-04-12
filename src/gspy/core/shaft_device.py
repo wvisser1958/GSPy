@@ -13,7 +13,6 @@
 # Authors
 #   Oscar Kogenhop
 
-import numpy as np
 from abc import ABC, abstractmethod
 from gspy.core.base_component import TComponent
 import gspy.core.shaft as fshaft
@@ -36,7 +35,7 @@ class TShaftDevice(TComponent, ABC):
         super().__init__(owner, name, map_filename_or_dict, control_component)
         self.control_component = control_component
         self.shaft_id = shaft_id
-        self.shaft = None  # to be assigned later in Run
+        self.shaft = None  # to be assigned later in Run()
         self.power_w_des = None
         self.power_w = self.power_w_des
 
