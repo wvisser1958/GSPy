@@ -62,14 +62,14 @@ def main():
                            )
 
     # Generic gas turbine components
-    inlet1   = TInlet(turbojet,                 # owning system model object
-                                'Inlet1',       # component name
-                                  '',           # map file name
-                                  None,         # optional control component
-                                  1, 2,         # station nr in and out (station strings are also allowed, e.g. '010' and '020')
-                                  19.9,         # design inlet mass flow
-                                  1             # design pressure ratio (PR = 1 - Ploss_relative)
-                               )
+    inlet1   = TInlet(turbojet,     # owning system model object
+                      'Inlet1',     # component name
+                      '',           # map file name
+                      None,         # optional control component
+                      1, 2,         # station nr in and out (station strings are also allowed, e.g. '010' and '020')
+                      19.9,         # design inlet mass flow
+                      1             # design pressure ratio (PR = 1 - Ploss_relative)
+                      )
 
     compressor1 = TCompressor(turbojet,         # owning system model object
                               'Compressor1',    # component name
@@ -155,13 +155,13 @@ def main():
                         # option for working with polytropic efficiency: uncomment next line
                         # turbine1.Polytropic_Eta = 1
 
-    duct1    = TDuct(       turbojet,       # owning system model object
-                            'ExhDuct',      # component name
-                            '',             # optional map file name
-                            None,           # optional control component
-                            5, 7,           # station nr in and out
-                            1.0             # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
-                            )
+    duct1    = TDuct(turbojet,       # owning system model object
+                     'ExhDuct',      # component name
+                     '',             # optional map file name
+                     None,           # optional control component
+                     5, 7,           # station nr in and out
+                     1.0             # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+                     )
 
     exhaustnozzle = TExhaustNozzle(turbojet,        # owning system model object
                                    'ExhaustNozzle', # component name
@@ -175,11 +175,11 @@ def main():
                                    )
 
     load_control = TControl(turbojet, 'PW_control', '',
-                           0,                       # design point (DP) input
-                           50, None, None,          # off design (OD) input: single input value
+                            0,                       # design point (DP) input
+                            50, None, None,          # off design (OD) input: single input value
 
-                           None                     # OD control parameter name: must be an output present in the output table
-                           )
+                            None                     # OD control parameter name: must be an output present in the output table
+                            )
 
     generator_load = TPowerConsumer(turbojet,       # owning system model object
                                     'GeneratorLoad',# component name
@@ -193,34 +193,35 @@ def main():
                                     )
 
     generator_drive = TPowerProducer(turbojet,      # owning system model object
-                                    'MotorLoad',    # component name
-                                    '',             # optional map file name
-                                    load_control,   # control component
-                                    # None,           # optional control component, if None then no control component is used for this load,
-                                                    # otherwise the control component must be defined before this load in the model file
-                                    1,              # shaft id
-                                    # 0               # design power in kW, used to calculate the power demand of the load at design conditions
-                                    50              # design power in kW, used to calculate the power demand of the load at design conditions
-                                    )
+                                     'MotorLoad',    # component name
+                                     '',             # optional map file name
+                                     load_control,   # control component
+                                     # None,           # optional control component, if None then no control component is used for this load,
+                                                     # otherwise the control component must be defined before this load in the model file
+                                     1,              # shaft id
+                                     # 0               # design power in kW, used to calculate the power demand of the load at design conditions
+                                     50              # design power in kW, used to calculate the power demand of the load at design conditions
+                                     )
 
-    startergen_load = TControl(turbojet, 'S_control', '',
-                           0,                       # design point (DP) input
-                           62.50, None, None,       # off design (OD) input: single input value, S (kVA)
+    startergen_load = TControl(turbojet,          # owning system model object
+                               'S_control',       # control component name
+                               '',                # map file name
+                               0,                 # design point (DP) input
+                               62.50, None, None, # off design (OD) input: single input value, S (kVA)
+                               None               # OD control parameter name: must be an output present in the output table
+                               )
 
-                           None                     # OD control parameter name: must be an output present in the output table
-                           )
-
-    starter_generator = TStarterGenerator(turbojet,      # owning system model object
-                                    'StarterGenerator',    # component name
-                                    '',             # optional map file name
-                                    startergen_load,# control component
-                                    # None,           # optional control component, if None then no control component is used for this load,
-                                                    # otherwise the control component must be defined before this load in the model file
-                                    1,              # shaft id
-                                    0,              # design power in kVA, used to calculate the power demand of the load at design conditions
-                                    # 62.50,          # design power in kVA, used to calculate the power demand of the load at design conditions
-                                    0.8,            # power factor, used to calculate the real power demand of the load at design conditions from the apparent power
-                                    'generator'     # power mode, either 'starter' or 'generator', determines the power conversion behavior of the load
+    starter_generator = TStarterGenerator(turbojet,     # owning system model object
+                                    'StarterGenerator', # component name
+                                    '',                 # optional map file name
+                                    startergen_load,    # control component
+                                    # None,               # optional control component, if None then no control component is used for this load,
+                                                        # otherwise the control component must be defined before this load in the model file
+                                    1,                  # shaft id
+                                    0,                  # design power in kVA, used to calculate the power demand of the load at design conditions
+                                    # 62.50,              # design power in kVA, used to calculate the power demand of the load at design conditions
+                                    0.8,                # power factor, used to calculate the real power demand of the load at design conditions from the apparent power
+                                    'generator'         # power mode, either 'starter' or 'generator', determines the power conversion behavior of the load
                                     )
 
     # create a turbojet system model

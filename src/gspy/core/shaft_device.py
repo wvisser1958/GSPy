@@ -68,10 +68,14 @@ class TShaftDevice(TComponent, ABC):
         if mode == "DP":
             # Design point: fix the design demand
             self.power_w = self.power_w_des
+            if self.control != None:
+                # Get the design control value (e.g. from a control component instance)
+                if (self.control.OD_controlled_parameter_name == None): 
+                    self.power_w = self.get_power_conversion() * self.control.DP_value * 1000 # convert kW to W
         else:
             # Off-Design
             if self.control != None:
-                # Gett the control value (e.g. from a control component instance)
+                # Get the control value (e.g. from a control component instance)
                 if (self.control.OD_controlled_parameter_name == None): 
                     self.power_w = self.get_power_conversion() * self.control.input_value * 1000 # convert kW to W
                 else:
