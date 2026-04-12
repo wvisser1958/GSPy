@@ -206,7 +206,9 @@ def main():
     startergen_load = TControl(turbojet,          # owning system model object
                                'S_control',       # control component name
                                '',                # map file name
-                               0,                 # design point (DP) input
+                               # None,              # design point (DP) input - "None" implies use of the design value from the component calling this controller
+                               # 0,                 # design point (DP) input - A value implies using this value for the design value
+                               62.50,             # design point (DP) input
                                62.50, None, None, # off design (OD) input: single input value, S (kVA)
                                None               # OD control parameter name: must be an output present in the output table
                                )
@@ -218,8 +220,8 @@ def main():
                                     # None,               # optional control component, if None then no control component is used for this load,
                                                         # otherwise the control component must be defined before this load in the model file
                                     1,                  # shaft id
-                                    0,                  # design power in kVA, used to calculate the power demand of the load at design conditions
-                                    # 62.50,              # design power in kVA, used to calculate the power demand of the load at design conditions
+                                    # 0,                  # design power in kVA, used to calculate the power demand of the load at design conditions
+                                    62.50,              # design power in kVA, used to calculate the power demand of the load at design conditions
                                     0.8,                # power factor, used to calculate the real power demand of the load at design conditions from the apparent power
                                     'generator'         # power mode, either 'starter' or 'generator', determines the power conversion behavior of the load
                                     )

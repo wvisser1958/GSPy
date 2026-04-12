@@ -46,17 +46,28 @@ class TShaftDevice(TComponent, ABC):
                 fshaft.TShaft(shaft_id, name + " shaft " + str(shaft_id))
             )
 
-    def get_shaft_power(self):
-        # Empty implementation here, as power sign convention is enforced by subclasses
-        return 0
+    @abstractmethod
+    def get_shaft_power(self) -> float:
+        """
+        Return the shaft power using the sign convention defined by the subclass.
 
-    def get_power_conversion(self):
+        This base method is abstract because the sign convention and exact
+        implementation depend on the concrete component type.
+        """
+        raise NotImplementedError
+
+    def get_power_conversion(self) -> float:
         # Empty implementation here, as power conversion is enforced by subclasses
+        # This is per definition not an abstract method, as not all shaft devices 
+        # need to implement power conversion, but it can be overridden by subclasses 
+        # that do require power conversion (e.g. starter-generator)
         return 1
 
     def Run(self, mode, point_time):
+        # Get shaft by shaft_id
         self.shaft = self.owner.get_shaft(self.shaft_id)
 
+        # Resolve control component
         if isinstance(self.control, str):
             try:
                 self.control = self.owner.components[self.control]   # resolve by name -> object
@@ -65,13 +76,15 @@ class TShaftDevice(TComponent, ABC):
                     f"Combustor '{self.name}': Control '{self.control}' cannot be resolved to an object. ({e})"
                 )
 
+        # Determine the power demand from the control component if applicable
         if mode == "DP":
             # Design point: fix the design demand
             self.power_w = self.power_w_des
-            if self.control != None:
-                # Get the design control value (e.g. from a control component instance)
-                if (self.control.OD_controlled_parameter_name == None): 
-                    self.power_w = self.get_power_conversion() * self.control.DP_value * 1000 # convert kW to W
+            if self.control != None and self.control.input_value != None: 
+                # This overrides the design power of the ShaftDevice to the controller value
+                # Get the design control value (e.g. from a control component instance),
+                # the controller sets the "input_value" in design from "DP_input_value"
+                self.power_w = self.get_power_conversion() * self.control.input_value * 1000 # convert kW to W
         else:
             # Off-Design
             if self.control != None:
@@ -81,7 +94,7 @@ class TShaftDevice(TComponent, ABC):
                 else:
                     # TODO
                     raise NotImplementedError("Control of shaft devices based on state variables is not implemented yet.")
-            else: # use power demand from design
+            else: # use power demand from componennt design specification
                 self.power_w = self.power_w_des
 
         # self.shaft.PW_sum = self.shaft.PW_sum - self.power_w # Negative sign: power absorbed from shaft
@@ -169,7 +182,7 @@ class TPowerProducer(TShaftDevice):
         ):
         super().__init__(owner, name, map_filename_or_dict, control_component, shaft_id)
         self.power_w_des = power_kw_des * 1000  # convert kW to W
-        self.power_w = None
+        self.power_w = self.power_w_des
 
     def get_outputs(self):
         out = {}
@@ -186,11 +199,19 @@ class TPowerProducer(TShaftDevice):
 
 class TStarterGenerator(TPowerProducer):
     """
-    Concrete starter-generator device.
+    Concrete starter-generator device where the power is defined in kVA and power factor.
+    
+    A starter-generator is a shaft-connected device that can operate as both a power 
+    consumer (starter) and a power producer (generator) depending on the operating 
+    mode. This class extends TPowerProducer but overrides the Run method to determine 
+    the power demand based on the control component and operating mode. 
     """
-
+    # Derivation from TPowerProducer is chosen here because the default behavior of a 
+    # starter-generator is to produce power (generator mode), operating in starter mode
+    # for example during engine start is a special simulation case
+    
     def __init__(
-        self,
+        self,                   # instance reference
         owner,                  # owning system model object
         name,                   # component name
         map_filename_or_dict,   # map file name or dict with power values for different demands
@@ -207,7 +228,7 @@ class TStarterGenerator(TPowerProducer):
         power_factor=1.0,       # Power factor is assumed to be 1, so apparent power is equal to real power in this case e.g. for a starter motor power conversion is typically 0.5-0.8, for a generator it is typically 0.9-1.0
         power_mode='generator'  # options: ['starter', 'generator'], determines the power conversion behavior of the load 
         ):
-        self.power_sign = -1     # default to generator behavior (power absorbed from shaft, negative sign)
+        self.power_sign = -1     # defaults to generator behavior (power absorbed from shaft, negative sign)
         
         if power_mode not in ['starter', 'generator']:
             raise ValueError("Invalid power_mode. Expected 'starter' or 'generator'.")
@@ -222,17 +243,17 @@ class TStarterGenerator(TPowerProducer):
         self.apparent_power = apparent_power
         self.power_factor = power_factor
         power_kw_des = self.apparent_power * self.power_factor
+
         # Now call the parent constructor with the calculated real power
         super().__init__(owner, name, map_filename_or_dict, control_component, shaft_id, power_kw_des)
         self.power_w_des = power_kw_des * 1000  # convert kW to W
-        self.power_w = None
+        self.power_w = self.power_w_des
 
     def get_outputs(self):
         out = {}
         out["PW_" + self.name] = self.power_w / 1000  # convert W to kW for output
         out["S_" + self.name] = self.apparent_power  # apparent power in kVA for output
         out["PF_" + self.name] = self.power_factor  # power factor for output
-
         return out
 
     def get_shaft_power(self):
