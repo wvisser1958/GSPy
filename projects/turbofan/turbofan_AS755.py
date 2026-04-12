@@ -14,11 +14,9 @@
 #   Wilfried Visser
 #   Oscar Kogenhop
 
-from gspy.core import sys_global as fg
-from gspy.core import system as fsys
+from gspy.core.system import TSystemModel
 
 from gspy.core.control import TControl
-from gspy.core.ambient import TAmbient
 from gspy.core.inlet import TInlet
 from gspy.core.fan import TFan
 from gspy.core.compressor import TCompressor
@@ -27,122 +25,238 @@ from gspy.core.turbine import TTurbine
 from gspy.core.duct import TDuct
 from gspy.core.exhaustnozzle import TExhaustNozzle
 
-import os
-from pathlib import Path
-
-    # IMPORTANT NOTE TO THIS MODEL FILE
-    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # note that this model is only to serve as example and does not represent an actual gas turbine design,
-    # nor an optimized design. The component maps are just sample maps scaled to the model design point.
-    # The maps are entirely unrealistic and therefore result in unrealistic, unstable off design performance,
-    # stall margin exceedance etc.
-    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# IMPORTANT NOTE TO THIS MODEL FILE
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# note that this model is only to serve as example and does not represent an actual gas turbine design,
+# nor an optimized design. The component maps are just sample maps scaled to the model design point.
+# The maps are entirely unrealistic and therefore result in unrealistic, unstable off design performance,
+# stall margin exceedance etc.
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    # Paths
-    project_dir = Path(__file__).resolve().parent
-    map_path = project_dir / "maps"
-    fg.output_path = project_dir / "output"
-
-    # create Ambient conditions object (to set ambient/inlet/flight conditions)
-    #                              Altitude, Mach, dTs,    Ps0,    Ts0
-    # None for Ps0 and Ts0 means values are calculated from standard atmosphere
-    fsys.Ambient = TAmbient('Amb', '000',   0, 0,   0,   None,   None)
+    turbofan = TSystemModel('Turbofan_AS755',
+                            model_file = __file__)
+    # Override ambient object station number to with new station string
+    turbofan.ambient.set_station_nr('000')
 
     # create a control (controlling all inputs to the system model)
     # combustor Texit input, with Wf 1.11 as first guess for 1600 K DP combustor exit temperature
-    FuelControl = TControl('Ctrl', '', 1.11, 1600, 1100, -50, None)
+    fuel_control = TControl(turbofan,        # owning system model object
+                            'FuCtrl',        # design point (DP) input
+                            '',              # map file name
+                            1.11,            
+                            1600, 1100, -50, # off design (OD) input: starting value, end value and step value
+                            None)            # OD control parameter name: must be an output present in the output table
 
+    inlet = TInlet(turbofan,    # owning system model object
+                    'Inlet',    # component name
+                    '',         # map file name
+                    None,       # optional control component
+                    '010','020',# station nr in and out
+                    337,        # design inlet mass flow
+                    1           # design pressure ratio (PR = 1 - Ploss_relative)
+                    )
+
+    # for turbofan, note that fan has 2 GasOut outputs
+    fan = TFan(turbofan,           # owning system model object
+               'CmpFan',           # component name
+               'bigfanc.map',      # core flow map file name
+               '020', '025', '125',# station nr in, core out, bypass (duct side) out
+               1,                  # shaft nr
+               4880,               # design rpm
+               0.8696,             # core flow design efficiency
+               5.3,                # design bypass ratio BPR
+               0.95,               # core map design Nc (for scaling)
+               0.7,                # core map design Beta (for scaling)
+               2.33,               # core flow design PR
+
+              # bypass flow map data
+              'bigfand.map',    # bypass flow map file name
+               0.95,            # bypass (duct side) map design Nc (for scaling)
+               0.7,             # bypass map design Beta (for scaling)
+               1.65,            # bypass flow design PR
+               0.8606,          # bypass flow design efficiency
+
+               1                # cross flow control factor (see fan.py code)
+               )
+
+    hpc = TCompressor(turbofan,         # owning system model object
+                      'CmpH',           # component name
+                      'compmap.map' ,   # map file name
+                      None,             # optional control component
+                      '025', '030',     # station nr in and out
+                      2,                # shaft nr
+                      14000,            # design rpm
+                      0.8433,           # design efficiency
+                      1,                # map design Nc (for scaling)
+                      0.8,              # map design Beta (for scaling)
+                      10.9,             # design pressure ratio
+                      'GG',             # speed option
+                      None              # option list of bleeds
+                      )
+
+    # ***************** Combustor ******************************************************
+    # fuel input
+    # Texit input, Wf guess for 1500 K is 1.1 kg/s
+    combustor = TCombustor(turbofan,       # owning system model object
+                           'Brn',          # component name
+                           '',             # map file name             # for future use of a combustor efficiency map
+
+                           # OD fuel input from FuelControl
+                           fuel_control,   # fuel control component    # fuel control component setting fuel flow depending on OD / PointTime point
+
+                           '030', '040',   # station nr in and out
+
+                           1.1,            # Design point (DP) fuel flow Wfdes
+                           1500,           # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
+                                            #               - Wfdes is then taken as starting value for iteration
+
+                           1,              # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+                           1,              # design combustor efficiency
+                           None,           # Fuel temperature K           # If None, then Tfuel is assumed to be equal to temperature of entry air flow
+
+                           # For the fuel properties specification there are 2 options:
+                           #     1:        virtual fuel with unknown composition:
+                           #               specify LHV, H/C ratio, O/C ratio and Tfuel. GSPy will then do the species bookkeeping, determine the exit
+                           #               gas composition based in inlet air/gas composition, H/C, O/C
+                           #               and calculated the exit temperature from chemical equilibrium
+                           #     2:        specify the fuel composition using Cantera composition string like
+                           #                   'NC12H26:1' (dodecane),
+                           #                   'CH4:9, N2:1' (mixture of CH4 and N2 in ratio 9:1 by mass)
+                           #                   or 'CH4:5, C2H6:1' for example, and fuel temperature
+                           43031,          # LHV, required if Fuelcomposition is None
+                           1.9167,         # HCratio
+                           0,              # OCratio
+                           None,           # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
+                           None            # Cross flow area to calculate fundamental pressue loss
+                           )
+
+    hpt = TTurbine(turbofan,        # owning system model object
+                   'TrbH',          # component name
+                   'turbimap.map',  # map file name
+                   None,            # optional control component
+                   '040', '045',    # station nr in and out
+                   2,               # shaft nr
+                   14000,           # design point (DP) rpm
+                   0.8732,          # design point (DP) efficiency
+                   1,               # map design Nc (for scaling)
+                   0.65,            # map design Beta (for scaling)
+                   1.0,             # design mechanical efficiency (standard isentropic, Polytropic_Eta = 0)
+                   'GG',            # turbine type 'GG' = gas generator delivering all power required by the shaft
+                                    #              'PT' = free power turbine or turbine driving power output shaft
+                   None             # optional cooling flows object list
+                   )
+                   # option for working with polytropic efficiency: uncomment next line
+                   # turbine1.Polytropic_Eta = 1
+
+    lpt = TTurbine(turbofan,        # owning system model object
+                   'TrbL',          # component name
+                   'turbimap.map',  # map file name
+                   None,            # optional control component
+                   '045', '050',    # station nr in and out
+                   1,               # shaft nr
+                   4480,            # design point (DP) rpm
+                   0.8682,          # design point (DP) efficiency
+                   1,               # map design Nc (for scaling)
+                   0.7,             # map design Beta (for scaling)
+                   1.0,             # design mechanical efficiency (standard isentropic, Polytropic_Eta = 0)
+                   'GG',            # turbine type 'GG' = gas generator delivering all power required by the shaft
+                                    #              'PT' = free power turbine or turbine driving power output shaft
+                   None             # optional cooling flows object list
+                   )
+                   # option for working with polytropic efficiency: uncomment next line
+                   # turbine1.Polytropic_Eta = 1
+
+
+    hot_duct = TDuct(turbofan,    # owning system model object
+                     'DH',        # component name
+                     '',          # optional map file name
+                     None,        # optional control component
+                     '050','070', # station nr in and out
+                     1.0          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+                     )
+
+    hot_nozzle= TExhaustNozzle(turbofan,          # owning system model object
+                               'NozH',            # component name
+                               '',                # option map file name
+                               None,              # optional control component
+                               '070','080','090', # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle)
+                                                  # con-di nozzle model still to be implemented
+                               1,                 # design CX thrust coefficient
+                               1,                 # design CV velocity coefficient
+                               1                  # design CD discharge coefficient
+                               )
+
+    # now add the list with components following the 2nd fan GasOut (i.e. the bypass duct)
+    cold_duct = TDuct(turbofan,    # owning system model object
+                      'DC',        # component name
+                      '',          # optional map file name
+                      None,        # optional control component
+                      '125','170', # station nr in and out
+                      1.0          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+                      )
+
+    cold_nozzle = TExhaustNozzle(turbofan,          # owning system model object
+                                 'NozC',            # component name   
+                                 '',                # option map file name
+                                 None,              # optional control component
+                                 '170','180','190', # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle)
+                                                    # con-di nozzle model still to be implemented
+                                 1,                 # design CX thrust coefficient
+                                 1,                 # design CV velocity coefficient
+                                 1                  # design CD discharge coefficient
+                                 )
+    
     # create a turbojet system model
-    fsys.system_model = [fsys.Ambient,
-
-                        FuelControl,
-
-                        TInlet('InEng',          '', None,           '000','020',   337, 1    ),
-
-                        # for turbofan, note that fan has 2 GasOut outputs
-                        TFan('CmpFan',map_path / 'bigfanc.map', '020', '025', '125',   1,   4880, 0.8696, 5.3, 0.95, 0.7, 2.33,
-                                      map_path / 'bigfand.map', 0.95, 0.7, 1.65,            0.8606,
-                                      # cf = 1
-                                      1),
-
-                        # always start with the components following the 1st GasOut object
-                        TCompressor('CmpH',map_path / 'compmap.map', None, '025','030',   2,   14000, 0.8433, 1, 0.8, 10.9, 'GG', None),
-
-                        # ***************** Combustor ******************************************************
-                        # fuel input
-                        # Texit input, Wf guess for 1500 K is 1.1 kg/s
-                        TCombustor('Brn',  '',  FuelControl,           '030','040',   1.1 , 1500,    1, 1,
-                                                    # fuel specification examples:
-                                                    # fuel specified by LHV, HCratio, OCratio:
-                                                    None,      43031, 1.9167, 0, '', None),
-
-                                                    # fuel specified by Fuel composition (by mass)
-                                                        # NC12H26 = Dodecane ~ jet fuel, CH4 for hydrogen
-                                                    # None,      None, None, None, 'NC12H26:1'),
-                                                    # fuel specified by Fuel temperature and Fuel composition (by mass)
-                                                        # 288.15,      None, None, None, 'CH4:1', None),
-
-                                                    # fuel mixtures
-                                                    # fuel specified by Fuel temperature and Fuel composition (by mass)
-                                                    # 288.15,      None, None, None, 'CH4:5, C2H6:1', None),
-
-                        TTurbine('TrbH', map_path / 'turbimap.map', None, '040','045',   2,   14000, 0.8732,       1, 0.65, 1, 'GG', None),
-
-                        TTurbine('TrbL', map_path / 'turbimap.map', None, '045','050',   1,   4480, 0.8682,       1, 0.7, 1, 'GG', None),
-
-
-                        TDuct('DH',      '', None,               '050','070',   1.0                 ),
-                        TExhaustNozzle('NozPri',     '', None,           '070','080','090', 1, 1, 1),
-
-                        # now add the list with components following the 2nd fan GasOut (i.e. the bypass duct)
-                        TDuct('DC',      '', None,               '125','170',   1.0                 ),
-                        TExhaustNozzle('NozSec',      '', None,        '170','180','190', 1, 1, 1)]
-
-    # define the gas model in f_global
-    fg.InitializeGas()
-    fsys.ErrorTolerance = 0.0001
+    turbofan.define_comp_run_list(fuel_control,
+                                  inlet,
+                                  fan,
+                                  hpc,
+                                  combustor,
+                                  hpt,
+                                  lpt,
+                                  hot_duct,
+                                  hot_nozzle,
+                                  cold_duct,
+                                  cold_nozzle)
 
     # run the system model Design Point (DP) calculation
-    fsys.Mode = 'DP'
+    turbofan.mode = 'DP'
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    fsys.Ambient.SetConditions('DP', 0, 0, 0, None, None)
-    fsys.Run_DP_simulation()
+    turbofan.ambient.SetConditions('DP', 0, 0, 0, None, None)
+    turbofan.Run_DP_simulation()
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
-    fsys.Mode = 'OD'
-    fsys.inputpoints = FuelControl.get_OD_input_points()
+    turbofan.mode = 'OD'
+    turbofan.inputpoints = fuel_control.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
     # conditions is desired
     # typical cruise conditions:
-    fsys.Ambient.SetConditions('OD', 10000, 0.8, 0, None, None)
+    turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None)
     # Run OD simulation
-    fsys.Run_OD_simulation()
+    turbofan.Run_OD_simulation()
 
-    #  output results
-    outputbasename = os.path.splitext(os.path.basename(__file__))[0]
     # export OutputTable to CSV
-    fsys.OutputToCSV(fg.output_path, outputbasename + ".csv")
+    turbofan.OutputToCSV()
 
     # plot nY vs X parameter
-    fsys.Plot_X_nY_graph('Performance vs N1 [%] at Alt 10000m, Ma 0.8 (DP at ISA SL)',
-                            os.path.join(fg.output_path, outputbasename + "_1.jpg"),
-                            # common X parameter column name with label
-                            ("N1%",           "Fan speed [%]"),
-                            # 4 Y paramaeter column names with labels and color
-                            [   ("T040",              "TIT [K]",                  "blue"),
-                                ("T045",             "EGT [K]",                  "blue"),
-                                ("W020",              "Inlet mass flow [kg/s]",   "blue"),
-                                ("Wf_Brn",   "Fuel flow [kg/s]",         "blue"),
-                                ("FN",              "Net thrust [kN]",          "blue")            ])
+    turbofan.Plot_X_nY_graph('Performance vs N1 [%] at Alt 10000m, Ma 0.8 (DP at ISA SL)',
+                             "_1",
+                             # common X parameter column name with label
+                             ("N1%",           "Fan speed [%]"),
+                             # 4 Y paramaeter column names with labels and color
+                             [   ("T040",   "TIT [K]",                "blue"),
+                                 ("T045",   "EGT [K]",                "blue"),
+                                 ("W020",   "Inlet mass flow [kg/s]", "blue"),
+                                 ("Wf_Brn", "Fuel flow [kg/s]",       "blue"),
+                                 ("FN",     "Net thrust [kN]",        "blue")            ])
 
      # Create plots with operating lines if available
-    for comp in fsys.system_model:
-        comp.PlotMaps()
+    turbofan.PlotMaps()
 
     print("end of running turbofan simulation")
 
