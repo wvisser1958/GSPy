@@ -7,8 +7,9 @@ Create a text-based class inheritance diagram for all .py files in a folder.
 Example:
     python class_diagram.py /path/to/project
     python class_diagram.py /path/to/project --recursive
-    python class_diagram.py /path/to/project --include-private
+    python class_diagram.py /path/to/project --classesonly
     python class_diagram.py /path/to/project --output diagram.txt
+    python .\class_hierarchy.py ..\..\src\gspy\core\ --output diagram.txt --classesonly
 """
 
 from __future__ import annotations
@@ -66,8 +67,6 @@ class PythonClassVisitor(ast.NodeVisitor):
                 class_info.methods.append(self._extract_method_info(stmt))
 
         self.classes.append(class_info)
-
-        # Also visit nested classes if present
         self.generic_visit(node)
 
     def _extract_class_vars(self, stmt: ast.stmt) -> List[str]:
@@ -160,11 +159,6 @@ def parse_classes(root: Path, files: List[Path]) -> Dict[str, ClassInfo]:
 
 
 def build_inheritance_maps(classes: Dict[str, ClassInfo]) -> tuple[Dict[str, List[str]], Dict[str, Set[str]]]:
-    """
-    Returns:
-        children_map: parent_full_name -> [child_full_name, ...]
-        unresolved_bases_map: class_full_name -> {base_name, ...} for external/unresolved bases
-    """
     children_map: Dict[str, List[str]] = {name: [] for name in classes}
     unresolved_bases_map: Dict[str, Set[str]] = {name: set() for name in classes}
 
@@ -176,15 +170,10 @@ def build_inheritance_maps(classes: Dict[str, ClassInfo]) -> tuple[Dict[str, Lis
         for base in cls.bases:
             matched_parent: Optional[str] = None
 
-            # Exact full-name match
             if base in classes:
                 matched_parent = base
-
-            # Match by simple class name
             elif base in simple_name_map and len(simple_name_map[base]) == 1:
                 matched_parent = simple_name_map[base][0]
-
-            # Match module-local reference like "Base"
             else:
                 local_candidate = f"{cls.module}.{base}" if cls.module else base
                 if local_candidate in classes:
@@ -223,6 +212,7 @@ def render_class_block(
     children_map: Dict[str, List[str]],
     unresolved_bases_map: Dict[str, Set[str]],
     include_private: bool,
+    classes_only: bool,
     prefix: str = "",
     is_last: bool = True,
     visited: Optional[Set[str]] = None,
@@ -251,53 +241,78 @@ def render_class_block(
 
     child_prefix = prefix + ("    " if is_last else "│   ")
 
-    shown_vars = [v for v in cls.class_vars if include_private or not v.startswith("_")]
-    shown_methods = [m for m in cls.methods if include_private or not m.name.startswith("_")]
+    if not classes_only:
+        shown_vars = [v for v in cls.class_vars if include_private or not v.startswith("_")]
+        shown_methods = [m for m in cls.methods if include_private or not m.name.startswith("_")]
 
-    if shown_vars:
-        lines.append(f"{child_prefix}├── class variables")
-        for i, var_name in enumerate(shown_vars):
-            sub_connector = "└── " if i == len(shown_vars) - 1 else "├── "
-            lines.append(f"{child_prefix}│   {sub_connector}{var_name}")
+        if shown_vars:
+            lines.append(f"{child_prefix}├── class variables")
+            for i, var_name in enumerate(shown_vars):
+                sub_connector = "└── " if i == len(shown_vars) - 1 else "├── "
+                lines.append(f"{child_prefix}│   {sub_connector}{var_name}")
 
-    if shown_methods:
-        lines.append(f"{child_prefix}├── methods")
-        for i, method in enumerate(shown_methods):
-            sub_connector = "└── " if i == len(shown_methods) - 1 else "├── "
-            lines.append(f"{child_prefix}│   {sub_connector}{method_label(method)}")
+        if shown_methods:
+            lines.append(f"{child_prefix}├── methods")
+            for i, method in enumerate(shown_methods):
+                sub_connector = "└── " if i == len(shown_methods) - 1 else "├── "
+                lines.append(f"{child_prefix}│   {sub_connector}{method_label(method)}")
 
     children = children_map[class_name]
     if children:
-        lines.append(f"{child_prefix}└── subclasses")
-        for i, child_name in enumerate(children):
-            child_is_last = i == len(children) - 1
-            lines.extend(
-                render_class_block(
-                    child_name,
-                    classes,
-                    children_map,
-                    unresolved_bases_map,
-                    include_private,
-                    prefix=child_prefix + "    ",
-                    is_last=child_is_last,
-                    visited=visited,
+        if classes_only:
+            for i, child_name in enumerate(children):
+                child_is_last = i == len(children) - 1
+                lines.extend(
+                    render_class_block(
+                        child_name,
+                        classes,
+                        children_map,
+                        unresolved_bases_map,
+                        include_private,
+                        classes_only,
+                        prefix=child_prefix,
+                        is_last=child_is_last,
+                        visited=visited,
+                    )
                 )
-            )
+        else:
+            lines.append(f"{child_prefix}└── subclasses")
+            for i, child_name in enumerate(children):
+                child_is_last = i == len(children) - 1
+                lines.extend(
+                    render_class_block(
+                        child_name,
+                        classes,
+                        children_map,
+                        unresolved_bases_map,
+                        include_private,
+                        classes_only,
+                        prefix=child_prefix + "    ",
+                        is_last=child_is_last,
+                        visited=visited,
+                    )
+                )
 
     return lines
 
 
-def render_diagram(classes: Dict[str, ClassInfo], include_private: bool) -> str:
+def collect_reachable(node: str, children_map: Dict[str, List[str]], visited: Set[str]) -> None:
+    if node in visited:
+        return
+    visited.add(node)
+    for child in children_map.get(node, []):
+        collect_reachable(child, children_map, visited)
+
+
+def render_diagram(classes: Dict[str, ClassInfo], include_private: bool, classes_only: bool) -> str:
     if not classes:
         return "No classes found."
 
     children_map, unresolved_bases_map = build_inheritance_maps(classes)
-
     all_children = {child for children in children_map.values() for child in children}
 
     roots = []
     for full_name, cls in classes.items():
-        # Root if it has no internal parent
         has_internal_parent = full_name in all_children
         if not has_internal_parent:
             roots.append(full_name)
@@ -328,17 +343,12 @@ def render_diagram(classes: Dict[str, ClassInfo], include_private: bool) -> str:
                     children_map,
                     unresolved_bases_map,
                     include_private=include_private,
+                    classes_only=classes_only,
                     prefix="",
                     is_last=is_last,
                 )
             )
 
-    # Add classes that were not rendered due to unusual graph situations
-    rendered = set()
-    for line in lines:
-        pass  # placeholder to keep flow simple
-
-    # More reliable: collect by walking from roots
     visited: Set[str] = set()
     for root_name in roots:
         collect_reachable(root_name, children_map, visited)
@@ -356,20 +366,13 @@ def render_diagram(classes: Dict[str, ClassInfo], include_private: bool) -> str:
                     children_map,
                     unresolved_bases_map,
                     include_private=include_private,
+                    classes_only=classes_only,
                     prefix="",
                     is_last=i == len(missing) - 1,
                 )
             )
 
     return "\n".join(lines)
-
-
-def collect_reachable(node: str, children_map: Dict[str, List[str]], visited: Set[str]) -> None:
-    if node in visited:
-        return
-    visited.add(node)
-    for child in children_map.get(node, []):
-        collect_reachable(child, children_map, visited)
 
 
 def main() -> int:
@@ -386,6 +389,11 @@ def main() -> int:
         "--include-private",
         action="store_true",
         help="Include private methods and class variables starting with '_'",
+    )
+    parser.add_argument(
+        "--classesonly",
+        action="store_true",
+        help="Only list class names and inheritance, hide methods and class variables",
     )
     parser.add_argument(
         "--output",
@@ -409,7 +417,11 @@ def main() -> int:
         return 0
 
     classes = parse_classes(folder, files)
-    diagram = render_diagram(classes, include_private=args.include_private)
+    diagram = render_diagram(
+        classes,
+        include_private=args.include_private,
+        classes_only=args.classesonly,
+    )
 
     print(diagram)
 
