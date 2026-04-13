@@ -212,9 +212,14 @@ class TTurboComponent(TGaspath):
         # 1.5
         if self.Eta != None:
             out["Eta_is_"+self.name] = self.Eta
+
         # 1.6 WV
         if self.vg_angle_des !=None:
             out["vg_angle_"+self.name] = self.vg_angle
+
+        # 2.0 OK
+        out["TQ"+self.name] = self.PW / (2 * math.pi * self.N / 60) if self.PW != None and self.N != None else None
+
         out["PW_"+self.name] = self.PW
 
         return out
