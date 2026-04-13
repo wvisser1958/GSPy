@@ -23,7 +23,9 @@ from gspy.core.combustor import TCombustor
 from gspy.core.turbine import TTurbine
 from gspy.core.duct import TDuct
 from gspy.core.exhaustnozzle import TExhaustNozzle
-from gspy.core.shaft_device import TPowerConsumer, TPowerProducer, TStarterGenerator
+from gspy.core.load import TLoad
+from gspy.core.motor import TMotor
+from gspy.core.starter_generator import TStarterGenerator
 
 # IMPORTANT NOTE TO THIS MODEL FILE
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -181,7 +183,7 @@ def main():
                             None                     # OD control parameter name: must be an output present in the output table
                             )
 
-    generator_load = TPowerConsumer(turbojet,       # owning system model object
+    generator_load = TLoad(turbojet,       # owning system model object
                                     'GeneratorLoad',# component name
                                     '',             # optional map file name
                                     load_control,   # control component
@@ -192,7 +194,7 @@ def main():
                                     50              # design power in kW, used to calculate the power demand of the load at design conditions
                                     )
 
-    generator_drive = TPowerProducer(turbojet,      # owning system model object
+    generator_drive = TMotor(turbojet,      # owning system model object
                                      'MotorLoad',    # component name
                                      '',             # optional map file name
                                      load_control,   # control component

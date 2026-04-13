@@ -10,6 +10,7 @@ Example:
     python class_diagram.py /path/to/project --classesonly
     python class_diagram.py /path/to/project --output diagram.txt
     python .\class_hierarchy.py ..\..\src\gspy\core\ --output diagram.txt --classesonly
+    python .\projects\file_utils\class_hierarchy.py .\src\gspy\core\ --output .\projects\file_utils\diagram.txt
 """
 
 from __future__ import annotations
