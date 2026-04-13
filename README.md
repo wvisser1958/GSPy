@@ -37,10 +37,13 @@ See the LICENSE file for details.
   methods simular to the earlier version main program functions.
 - Ambient model object class now embedded in TSystem_Model. Default station
   number for ambient is 'a'. Change if using
-  <system_model>.Ambient.set_station_nr if desired (e.g. to comply to AS755).
+  <system_model>.ambient.set_station_nr if desired (e.g. to comply to AS755).
+  Note that station number is the designated term, but this doesn't have to be a 
+  number, strings are allowed, e.g. string '000' is perfectly valid as an AS755
+  station number.
 - This means the inlet entry gas path station must now be different from the
-  ambient station. Standard would be station 1 and 2 for inlet gas path entry
-  and exit.
+  ambient station. Standard would be station 1 (or '010') and 2 (or '020') for 
+  inlet gas path entry and exit.
 - Combustor Cantera equilibrium calculations made more robust using auto, then
   'vcs' and 'gibbs' method if subsequently if auto fails to converge (e.g. like
   at high >2000 K temperatures)
@@ -50,6 +53,36 @@ See the LICENSE file for details.
   relative to the location of the sys_global.py file in the \core
   sub-directory.
 - Many renamings and refactorings to more pythonic coding style.
+- It is assumed that models run from a project folder, where standard folder 
+  locations are assumed to find requested data, see the .\projects folder
+  of the project:
+  Projects_root_folder
+   └── turbojet/
+       ├── turbojet.py
+       ├── data/
+       │   ├── fluid_props/
+       │   │   └── jetsurf.yaml
+       │   └── maps/
+       │       ├── compmap-scaled.map
+       │       ├── compmap.map
+       └── input/
+           └── etc.
+- Shaft component classes are introduced to model power off-take loads or 
+  electric motors, class hierarchy:
+  TComponent 
+    └── TShaftComponent
+        ├── TOneShaftComponent
+        │   ├── TLoad
+        │   └── TMotor
+        │       └── TStarterGenerator
+        └── TTwoShaftComponent
+  TTwoShaftComponent is an abstract class to e.g. derive models for gearboxes
+  and clutches.
+- A turbojet sample model (turbojet_PWofftakes.py) demonstrates the usage
+  of power delivery and extraction enable the object in the model to test 
+  the usage.
+- A basic starter-generator model demonstrates power delivery and power 
+  extraction modes, see comments and docstrings in the class for usage.
 
 ### GSPy v1.7.0.0                                                     17-03-2026
 --------------------------------------------------------------------------------

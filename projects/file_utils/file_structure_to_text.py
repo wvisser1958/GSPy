@@ -38,4 +38,4 @@ def generate_tree(startpath, display_root="project_root", output_file="tree_stru
     print(f"Tree structure saved to '{output_file}'")
     
 # Example usage:
-generate_tree(".")
+generate_tree(".\..\..")
