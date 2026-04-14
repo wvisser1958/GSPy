@@ -29,60 +29,92 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
-### GSPy v2.0.0.0                                                     31-03-2026
+### GSPy v2.0.0.0                                                     14-04-2026
 --------------------------------------------------------------------------------
 ### Improvements
 --------------------------------------------------------------------------------
-- A project now must instantiate a TSystem_Model object and then call the
-  methods simular to the earlier version main program functions.
-- Ambient model object class now embedded in TSystem_Model. Default station
-  number for ambient is 'a'. Change if using
-  <system_model>.ambient.set_station_nr if desired (e.g. to comply to AS755).
-  Note that station number is the designated term, but this doesn't have to be a 
-  number, strings are allowed, e.g. string '000' is perfectly valid as an AS755
-  station number.
-- This means the inlet entry gas path station must now be different from the
-  ambient station. Standard would be station 1 (or '010') and 2 (or '020') for 
-  inlet gas path entry and exit.
-- Combustor Cantera equilibrium calculations made more robust using auto, then
-  'vcs' and 'gibbs' method if subsequently if auto fails to converge (e.g. like
-  at high >2000 K temperatures)
-- The jetsurf.yaml file with the gas properties data for Cantera is located in
-  the GSPy\data\fluid_props\ folder. The path to this file to initialze the
-  Cantera 'solution' gas properties model is now automatically resolved
-  relative to the location of the sys_global.py file in the \core
-  sub-directory.
+- Folder structure
+  * It is assumed that models run from a project folder, where standard folder
+    locations are assumed to find requested data, see the .\projects folder
+    of the project. As an example, see the folder structure of the turbojet
+    demo project:
+      turbojet/
+      ├── data/
+      │   ├── fluid_props/
+      │   │   ├── jetsurf.yaml
+      │   │   └── jetsurf_noPAH.yaml
+      │   └── maps/
+      │       ├── compmap-scaled.map
+      │       ├── compmap.map
+      │       └── turbimap.map
+      ├── input/
+      │   ├── Turbojet_AMinput.csv
+      ├── output/
+      │   ├── Turbojet.csv
+      │   ├── Turbojet_1.jpg
+      │   ├── compressor1_map.jpg
+      │   ├── compressor1_map_dual.jpg
+      │   ├── turbine1_map.jpg
+      │   └── turbine1_map_dual.jpg
+      ├── turbojet.py
+      ├── turbojet_AM.py
+      ....
+  * The yaml file with the gas properties data for Cantera must be located in the
+    project/data/fluid_props/ sub folder. Per default, this is the jetsurf.yaml
+    folder that mostly works for gas turbine and jet engine models. For backward
+    compatibility, if not found there, GSPy will look for jetsurf.yaml in the
+    \data\ folder in the GSPy root.
+- Architecture
+  * A GSPy model now is an object of class TSystem_Model. A project model script
+    now must instantiate a TSystem_Model object and then call the
+    methods simular to the earlier version main program functions for configuring
+    and running the model.
+  * The Ambient model object class now embedded in TSystem_Model. Default station
+    number for ambient is 'a'. Change if using
+    <system_model>.ambient.set_station_nr if desired (e.g. to comply to AS755).
+  * Note that this means the inlet entry gas path station must now be different
+    from the ambient station. Standard would be station 1 (or '010') and 2
+    (or '020') for inlet gas path entry and exit.
+  * Note that the "station number" does not have to be a number, ASCII strings
+    composed of any combination of alphanumering characters are allowed.
+    A string like '000' is perfectly valid as an AS755 station number.
+    Also, for example 'a', 'thr', 'exit1' etc. all are allowed.
+- Thermodynamic model
+  * Combustor Cantera equilibrium calculations made more robust using auto, then
+    'vcs' and 'gibbs' method if subsequently if auto fails to converge (e.g. like
+    at high >2000 K temperatures)
 - Many renamings and refactorings to more pythonic coding style.
-- It is assumed that models run from a project folder, where standard folder 
-  locations are assumed to find requested data, see the .\projects folder
-  of the project:
-  Projects_root_folder
-   └── turbojet/
-       ├── turbojet.py
-       ├── data/
-       │   ├── fluid_props/
-       │   │   └── jetsurf.yaml
-       │   └── maps/
-       │       ├── compmap-scaled.map
-       │       ├── compmap.map
-       └── input/
-           └── etc.
-- Shaft component classes are introduced to model power off-take loads or 
-  electric motors, class hierarchy:
-  TComponent 
+- The class_hierarchy.md file in de \docs folder now show the object orientated
+  architecture with the component model classes.
+- Utility scripts
+  In the projects\utils folder there are 2 utility scripts:
+  * file_structure_to_text.py: for generating a file structure diagram of
+    a folder path. This may be convenient for generating the folder
+    structure of a project. In the script it is set to generate it for
+    the turbojet project. The resulting 'tree_structure.md' file is
+    created in the specific project folder.
+  * class_diagram.py: for generating object class diagrams from a python
+    source code folder. The script is per default configured to generate
+    the class hierarchy diagram of the .\src\gspy\core folder.
+    The resulting class_diagram.md file is created in the .\docs folder.
+- Shaft component classes are introduced to model components producing or
+  consuming power and/or torque, like electric motors, generators etc.
+  Class hierarchy:
+  TComponent
     └── TShaftComponent
         ├── TOneShaftComponent
         │   ├── TLoad
         │   └── TMotor
         │       └── TStarterGenerator
         └── TTwoShaftComponent
-  TTwoShaftComponent is an abstract class to e.g. derive models for gearboxes
-  and clutches.
-- A turbojet sample model (turbojet_PWofftakes.py) demonstrates the usage
-  of power delivery and extraction enable the object in the model to test 
-  the usage.
-- A basic starter-generator model demonstrates power delivery and power 
-  extraction modes, see comments and docstrings in the class for usage.
+  TTwoShaftComponent is an abstract class to e.g. derive models for gearboxes,
+  couplings, clutches etc.
+  * A turbojet sample model (turbojet_PWofftakes.py) demonstrates the usage
+    of power delivery and extraction enable the object in the model to test
+    the usage.
+  * A basic starter-generator component model demonstrates power delivery
+    and power extraction modes, see comments and docstrings in the class for
+    usage.
 
 ### GSPy v1.7.0.0                                                     17-03-2026
 --------------------------------------------------------------------------------

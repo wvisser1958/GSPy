@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
-class_diagram.py
+class_hierarchy.py
 
 Create a text-based class inheritance diagram for all .py files in a folder.
 
-Example:
-    python class_diagram.py /path/to/project
-    python class_diagram.py /path/to/project --recursive
-    python class_diagram.py /path/to/project --classesonly
-    python class_diagram.py /path/to/project --output diagram.txt
-    python .\class_hierarchy.py ..\..\src\gspy\core\ --output diagram.txt --classesonly
-    python .\projects\file_utils\class_hierarchy.py .\src\gspy\core\ --output .\projects\file_utils\diagram.txt
+Examples:
+    python class_hierarchy.py
+    python class_hierarchy.py ../turbojet
+    python class_hierarchy.py ../turbojet --recursive
+    python class_hierarchy.py ../turbojet --classesonly
+    python class_hierarchy.py ../turbojet --output diagram.txt
 """
 
 from __future__ import annotations
@@ -61,9 +60,7 @@ class PythonClassVisitor(ast.NodeVisitor):
 
         for stmt in node.body:
             if isinstance(stmt, (ast.Assign, ast.AnnAssign)):
-                class_vars = self._extract_class_vars(stmt)
-                class_info.class_vars.extend(class_vars)
-
+                class_info.class_vars.extend(self._extract_class_vars(stmt))
             elif isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 class_info.methods.append(self._extract_method_info(stmt))
 
@@ -76,7 +73,6 @@ class PythonClassVisitor(ast.NodeVisitor):
         if isinstance(stmt, ast.Assign):
             for target in stmt.targets:
                 names.extend(self._extract_target_names(target))
-
         elif isinstance(stmt, ast.AnnAssign):
             names.extend(self._extract_target_names(stmt.target))
 
@@ -321,8 +317,8 @@ def render_diagram(classes: Dict[str, ClassInfo], include_private: bool, classes
     roots.sort(key=lambda name: (classes[name].file_path.as_posix(), classes[name].name))
 
     lines: List[str] = []
-    lines.append("Class inheritance diagram")
-    lines.append("=" * 25)
+    lines.append("# Class inheritance diagram")
+    lines.append("=" * 27)
 
     grouped_roots: Dict[Path, List[str]] = {}
     for root in roots:
@@ -380,7 +376,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Create a text-based class inheritance diagram from Python files in a folder."
     )
-    parser.add_argument("folder", help="Folder containing Python files")
+    parser.add_argument(
+        "folder",
+        nargs="?",
+        help="Folder containing Python files, relative to this script. Defaults to ../turbojet",
+    )
     parser.add_argument(
         "--recursive",
         action="store_true",
@@ -398,12 +398,25 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        help="Write output to a text file instead of only printing",
+        help="Write output to a text file, relative to this script if not absolute",
     )
 
     args = parser.parse_args()
 
-    folder = Path(args.folder).resolve()
+    script_dir = Path(__file__).resolve().parent
+    repo_root = script_dir.parent.parent
+
+    # Default input
+    default_source = repo_root / "src" / "gspy" / "core"
+
+    # Default output
+    default_output = repo_root / "docs" / "class_diagram.md"
+
+    if args.folder:
+        folder = (script_dir / args.folder).resolve()
+    else:
+        folder = default_source.resolve()
+
     if not folder.exists():
         print(f"Error: folder does not exist: {folder}")
         return 1
@@ -427,9 +440,17 @@ def main() -> int:
     print(diagram)
 
     if args.output:
-        output_path = Path(args.output).resolve()
-        output_path.write_text(diagram, encoding="utf-8")
-        print(f"\nWritten to: {output_path}")
+        output_path = Path(args.output)
+        if not output_path.is_absolute():
+            output_path = script_dir / output_path
+        output_path = output_path.resolve()
+    else:
+        output_path = default_output.resolve()
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    output_path.write_text(diagram, encoding="utf-8")
+    print(f"\nWritten to: {output_path}")
 
     return 0
 
