@@ -37,7 +37,8 @@ See the LICENSE file for details.
   * It is assumed that models run from a project folder, where standard folder
     locations are assumed to find requested data, see the .\projects folder
     of the project. As an example, see the folder structure of the turbojet
-    demo project:\
+    demo project:
+      \
       turbojet/\
       ├── data/\
       │   ├── fluid_props/\
