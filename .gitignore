@@ -95,3 +95,4 @@ src/gspy.egg-info/top_level.txt
 /.vscode/settings.json
 /*.jpg
 /projects/turboshaft_2spool/output
+/projects/turbofan/data

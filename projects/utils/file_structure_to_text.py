@@ -1,12 +1,13 @@
 import os
 from pathlib import Path
 
-def generate_tree(startpath, output_file="tree_structure.md"):
+def generate_tree(startpath, output_file="tree_structure.md", for_read_me=False):
     lines = []
 
     def tree(dir_path, prefix=""):
         entries = sorted(os.listdir(dir_path))
         entries_count = len(entries)
+        
 
         for index, entry in enumerate(entries):
             path = os.path.join(dir_path, entry)
@@ -37,12 +38,18 @@ def generate_tree(startpath, output_file="tree_structure.md"):
     # save relative to script_dir
     output_path = startpath / output_file
 
+    # add the '\' character to the end of the entry so that we have nice line endings when pasted in the README.md file
+    line_ending = "\\\n" if for_read_me else "\n"
+    line_start = "\\\n" if for_read_me else ""
+
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+        f.write(line_start + line_ending.join(lines))
 
     print(f"Tree structure saved to '{output_path}'")
 
 # example for turboject demo projects
 # generate_tree(Path(__file__).resolve().parent.parent.parent)            # complete GSPy root folder
-generate_tree(Path(__file__).resolve().parent.parent / "turbojet")    # turbojet project folder
+# generate_tree(Path(__file__).resolve().parent.parent / "turbojet")    # turbojet project folder
+# For developers:
+generate_tree(Path(__file__).resolve().parent.parent / "turbojet", for_read_me=True)    # turbojet project folder for pasting in README.md file, with '\' at the end of each line for nice line endings
 # generate_tree(Path(__file__).resolve().parent.parent / "turbofan")    # turbofan project folder
