@@ -37,7 +37,7 @@ See the LICENSE file for details.
   * It is assumed that models run from a project folder, where standard folder
     locations are assumed to find requested data, see the .\projects folder
     of the project. As an example, see the folder structure of the turbojet
-    demo project:
+    demo project:\
       turbojet/\
       ├── data/\
       │   ├── fluid_props/\
@@ -58,7 +58,7 @@ See the LICENSE file for details.
       │   └── turbine1_map_dual.jpg\
       ├── turbojet.py\
       ├── turbojet_AM.py\
-      ....\
+      ...
   * The yaml file with the gas properties data for Cantera must be located in the
     project/data/fluid_props/ sub folder. Per default, this is the jetsurf.yaml
     folder that mostly works for gas turbine and jet engine models. For backward
@@ -99,16 +99,16 @@ See the LICENSE file for details.
     The resulting class_diagram.md file is created in the .\docs folder.
 - Shaft component classes are introduced to model components producing or
   consuming power and/or torque, like electric motors, generators etc.
-  Class hierarchy:
-  TComponent
-    └── TShaftComponent
-        ├── TOneShaftComponent
-        │   ├── TLoad
-        │   └── TMotor
-        │       └── TStarterGenerator
+  Class hierarchy:\
+  TComponent\
+    └── TShaftComponent\
+        ├── TOneShaftComponent\
+        │   ├── TLoad\
+        │   └── TMotor\
+        │       └── TStarterGenerator\
         └── TTwoShaftComponent
-  TTwoShaftComponent is an abstract class to e.g. derive models for gearboxes,
-  couplings, clutches etc.
+  * TTwoShaftComponent is an abstract class to e.g. derive models for gearboxes,
+    couplings, clutches etc.
   * A turbojet sample model (turbojet_PWofftakes.py) demonstrates the usage
     of power delivery and extraction enable the object in the model to test
     the usage.
