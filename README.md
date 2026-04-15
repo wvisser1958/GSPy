@@ -38,27 +38,27 @@ See the LICENSE file for details.
     locations are assumed to find requested data, see the .\projects folder
     of the project. As an example, see the folder structure of the turbojet
     demo project:
-      turbojet/
-      ├── data/
-      │   ├── fluid_props/
-      │   │   ├── jetsurf.yaml
-      │   │   └── jetsurf_noPAH.yaml
-      │   └── maps/
-      │       ├── compmap-scaled.map
-      │       ├── compmap.map
-      │       └── turbimap.map
-      ├── input/
-      │   ├── Turbojet_AMinput.csv
-      ├── output/
-      │   ├── Turbojet.csv
-      │   ├── Turbojet_1.jpg
-      │   ├── compressor1_map.jpg
-      │   ├── compressor1_map_dual.jpg
-      │   ├── turbine1_map.jpg
-      │   └── turbine1_map_dual.jpg
-      ├── turbojet.py
-      ├── turbojet_AM.py
-      ....
+      turbojet/\
+      ├── data/\
+      │   ├── fluid_props/\
+      │   │   ├── jetsurf.yaml\
+      │   │   └── jetsurf_noPAH.yaml\
+      │   └── maps/\
+      │       ├── compmap-scaled.map\
+      │       ├── compmap.map\
+      │       └── turbimap.map\
+      ├── input/\
+      │   ├── Turbojet_AMinput.csv\
+      ├── output/\
+      │   ├── Turbojet.csv\
+      │   ├── Turbojet_1.jpg\
+      │   ├── compressor1_map.jpg\
+      │   ├── compressor1_map_dual.jpg\
+      │   ├── turbine1_map.jpg\
+      │   └── turbine1_map_dual.jpg\
+      ├── turbojet.py\
+      ├── turbojet_AM.py\
+      ....\
   * The yaml file with the gas properties data for Cantera must be located in the
     project/data/fluid_props/ sub folder. Per default, this is the jetsurf.yaml
     folder that mostly works for gas turbine and jet engine models. For backward
