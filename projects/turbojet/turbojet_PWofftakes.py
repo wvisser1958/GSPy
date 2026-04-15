@@ -262,6 +262,7 @@ def main():
     turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
     # Run OD simulation
     turbojet.VERBOSE = False
+    starter_generator.set_power_mode('starter')  # set starter-generator to starter mode for off-design simulation, so it delivers power to the shaft instead of absorbing power from the shaft as in generator mode
     turbojet.Run_OD_simulation()
 
     # export OutputTable to CSV

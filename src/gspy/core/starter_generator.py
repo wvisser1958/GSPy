@@ -34,6 +34,8 @@ class TStarterGenerator(TMotor):
     # starter-generator is to produce power (generator mode), operating in starter mode
     # for example during engine start is a special simulation case
 
+    POWER_MODES = ("starter", "generator")
+
     def __init__(
         self,                   # instance reference
         owner,                  # owning system model object
@@ -52,13 +54,10 @@ class TStarterGenerator(TMotor):
         power_factor=1.0,       # Power factor is assumed to be 1, so apparent power is equal to real power in this case e.g. for a starter motor power conversion is typically 0.5-0.8, for a generator it is typically 0.9-1.0
         power_mode='generator'  # options: ['starter', 'generator'], determines the power conversion behavior of the load
         ):
-        self.power_sign = -1  # generator mode: power absorbed from shaft
-
-        if power_mode not in ['starter', 'generator']:
-            raise ValueError("Invalid power_mode. Expected 'starter' or 'generator'.")
-        else:
-            if power_mode == 'starter':
-                self.power_sign = 1  # power delivered to shaft
+        # Default value; actual mode is set through validated setter below.
+        self.power_mode = None
+        self.power_sign = None
+        self.set_power_mode(power_mode)
 
         if power_factor <= 0 or power_factor > 1:
             raise ValueError("Power factor should be in the range [0, 1].")
@@ -73,11 +72,28 @@ class TStarterGenerator(TMotor):
         self.power_w_des = power_kw_des * 1000  # convert kW to W
         self.power_w = self.power_w_des
 
+    def set_power_mode(self, power_mode):
+        """
+        Set the starter-generator operating mode.
+
+        In starter mode, the device delivers power to the shaft.
+        In generator mode, the device absorbs power from the shaft.
+        """
+        if power_mode not in self.POWER_MODES:
+            raise ValueError(
+                f"Invalid power_mode '{power_mode}'. "
+                f"Expected one of {self.POWER_MODES}."
+            )
+
+        self.power_mode = power_mode
+        self.power_sign = 1 if power_mode == "starter" else -1
+
     def get_outputs(self):
         out = {}
         out["PW_" + self.name] = self.power_w / 1000  # convert W to kW for output
-        out["S_" + self.name] = self.apparent_power  # apparent power in kVA for output
-        out["PF_" + self.name] = self.power_factor  # power factor for output
+        out["S_" + self.name] = self.apparent_power   # apparent power in kVA for output
+        out["PF_" + self.name] = self.power_factor    # power factor for output
+        out["Mode_" + self.name] = self.power_mode    # operating mode for output
         return out
 
     def get_drive_shaft_power(self):
