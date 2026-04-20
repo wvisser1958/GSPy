@@ -1,27 +1,11 @@
 <table>
   <tr>
-    <td width="220" align="center">
-      <img src="docs/logos/gspy_logo_final.png" width="180">
+    <td width="180">
+      <img src="docs/logos/gspy_logo_final.png" width="160">
     </td>
     <td>
-      <p>
-        <strong>GSPy</strong> is a Python-based tool for modelling and simulating propulsion and power system performance.
-        Developed by the creators of GSP, this implementation demonstrates how leveraging robust existing libraries can
-        significantly reduce the need for writing large amounts of custom code.
-      </p>
-    </td>
-  </tr>
-</table><table>
-  <tr>
-    <td width="220" align="center">
-      <img src="docs/logo.svg" width="180">
-    </td>
-    <td>
-      <p>
-        <strong>GSPy</strong> is a Python-based tool for modelling and simulating propulsion and power system performance.
-        Developed by the creators of GSP, this implementation demonstrates how leveraging robust existing libraries can
-        significantly reduce the need for writing large amounts of custom code.
-      </p>
+      GSPy is a Python-based tool for modelling and simulating propulsion and power system performance.
+      Developed by the creators of GSP, it reduces the need for large amounts of custom code.
     </td>
   </tr>
 </table>
