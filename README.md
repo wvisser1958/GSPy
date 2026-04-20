@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logos/GSPy_logo_final.png" width="300"/>
+  <img src="docs/logos/GSPy_logo_final.png" width="200"/>
 </p>
 
 # GSPy
