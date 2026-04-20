@@ -1,8 +1,7 @@
 <p align="center">
-  <img src="docs/logos/GSPy_logo_final.png" width="200"/>
+  <img src=docs/logos/GSPy_logo_final.png" width="140"/>
 </p>
-
-# GSPy
+<h2 align="center">GSPy</h2>
 GSPy is a Python-based tool for modelling and simulating propulsion and power system performance. Developed by the creators of GSP, this implementation demonstrates how leveraging robust existing libraries can significantly reduce the need for writing large amounts of custom code.
 
 ### Authors:
