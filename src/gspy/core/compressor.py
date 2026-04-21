@@ -67,7 +67,8 @@ class TCompressor(TTurboComponent):
             self.PR = self.PRdes
         else:
             if self.SpeedOption != 'CS':
-                self.N = self.owner.states[self.istate_n] * self.Ndes
+                # self.N = self.owner.states[self.istate_n] * self.Ndes
+                self.N = self.shaft.Nt
             self.Nc = self.N / fu.GetRotorspeedCorrectionFactor(self.gas_in)
 
             # 1.6 WV

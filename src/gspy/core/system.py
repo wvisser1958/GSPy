@@ -85,10 +85,10 @@ class TSystemModel:
                 if thermo.max_temp <= 2200:
                     self.vprint(sp.name, thermo.min_temp, thermo.max_temp)
 
-        self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
-
         # use dictionary for gas path conditions oriented by gas path station number
         self.gaspath_conditions = {}
+
+        self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
 
         # 1.1 WV dictionary for output during iteration (e.g. for control equations)
         self.output_dict = {}
@@ -126,7 +126,7 @@ class TSystemModel:
     def vprint(self, *args, **kwargs):
         if self.VERBOSE:
             print(*args, **kwargs)
-            
+
     def get_error_text(self, error_code):
         if error_code == self.no_convergence_error:
             return 'Not converged'
@@ -194,6 +194,10 @@ class TSystemModel:
         # 1.6 new PreRun virtual method
         for comp in self.component_run_list:
             comp.PreRun(mode, point_time)
+
+        # 2.1
+        for shaft in self.shaft_list:
+            shaft.Run(mode, point_time)
 
         # Run simulation code of all components in the system model
         for comp in self.component_run_list:

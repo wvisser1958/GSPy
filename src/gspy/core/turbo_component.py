@@ -102,8 +102,12 @@ class TTurboComponent(TGaspath):
                 "MapFileNames must be a str, pathlib.Path, or a tuple with 0) VGparvaluedesign, and 1) list of (VGparvalue, MapFileName)"
             )
 
+        # 2.1 if shaft not existing yet, create shaft and assume shaft Ntdes = Ndes, assign I = 0 here (specify turbomachinery with an I value)
         if all(shaft.shaft_id != shaft_id for shaft in self.owner.shaft_list):
-            self.owner.shaft_list.append(fshaft.TShaft(shaft_id, name + ' shaft ' + str(shaft_id)) )
+            self.owner.shaft_list.append(fshaft.TShaft(self.owner, shaft_id, name + ' shaft ' + str(shaft_id),
+                                                       self.Ndes, # shaft design speed
+                                                       0          # shaft moment of inertia kg.m2
+                                                       ) )
 
     # 1.6 WV
     # @abstractmethod  not abstract: not implemented in TFan child class
