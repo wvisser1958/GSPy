@@ -403,6 +403,11 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 4. KNOWN ISSUES
 ********************************************************************************
+- The GSPy API is a primer and should be developed further, many functions are
+  stubs. It is merely showing the potential.
+- The current API implementation is not fully upgraded to the new GSPy 2.0
+  version; this implies that the new TSystemModel class potential is not used.
+  We are in the process of developing an upgraded GSPy API version.
 
 ********************************************************************************
 ## 5. OTHER
