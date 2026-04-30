@@ -412,6 +412,15 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 5. OTHER
 ********************************************************************************
+## Star History
+
+<a href="https://www.star-history.com/?repos=wvisser1958%2FGSPy&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=wvisser1958/GSPy&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=wvisser1958/GSPy&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=wvisser1958/GSPy&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ********************************************************************************
 ## 6. GSPy DEVELOPMENT TEAM
