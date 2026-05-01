@@ -248,14 +248,14 @@ class TFan(TTurboComponent):
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()
-        out["BPR_"+self.name] = self.BPR
-        out["crossflow_"+self.name] = self.crossflow
-        out["PR_core_"+self.name] = self.PR_core
-        out["PR_duct_"+self.name] = self.PR_duct
-        out["Wc_core_"+self.name] = self.Wc_core
-        out["Wc_duct_"+self.name] = self.Wc_duct
-        out["Eta_is_core_"+self.name] = self.Eta_core
-        out["Eta_is_duct_"+self.name] = self.Eta_duct
+        out["BPR"+self.id] = self.BPR
+        out["crossflow"+self.id] = self.crossflow
+        out["PR_core"+self.id] = self.PR_core
+        out["PR_duct"+self.id] = self.PR_duct
+        out["Wc_core"+self.id] = self.Wc_core
+        out["Wc_duct"+self.id] = self.Wc_duct
+        out["Eta_is_core"+self.id] = self.Eta_core
+        out["Eta_is_duct"+self.id] = self.Eta_duct
         return out
 
     # override PlotMaps, to now plot the self.map_core and self.map_duct

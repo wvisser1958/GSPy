@@ -215,19 +215,19 @@ class TTurboComponent(TGaspath):
         out[f"N{self.shaft_id}%"] = self.N/self.Ndes*100
         # 2.1
         # out[f"Nc{self.station_in}%"] = self.Nc/self.Ncdes*100
-        out[f"Nc{self.id}%"] = self.Nc/self.Ncdes*100
+        out[f"Nc%{self.id}"] = self.Nc/self.Ncdes*100
 
         # 1.5
         if self.Eta != None:
-            out["Eta_is_"+self.name] = self.Eta
+            out[f"Eta_is{self.id}"] = self.Eta
 
         # 1.6 WV
         if self.vg_angle_des !=None:
-            out["vg_angle_"+self.name] = self.vg_angle
+            out[f"vg_angle{self.id}"] = self.vg_angle
 
         # 2.0 OK
-        out["TQ"+self.name] = self.PW / (2 * math.pi * self.N / 60) if self.PW != None and self.N != None else None
+        out[f"TQ{self.id}"] = self.PW / (2 * math.pi * self.N / 60) if self.PW != None and self.N != None else None
 
-        out["PW_"+self.name] = self.PW
+        out[f"PW{self.id}"] = self.PW
 
         return out
