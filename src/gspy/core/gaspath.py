@@ -110,7 +110,7 @@ class TGaspath(TComponent):
         out[f"Wc{s_in}"] = self.Wc
 
         if self.PR is not None:
-            out[f"PR_{self.name}"] = self.PR
+            out[f"PR{self.id}"] = self.PR
 
         # out.update(self._get_species_outputs(self.gas_in, s_in, basis="mass"))
 

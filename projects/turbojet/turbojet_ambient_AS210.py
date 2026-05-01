@@ -30,7 +30,7 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 # - Note that this model is only to serve as example and does rougly  represent the GE J85
 # - Note that low thrust off design performance is unrealistic due to the absence of variable bleed
 #   control to maintain low speed stall margin
-# - This demo file is to demonstrate the use of a different Ambient object, one that implements the 
+# - This demo file is to demonstrate the use of a different Ambient object, one that implements the
 #   SAE AS210 atmospheric models
 # - It furthermore uses AS755 standard 3-digit station naming and AS5571 component modle naming
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -51,7 +51,7 @@ def main():
         switchMode='ALDTMN',
     )
     # No component output to terminal:
-    turbojet.VERBOSE = False # If set to True, each simulation step will output data to screen, however, 
+    turbojet.VERBOSE = False # If set to True, each simulation step will output data to screen, however,
                              # False makes the simulation much faster, the output is stored in a csv table.
 
     # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
@@ -123,7 +123,7 @@ def main():
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turbojet.Mode = 'OD'
-    turbojet.inputpoints = fuelcontrol.get_OD_input_points()
+    turbojet.input_points = fuelcontrol.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
@@ -131,11 +131,11 @@ def main():
     Altitude_val = 0
     Mach_val = 0.5
     dTs_val = 10
-    ambient_option = 'STANDARD_PSTSTT' # or 
-    # ambient_option = 'STANDARD_ALDTMN' # or 
-    # ambient_option = 'STANDARD_ALDTVT' # or 
-    # ambient_option = 'STANDARD_ALDTVE' # or 
-    # ambient_option = 'STANDARD_ALDTVC' # or 
+    ambient_option = 'STANDARD_PSTSTT' # or
+    # ambient_option = 'STANDARD_ALDTMN' # or
+    # ambient_option = 'STANDARD_ALDTVT' # or
+    # ambient_option = 'STANDARD_ALDTVE' # or
+    # ambient_option = 'STANDARD_ALDTVC' # or
     # ambient_option = 'HOT_ALDTMN'
     if ambient_option == 'STANDARD_PSTSTT':
         # Standard ambient conditions, PSTSTT switchmode

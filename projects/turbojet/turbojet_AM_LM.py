@@ -32,7 +32,7 @@ from gspy.extensions.adaptive_modelling.AMcontrol_LM import TAMcontrol
 def main():
     turbojet = TSystemModel('Turbojet_AM_LM',
                             model_file = __file__)
-    
+
     # Generic gas turbine components
     inlet1 = TInlet(turbojet, 'Inlet1', '', None, 0, 2, 19.9, 1)
 
@@ -91,7 +91,7 @@ def main():
 
     # turbojet.error_tolerance = 0.0001   # default iteration equation relative residual tolerance, adjust when needed
     turbojet.error_tolerance = 0.0001
-    
+
     # run the system model Design Point (DP) calculation
     turbojet.mode = 'DP'
     print("Design point (DP) results")
@@ -102,7 +102,7 @@ def main():
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turbojet.mode = 'OD'
-    turbojet.inputpoints = AMcontrol.Get_OD_inputpoints()
+    turbojet.input_points = AMcontrol.Get_OD_inputpoints()
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet

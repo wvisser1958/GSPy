@@ -44,7 +44,7 @@ def main():
     fuel_control = TControl(turbofan,        # owning system model object
                             'FuCtrl',        # design point (DP) input
                             '',              # map file name
-                            1.11,            
+                            1.11,
                             1600, 1100, -50, # off design (OD) input: starting value, end value and step value
                             None)            # OD control parameter name: must be an output present in the output table
 
@@ -197,7 +197,7 @@ def main():
                       )
 
     cold_nozzle = TExhaustNozzle(turbofan,          # owning system model object
-                                 'NozC',            # component name   
+                                 'NozC',            # component name
                                  '',                # option map file name
                                  None,              # optional control component
                                  '170','180','190', # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle)
@@ -206,7 +206,7 @@ def main():
                                  1,                 # design CV velocity coefficient
                                  1                  # design CD discharge coefficient
                                  )
-    
+
     # create a turbojet system model
     turbofan.define_comp_run_list(fuel_control,
                                   inlet,
@@ -230,7 +230,7 @@ def main():
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turbofan.mode = 'OD'
-    turbofan.inputpoints = fuel_control.get_OD_input_points()
+    turbofan.input_points = fuel_control.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet

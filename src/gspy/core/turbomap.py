@@ -51,7 +51,9 @@ class TTurboMap(TMap):
         # Map paramter naming
         # 1.1 WV bug fix
         # self.Nc_comp_param = f"Nc{self.ShaftString}"
-        self.Nc_comp_param = f"Nc{self.host_component.station_in}"
+        # 2.1
+        # self.Nc_comp_param = f"Nc{self.host_component.station_in}"
+        self.Nc_comp_param = f"Nc{self.host_component.id}"
         if self.OL_xcol != '':
             self.Wc_in_param = self.OL_xcol
         else:
@@ -59,7 +61,9 @@ class TTurboMap(TMap):
         if self.OL_ycol != '':
             self.PR_comp_param = self.OL_ycol
         else:
-            self.PR_comp_param = 'PR_' + str(self.host_component.name)
+            # 2.1
+            # self.PR_comp_param = 'PR_' + str(self.host_component.name)
+            self.PR_comp_param = 'PR' + str(self.host_component.id)
 
     def _annotate_line_end(self, ax, x, y, text, which="last",
                             color="black", dx=4, dy=0, fontsize=7, with_box=True):

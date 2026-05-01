@@ -209,9 +209,13 @@ class TTurboComponent(TGaspath):
         out = super().get_outputs()
 
         out[f"N{self.shaft_id}"] = self.N
-        out[f"Nc{self.station_in}"] = self.Nc
+        # 2.1
+        # out[f"Nc{self.station_in}"] = self.Nc
+        out[f"Nc{self.id}"] = self.Nc
         out[f"N{self.shaft_id}%"] = self.N/self.Ndes*100
-        out[f"Nc{self.station_in}%"] = self.Nc/self.Ncdes*100
+        # 2.1
+        # out[f"Nc{self.station_in}%"] = self.Nc/self.Ncdes*100
+        out[f"Nc{self.id}%"] = self.Nc/self.Ncdes*100
 
         # 1.5
         if self.Eta != None:

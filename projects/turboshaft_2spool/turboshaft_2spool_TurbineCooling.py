@@ -133,7 +133,7 @@ def main():
     if do_OD == 1:
         # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
         turboshaft_2sp.Mode = 'OD'
-        turboshaft_2sp.inputpoints = fuel_control.get_OD_input_points()
+        turboshaft_2sp.input_points = fuel_control.get_OD_input_points()
         print("\nOff-design (OD) results")
         print("=======================")
         # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet

@@ -28,6 +28,11 @@ class TComponent(ABC):
         # 1.1 WV
         self.control = control_component
 
+    # 2.1
+    @property
+    def id(self):
+        return f"_{self.name}"
+
     # 1.6
     def PreRun(self, Mode, PointTime):
         # raise NotImplementedError("Subclass must implement Run abstract method")
@@ -57,5 +62,6 @@ class TComponent(ABC):
     def get_outputs(self):
         return {}
 
-    def add_outputs_to_dict(self, mode):
-        self.owner.output_dict.update(self.get_outputs())
+    # 2.1 not used
+    # def add_outputs_to_dict(self, mode):
+    #     self.owner.output_dict.update(self.get_outputs())
