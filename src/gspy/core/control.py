@@ -20,7 +20,10 @@ class TControl(TComponent):
     def __init__(self, owner, name, map_file_name,
                  DP_input_value,
                  OD_start_value, OD_end_value, OD_point_step_value,
-                 OD_controlled_parameter_name):
+                 OD_controlled_parameter_name,
+                 *,    # force optional parameters passing by name
+                 point_time_value_array = None 
+                 ):
         # note that, if OD_controlledparname != None:
         #    OD_startvalue, OD_endvalue, OD_pointstepvalue represent the values of the OD_controlledparname
         # else:
@@ -28,16 +31,19 @@ class TControl(TComponent):
         # DP_inputvalue always is direct input values of the component using this control
         super().__init__(owner, name, map_file_name, None) # no control controlling a control (yet)
         # 2.1
-        self.Re_init(map_file_name,
+        self.re_init_input(map_file_name,
                     DP_input_value,
                     OD_start_value, OD_end_value, OD_point_step_value,
-                    OD_controlled_parameter_name)
+                    OD_controlled_parameter_name,
+                    point_time_value_array = point_time_value_array)
 
     # 2.1
-    def Re_init(self, map_file_name,
-                 DP_input_value,
-                 OD_start_value, OD_end_value, OD_point_step_value,
-                 OD_controlled_parameter_name):
+    def re_init_input(self, map_file_name,
+                            DP_input_value,
+                            OD_start_value, OD_end_value, OD_point_step_value,
+                            OD_controlled_parameter_name,
+                            *,
+                            point_time_value_array = None):
         self.map_filename = map_file_name # for use in customized child classes, e.g. with lookup tables
         self.DP_input_value = DP_input_value
         self.OD_start_value = OD_start_value
@@ -45,26 +51,42 @@ class TControl(TComponent):
         self.OD_point_step_value = OD_point_step_value
         self.OD_controlled_parameter_name = OD_controlled_parameter_name
         self.control_parameter_demand = None
+        # if point_time_value_array is not None:
+        #     self.point_time_value_array = np.asarray(point_time_value_array)
+        self.point_time_value_array = (
+            None if point_time_value_array is None
+            else np.asarray(point_time_value_array)
+        )
+
         if not ((OD_point_step_value == None) and (OD_end_value == None)): # single point input
             if (abs(OD_point_step_value) == 0) or ((OD_end_value - OD_start_value) * OD_point_step_value < 0):
                 raise Exception("Invalid control variable begin, end and step values")
+        
+        return self.get_OD_input_points() 
 
     # 2.1
     # def get_OD_input_points(self):
     def get_OD_input_points(self, start_point_time = 0):
-        if (self.OD_end_value == None) or (self.OD_point_step_value == None):
-            point_count = 1
+        if self.point_time_value_array is not None:
+            # point_time array with values already given in point_time_value_array
+            return self.point_time_value_array
         else:
-            point_count = round(abs((self.OD_end_value - self.OD_start_value) / self.OD_point_step_value) + 1)
+            # make a simple point_time values array using start, end and step size
+            if (self.OD_end_value == None) or (self.OD_point_step_value == None):
+                point_count = 1
+            else:
+                point_count = round(abs((self.OD_end_value - self.OD_start_value) / self.OD_point_step_value) + 1)
 
+            self.start_point_time = start_point_time
+            # default is using self.OD_start_value, self.OD_end_value, self.OD_point_step_value
+            # to make a constant step size series of inputs
+            point_times = start_point_time + np.arange(point_count)
+            values = self.OD_start_value + np.arange(point_count) * self.OD_point_step_value
 
-        point_times = start_point_time + np.arange(point_count)
-        values = self.OD_start_value + np.arange(point_count) * self.OD_point_step_value
-
-        # self.OD_input_points = np.arange(0, point_count, 1)
-        self.OD_input_points = self.OD_input_points = np.column_stack((point_times, values))
-        # return np.arange(0, point_count, 1)
-        return self.OD_input_points
+            # self.OD_input_points = np.arange(0, point_count, 1)
+            self.OD_input_points = self.OD_input_points = np.column_stack((point_times, values))
+            # return np.arange(0, point_count, 1)
+            return self.OD_input_points
 
     def Run(self, Mode, PointTime):
         if Mode == 'DP':
@@ -88,10 +110,11 @@ class TControl(TComponent):
             # 2.0 OK Allow single value input of OD_start_value only
             # self.control_parameter_demand = self.OD_start_value + self.OD_input_points[PointTime] * self.OD_point_step_value
             self.control_parameter_demand = self.OD_start_value
-            if not((self.OD_end_value == None) or (self.OD_point_step_value == None)):
+
+            # if not((self.OD_end_value == None) or (self.OD_point_step_value == None)):
                 #  2.1
                 # self.control_parameter_demand = self.control_parameter_demand + self.OD_input_points[PointTime] * self.OD_point_step_value
-                self.control_parameter_demand = point_time_input_value
+            self.control_parameter_demand = point_time_input_value
 
     # 1.1 WV PostRun evaluates the equation for controlling parameter named OD_controlledparName to input
     # note that anything calculated in PostRun will not end up in the output_dict !

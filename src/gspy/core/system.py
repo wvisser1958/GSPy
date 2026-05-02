@@ -190,6 +190,7 @@ class TSystemModel:
 
         self.output_dict['Point/Time'] = point_time
         self.output_dict['Mode'] = mode
+        self.output_dict['Description'] = self.descr
 
         # 1.6 new PreRun virtual method
         for comp in self.component_run_list:
@@ -221,7 +222,11 @@ class TSystemModel:
 
     # 1.6.0.1.8 dictionary with design targets and variables
     # def Run_DP_simulation():
-    def Run_DP_simulation(self, targets = None):
+    def Run_DP_simulation(self, targets = None, *, descr = None):
+
+        #  2.1
+        self.descr = descr
+
         try:
             self.reinit_states_and_errors()
 
@@ -284,13 +289,16 @@ class TSystemModel:
         values = self.input_points[:, 1]
         return float(np.interp(a_point_time, times, values))
 
-    def Run_OD_simulation(self):
+    def Run_OD_simulation(self, descr = None):
         def residuals(states):
             # residuals will return residuals of system conservation equations, schedules, limiters etc.
             # the residuals are the errors returned by Do_Run
             # 2.1
             return self.Do_Run('OD', point_time, states)
             # return self.Do_Run('OD', ipoint, states)
+
+        #  2.1
+        self.descr = descr
 
         try:
             # start with all states 1 and errors 0
@@ -334,20 +342,20 @@ class TSystemModel:
                         successcount = successcount + 1
                     else:
                         failedcount = failedcount + 1
-                        print(f"Could not find a solution for point {ipoint} with max {maxiter} iterations")
+                        print(f"Could not find a solution for point {point_time} with max {maxiter} iterations")
                 except Exception as e:
                     if rmax > self.error_tolerance:
                         error_index = self.false_convergence_error
                     else:
                         error_index = self.exception_error
-                    self.Do_Output(self.input_points[ipoint], error_index)
+                    self.Do_Output(point_time, error_index)
                     failedcount = failedcount + 1
-                    print(f"OD simulation: Error at point {ipoint}: {e}")
+                    print(f"OD simulation: Error at point {point_time}: {e}")
                     if not self.continue_next_OD_point_on_error:
                         break
 
         except Exception as e:
-            self.Do_Output(self.input_points[ipoint], self.exception_error)
+            self.Do_Output(point_time, self.exception_error)
             failedcount = failedcount + 1
             print(f"OD simulation: exception error: {e}")
 
