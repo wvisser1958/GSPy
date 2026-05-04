@@ -42,7 +42,8 @@ class TSystemModel:
         self.initialized = False
         self.model_name = Path(model_file).stem if model_name is None else model_name
         self.params = {}
-
+        self.point_time = 0
+        
         # Default to this file's folder if caller doesn't provide a root
         project_dir = Path(model_file).resolve().parent
 
@@ -285,9 +286,14 @@ class TSystemModel:
 
     # 2.1
     def get_value_at_point_time(self, a_point_time):
-        times = self.input_points[:, 0]
-        values = self.input_points[:, 1]
-        return float(np.interp(a_point_time, times, values))
+        if len(self.input_points) == 0:
+            raise RuntimeError("Number of input points cannot be 0")
+        elif len(self.input_points) == 1:
+            return self.input_points[0, 1] 
+        else:
+            times = self.input_points[:, 0]
+            values = self.input_points[:, 1]
+            return float(np.interp(a_point_time, times, values))
 
     def Run_OD_simulation(self, descr = None):
         def residuals(states):
@@ -418,6 +424,9 @@ class TSystemModel:
         #  2.0
         # add output of this point (ouptut_dict) to output_rows dictionary
         self._output_rows.append(self.output_dict.copy())
+
+        # 2.1 keep track of last point_time value
+        self.point_time = point_time
 
     def print_states_and_errors(self):
         self.vprint(f"Nr. of state variables: {len(self.states)}\nNr. of error equations: {len(self.errors)}")

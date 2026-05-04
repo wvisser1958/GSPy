@@ -43,21 +43,49 @@ class TControl(TComponent):
                             OD_start_value, OD_end_value, OD_point_step_value,
                             OD_controlled_parameter_name,
                             *,
+                            # point_time_value_array: 
+                            #   - either an array with control demand/input values 
+                            #     (point_time incremented automaticall from OD_start_value)
+                            #   - or an array with [point_time, value] pairs, like
+                            #       point_values = np.array([
+                            #                     [3.0, 11],
+                            #                     [4.5, 10],
+                            #                     [5.0, 9]
+                            #                 ])
                             point_time_value_array = None):
         self.map_filename = map_file_name # for use in customized child classes, e.g. with lookup tables
         self.DP_input_value = DP_input_value
-        self.OD_start_value = OD_start_value
+        if OD_start_value is None:
+            self.OD_start_value = self.owner.point_time + 1
+        else:    
+            self.OD_start_value = OD_start_value
         self.OD_end_value = OD_end_value
         self.OD_point_step_value = OD_point_step_value
         self.OD_controlled_parameter_name = OD_controlled_parameter_name
         self.control_parameter_demand = None
         # if point_time_value_array is not None:
         #     self.point_time_value_array = np.asarray(point_time_value_array)
-        self.point_time_value_array = (
-            None if point_time_value_array is None
-            else np.asarray(point_time_value_array)
-        )
+        # self.point_time_value_array = (
+        #     None if point_time_value_array is None
+        #     else np.asarray(point_time_value_array)
+        if point_time_value_array is None:
+            self.point_time_value_array = None
+        else:
+            arr = np.asarray(point_time_value_array, dtype=float)
+            if arr.ndim == 1:
+                # Input is only values: [1.2, 1.8, 2.5]
+                values = arr
+                point_times = self.OD_start_value + np.arange(len(values), dtype=float)
 
+                return np.column_stack((point_times, values))
+
+            elif arr.ndim == 2 and arr.shape[1] == 2:
+                # Input is already [[time, value], ...]
+                return arr
+
+            else:
+                raise ValueError("input_points must be either [values...] or [[time, value], ...]")            
+        
         if not ((OD_point_step_value == None) and (OD_end_value == None)): # single point input
             if (abs(OD_point_step_value) == 0) or ((OD_end_value - OD_start_value) * OD_point_step_value < 0):
                 raise Exception("Invalid control variable begin, end and step values")
