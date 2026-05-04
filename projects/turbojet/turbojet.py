@@ -54,6 +54,10 @@ def main():
                                                     # example for N1 rotor speed control:
                                                     # FuelControl = TControl('Ncontrol', '', 0.38, 100, 60, -5, 'N1%')
 
+                                                    # TIT (T4) control example:
+                                                    # FuelControl = TControl('EGTcontrol', '', 0.38, 1235.9, 835.9, -10, 'T4')
+                                                    # note that for a gas turbine, this method may well become instable at lower power setting due to multiple solutions at same T5
+
                                                     # EGT (T5) control example:
                                                     # FuelControl = TControl('EGTcontrol', '', 0.38, 1020, 820, -50, 'T5')
                                                     # note that for a gas turbine, this method may well become instable at lower power setting due to multiple solutions at same T5
@@ -94,9 +98,9 @@ def main():
 
                             0.38,           # Design point (DP) fuel flow Wfdes
                             None,           # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
-                            # 0.30,           # Design point (DP) fuel flow Wfdes
-                            # 1235.9,           # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
+                                            # example 1235.9,       # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
                                             #               - Wfdes is then taken as starting value for iteration
+                                            # note that using Texit as imput may be less stable in some cases
 
                             1,              # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                             1,              # design combustor efficiency
@@ -117,7 +121,7 @@ def main():
                             None,           # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
                             None            # Cross flow area to calculate fundamental pressue loss
                             )
-                            # wxample with Texit as input:
+                            # example with Texit as design input:
                             # TCombustor(turbojet, 'combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
 
                             # fuel specification examples:

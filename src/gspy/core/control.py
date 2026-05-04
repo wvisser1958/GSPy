@@ -148,7 +148,7 @@ class TControl(TComponent):
     # note that anything calculated in PostRun will not end up in the output_dict !
     def PostRun(self, Mode, PointTime):
         # super().PostRun(Mode, PointTime)
-        if self.OD_controlled_parameter_name != None:
+        if self.OD_controlled_parameter_name is not None:
             if Mode == 'DP':
                 self.owner.states = np.append(self.owner.states, 1)
                 self.istate_control = self.owner.states.size-1

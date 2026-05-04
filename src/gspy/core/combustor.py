@@ -23,13 +23,20 @@ import gspy.core.utils as fu
 
 class TCombustor(TGaspath):
     def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, Wfdes, Texitdes, PRdes, Etades,
-                 Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes, A):
+                 Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes, A,
+                 *,
+                 FARdes = None):
         super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
         self.Wfdes = Wfdes
         self.Wf = Wfdes
         # Texitdes: set as None, use None or not None to determine input type : Wf or Texit
         self.Texitdes = Texitdes
         self.Texit = None
+
+        # 2.1 allow Fuel Air Ratio FAR control
+        self.FARdes = FARdes
+        self.FAR = None   # if using FAR for OD: must explicity assign self.FAR
+
         self.PRdes = PRdes
         self.A = A
 
@@ -242,7 +249,7 @@ class TCombustor(TGaspath):
 
         def CalcEndConditions(PointTime):
             # self.GetLHV()
-            if (self.FuelComposition == '') or (self.FuelComposition == None):  # fuel specification based on LHV, HC and OC mole ratio
+            if (self.FuelComposition == '') or (self.FuelComposition is None):  # fuel specification based on LHV, HC and OC mole ratio
                 # combustion product mass fractions, assuming complete combustion and air/fuel equivalence ratio >= 1
                 O2_exit_mass = w_air * c.air_O2_fraction_mass + self.Wf/CHyOzMoleMass * (self.OCratio/2 - 1 - self.HCratio/4) * self.O2_molar_mass
                 CO2_exit_mass = self.CO2_molar_mass * self.Wf/CHyOzMoleMass + w_air*c.air_CO2_fraction_mass
@@ -292,11 +299,11 @@ class TCombustor(TGaspath):
             else:                  # fuel specification based on FuelComposition and Tfuel
                 #  1.4 test if fuel exists (DP may be virtual flow, and OD composition specified, so....)
                 # if Mode == 'DP':
-                if self.fuel == None:
+                if self.fuel is None:
                     # create separate fuel quantity for mixing with gas_in
                     self.fuel = ct.Quantity(self.owner.gas)
                 self.fuel.mass = self.Wf
-                if self.Tfuel == None:      # assume Tfuel equal to T of air in
+                if self.Tfuel is None:      # assume Tfuel equal to T of air in
                     Tfuelin = self.gas_in.T
                 else:                       # use user specified Tfuel
                     Tfuelin = self.Tfuel
@@ -337,7 +344,7 @@ class TCombustor(TGaspath):
                 fu.robust_combustor_equilibrate(self.gas_out)
 
             # pressure loss
-            if (self.A == None) or (self.A ==0):
+            if (self.A is None) or (self.A ==0):
                 PRfund = 1
             else:
                 # PRfund = 1- self.fundamental_pressure_loss_rayleigh(self.A, self.gas_out.mass)
@@ -359,22 +366,25 @@ class TCombustor(TGaspath):
         # self.GetLHV()
 
         if Mode == 'DP':
-            if self.Texitdes  != None: # calc Wf from Texit, use Wfdes as Wf first guess
+            if self.Texitdes is not None: # calc Wf from Texit, use Wfdes as Wf first guess
                 self.Texit = self.Texitdes  # now self.Wfdes is 1st guess for iteration to Text
+
+            # 2.1
+            elif self.FARdes is not None:
+                # assuming incoming fluid is pure air (do not use for afterburner/reheat)
+                self.Wf = self.FARdes * self.gas_in.mass
+                self.Wfdes = self.Wf
+
             else:
                 self.Wf = self.Wfdes
         else:
-            # v1.3
-            if self.control != None:
-                # 1.4
-                # if self.Texit != None: # calc Wf from Texit
-                if (self.control.OD_controlled_parameter_name == None) and  (self.Texit != None): # calc Wf from Texit
-                    self.Texit =  self.control.input_value
-                else:
-                    self.Wf = self.control.input_value
-                    if self.Wf < 0:
-                        self.Wf = 0
-            #  else Wf or Texit determined from outside by Control SetAttr
+            # 2.1 : simplified, no OD control of Texit anymore inside TCombustor
+            if self.control is not None:
+                self.Wf = self.control.input_value
+                if self.Wf < 0:
+                    self.Wf = 0
+            elif self.FAR is not None:
+                self.Wf = self.FAR * self.gas_in.mass
 
         # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
         self.PR = self.PRdes
@@ -388,20 +398,22 @@ class TCombustor(TGaspath):
         if (self.FuelComposition == '') or (self.FuelComposition == None):
             CHyOzMoleMass = self.C_atom_weight + self.H_atom_weight * self.HCratio + self.O_atom_weight * self.OCratio
 
-        if (self.control != None) and (self.control.OD_controlled_parameter_name == None) and  (self.Texit != None): # calc Wf from Texit
-            if Mode == 'DP':
+        # 2.1
+        # if (self.control is not None) and (self.control.OD_controlled_parameter_name is None) and  (self.Texit is not None): # calc Wf from Texit
+        if Mode == 'DP':
+            if  (self.Texit is not None):
                 # initial guess for Wf
                 Wf0 = self.Wfdes  # if Texit specified, Wfdes is initial guess
                 self.Wf0_OD = None
 
-                # define a state and error for subsequent OD solving for Wf making Texit match the self.Texit, e.g. set by a controller
-                # this is more stable than an internal separate loop for OD
-                # however, for DP, an internal secant solver is used to get the design Wfdes (only one iteration)
-                self.owner.states = np.append(self.owner.states, 1)
-                self.istate_Wf = self.owner.states.size-1
-                # error for equation Texit(Wf) = Text spec
-                self.owner.errors = np.append(self.owner.errors, 0)
-                self.ierror_Texit = self.owner.errors.size-1
+                # # define a state and error for subsequent OD solving for Wf making Texit match the self.Texit, e.g. set by a controller
+                # # this is more stable than an internal separate loop for OD
+                # # however, for DP, an internal secant solver is used to get the design Wfdes (only one iteration)
+                # self.owner.states = np.append(self.owner.states, 1)
+                # self.istate_Wf = self.owner.states.size-1
+                # # error for equation Texit(Wf) = Text spec
+                # self.owner.errors = np.append(self.owner.errors, 0)
+                # self.ierror_Texit = self.owner.errors.size-1
 
                 def equation(Wfiter):
                     # 1.6.0.5
@@ -422,16 +434,19 @@ class TCombustor(TGaspath):
                 else:
                     print(f"Wf for Combustor DP Texit value of {self.Texit:.0f} not found")
             else:
-                # initial OD guess for Wf, e.g. for when the first OD point is far from the DP operating condition
-                if self.Wf0_OD == None: # initialize reference value for OD
-                    # assume Wf OD is proportional to the combustor inlet flow rate, e.g. when operating at high altitude while DP is at sea level
-                    self.Wf0_OD = self.Wfdes * self.gas_in.mass / self.Wdes
-                self.Wf = self.owner.states[self.istate_Wf] * self.Wf0_OD
-                Texit_iter = CalcEndConditions(PointTime)
-                self.owner.errors[self.ierror_Texit] = (Texit_iter - self.Texit)/self.Texitdes
+                CalcEndConditions(PointTime) # just calculate using self.Wf (= self.Wfdes)
 
-        else: # just calculate Texit from Wf
-            CalcEndConditions(PointTime)
+        else: # OD off-design
+            # if (self.control is not None) and (self.control.OD_controlled_parameter_name is ) : 
+            #     # initial OD guess for Wf, e.g. for when the first OD point is far from the DP operating condition
+            #     if self.Wf0_OD is None: # initialize reference value for OD
+            #         # assume Wf OD is proportional to the combustor inlet flow rate, e.g. when operating at high altitude while DP is at sea level
+            #         self.Wf0_OD = self.Wfdes * self.gas_in.mass / self.Wdes
+            #     self.Wf = self.owner.states[self.istate_Wf] * self.Wf0_OD
+            #     Texit_iter = CalcEndConditions(PointTime)
+            #     self.owner.errors[self.ierror_Texit] = (Texit_iter - self.Texit)/self.Texitdes
+            # else:
+            CalcEndConditions(PointTime) # just calculate using self Wf
 
         #  add fuel to system level total fuel flow
         self.owner.WF = self.owner.WF + self.Wf

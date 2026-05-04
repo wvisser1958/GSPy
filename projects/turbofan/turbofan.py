@@ -39,7 +39,9 @@ def main():
     # create a control (controlling all inputs to the system model)
     # combustor Texit input, with Wf 1.11 as first guess for 1600 K DP combustor exit temperature
     # Note that using a control to specify T4 instead of Wf significantly slows down the simulation
-    fuel_control = TControl(turbofan, 'Control', '', 1.11, 1600, 1100, -50, None)
+    #  2.1
+    # fuel_control = TControl(turbofan, 'Control', '', 1.11, 1600, 1100, -50, None)
+    fuel_control = TControl(turbofan, 'Control', '', 1.11, 1600, 1100, -50, 'T4')
 
     inlet = TInlet(turbofan,    # owning system model object
                     'Inlet',    # component name
@@ -216,15 +218,28 @@ def main():
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turbofan.mode = 'OD'
-    turbofan.input_points = fuel_control.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
+
+    # intermediate step at design T4 to help iteration towards point far from DP
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
     # conditions is desired
-    # typical cruise conditions:
+    turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None)
+    turbofan.input_points = fuel_control.re_init_input(None,
+                                                            1.11,
+                                                            None, None, None,
+                                                            'T4',
+                                                            point_time_value_array = [combustor.Texitdes])    
+    turbofan.Run_OD_simulation('Intermediate step at 5000m / Ma 0.8')
+
+    # sweep T4 at typical cruise condition 10k / Ma 0.8:
     turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None)
-    # Run OD simulation
-    turbofan.Run_OD_simulation()
+    turbofan.input_points = fuel_control.re_init_input(None,
+                                                            1.11,
+                                                            1600, 1100, -50,
+                                                            'T4')    
+    turbofan.Run_OD_simulation('Cruise at 10000m / Ma 0.8')
+
 
     # export OutputTable to CSV
     turbofan.OutputToCSV()

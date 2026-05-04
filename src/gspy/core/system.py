@@ -211,6 +211,7 @@ class TSystemModel:
         self.output_dict.update(self.get_outputs())
 
         # note that anything calculated in PostRun will not end up in the output_dict !
+        # but can be added explicitly in PostRun implementations
         for comp in self.component_run_list:
             comp.PostRun(mode, point_time)
 
@@ -279,7 +280,7 @@ class TSystemModel:
             print(f"DP simulation: exception error: {e}")
 
     def print_DP_equation_solution(self):
-        if self.targets != None:
+        if self.targets is not None:
             self.vprint(f"DP simulation equations solution:")
             for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(self.targets):
                 self.vprint(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
@@ -397,7 +398,7 @@ class TSystemModel:
             out["FG"] = self.FG
             out["FN"] = self.FN
             out["RD"] = self.RD
-            # out["TSFC"] = self.WF / self.FN * 1000 # g/s/kN
+            out["TSFC"] = self.WF / self.FN * 1000 # g/s/kN
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW = self.PW + shaft.PW_sum
