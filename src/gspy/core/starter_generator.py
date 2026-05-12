@@ -66,7 +66,8 @@ class TStarterGenerator(TMotor):
         # calculate real power in kW based on apparent power and power factor
         self.apparent_power = apparent_power
         self.power_factor = power_factor
-        power_kw_des = self.apparent_power /self.power_factor
+        power_kw_des = self.apparent_power * self.power_factor # Wgen_elec = S * PF -> Wgen_mech = Wgen_elec / eta_gen = (S * PF) / eta_gen
+        # note that eta_gen is not implemented here, can be updated later
 
         # Now call the parent constructor with the calculated real power
         super().__init__(owner, name, map_filename_or_dict, control_component, shaft_id, power_kw_des)
