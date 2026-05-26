@@ -22,13 +22,19 @@ from gspy.core.gaspath import TGaspath
 # import gspy.core.sys_global as fg
 
 class TExhaustNozzle(TGaspath):
-    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, stationthroat, station_out, CXdes, CVdes, CDdes):    # Constructor of the class
+    def __init__(self,
+                *,
+                station_throat,
+                CXdes, 
+                CVdes, 
+                CDdes,
+                **kwargs):    # Constructor of the class
         # CXdes, CVdes, CDdes are for propelling nozzle
         # PRdes = diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
         # If PRdes <> None then a divergent diffuser expansion is calculated, with PRdes as the diffuser
         # pressure loss. PRdes must be < 1. Psout then determines the diffuser exit area A9.
-        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
-        self.stationthroat = stationthroat
+        super().__init__(**kwargs)
+        self.station_throat = station_throat
         self.CXdes = CXdes
         self.CVdes = CVdes
         self.CDdes = CDdes
@@ -108,9 +114,8 @@ class TExhaustNozzle(TGaspath):
         # add gross thrust to system level thrust (note that multiple propelling nozzles may exist)
         self.owner.FG = self.owner.FG + self.FG
         self.Athroat_geom = self.Athroat / self.CDdes
-        self.owner.gaspath_conditions[self.stationthroat] = self.GasThroat
+        self.owner.gaspath_conditions[self.station_throat] = self.GasThroat
         return self.gas_out
-
 
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
@@ -128,7 +133,7 @@ class TExhaustNozzle(TGaspath):
     def get_outputs(self):
         out = super().get_outputs()
 
-        sthr = self.stationthroat
+        sthr = self.station_throat
         sout = self.station_out
 
         out[f"T{sthr}"]  = self.Tthroat

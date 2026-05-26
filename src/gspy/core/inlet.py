@@ -20,8 +20,12 @@ import gspy.core.utils as fu
 from gspy.core.gaspath import TGaspath
 
 class TInlet(TGaspath):
-    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, Wdes, PRdes):  # Constructor of the class
-        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
+    def __init__(self, 
+                 *,
+                 Wdes, 
+                 PRdes,
+                 **kwargs):  # Constructor of the class
+        super().__init__(**kwargs)
         self.Wdes = Wdes
         self.PRdes = PRdes
 

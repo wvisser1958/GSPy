@@ -18,7 +18,16 @@ from gspy.core.map import TMap
 from typing import Optional
 
 class TComponent(ABC):
-    def __init__(self, owner, name, map_filename, control_component):    # Constructor of the class
+    def __init__(self, 
+                 *,
+                 owner, 
+                 name, 
+                 map_filename = None, 
+                 control_component = None, 
+                 heatpaths = None,
+                 **kwargs):    # Constructor of the class
+        if kwargs:
+            raise TypeError(f"Unexpected keyword arguments: {list(kwargs)}")
         self.owner = owner
         self.name = name
         self.map_filename = map_filename
@@ -27,6 +36,7 @@ class TComponent(ABC):
         self.map: Optional[TMap] = None
         # 1.1 WV
         self.control = control_component
+        self.heatpaths = heatpaths
 
     # 2.1
     @property

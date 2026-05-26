@@ -111,14 +111,15 @@ class TFan(TTurboComponent):
             self.Wdes_core_in = self.W_core_in
             self.Wcdes_core_in = self.Wdes_core_in * fu.GetFlowCorrectionFactor(self.gas_in)
             self.map_core.ReadMapAndGetScaling(self.Ncdes, self.Wcdes_core_in, self.PRdes_core, self.Etades_core)
-            self.PW_core = fu.Compression(self.gas_in, self.gas_out, self.PRdes_core, self.Etades_core, self.Polytropic_Eta)
+            self.PW_core = fu.Compression(self.gas_in, self.gas_out, self.PRdes_core, self.Etades_core, 
+                                          self.Polytropic_DP_eta)
 
             # # add fan duct side compression
             # self.Wdes_duct = self.gas_in.mass - self.gas_out.mass
             self.Wdes_duct_in = self.W_duct_in
             self.Wcdes_duct_in = self.W_duct_in * fu.GetFlowCorrectionFactor(self.gas_in)
             self.map_duct.ReadMapAndGetScaling(self.Ncdes, self.Wcdes_duct_in, self.PRdes_duct, self.Etades_duct)
-            self.PW_duct = fu.Compression(self.gas_in, self.gas_out_duct, self.PRdes_duct, self.Etades_duct, self.Polytropic_Eta)
+            self.PW_duct = fu.Compression(self.gas_in, self.gas_out_duct, self.PRdes_duct, self.Etades_duct, self.Polytropic_DP_eta)
 
             self.PW = self.PW_core + self.PW_duct
             self.shaft.PW_sum = self.shaft.PW_sum - self.PW
@@ -159,8 +160,8 @@ class TFan(TTurboComponent):
             self.Wc_core, self.PR_core, self.Eta_core = self.map_core.GetScaledMapPerformance(self.Nc, self.owner.states[self.istate_beta_core])
             self.Wc_duct, self.PR_duct, self.Eta_duct = self.map_duct.GetScaledMapPerformance(self.Nc, self.owner.states[self.istate_beta_duct])
 
-            self.PW_core = fu.Compression(self.gas_in, self.gas_out, self.PR_core, self.Eta_core, self.Polytropic_Eta)
-            self.PW_duct = fu.Compression(self.gas_in, self.gas_out_duct, self.PR_duct, self.Eta_duct, self.Polytropic_Eta)
+            self.PW_core = fu.Compression(self.gas_in, self.gas_out, self.PR_core, self.Eta_core, 0)
+            self.PW_duct = fu.Compression(self.gas_in, self.gas_out_duct, self.PR_duct, self.Eta_duct, 0)
 
             self.PW = self.PW_core + self.PW_duct
 

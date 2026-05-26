@@ -19,10 +19,12 @@ import cantera as ct
 from gspy.core.gaspath import TGaspath
 
 class TDuct(TGaspath):
-    def __init__(self, owner, name, map_filename, control_component, station_in, station_out, PRdes,
-                         *,
-                         Qdes = None):   
-        super().__init__(owner,     name, map_filename, control_component, station_in, station_out)
+    def __init__(self, 
+                 *,
+                 PRdes,
+                 Qdes = None,
+                 **kwargs):   
+        super().__init__(**kwargs)
         self.PRdes = PRdes
         # 2.1
         self.Qdes = Qdes

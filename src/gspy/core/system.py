@@ -25,6 +25,7 @@ from pathlib import Path
 from scipy.optimize import root
 from gspy.core.ambient import TAmbient
 from gspy.core.gaspath import TGaspath
+from gspy.core.heatsink import THeatsink
 
 DEFAULT_YAML = "jetsurf.yaml"
 DEFAULT_VERBOSE = True
@@ -89,7 +90,15 @@ class TSystemModel:
         # use dictionary for gas path conditions oriented by gas path station number
         self.gaspath_conditions = {}
 
-        self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
+        self.ambient = TAmbient(owner=self, 
+                                name='Ambient', 
+                                stationnr='a', 
+                                Altitude=0, 
+                                Macha=0,   
+                                dTs=0,
+                                Psa=None,
+                                Tsa=None,   
+                                RH=0)
 
         # 1.1 WV dictionary for output during iteration (e.g. for control equations)
         self.output_dict = {}
@@ -231,6 +240,14 @@ class TSystemModel:
 
         try:
             self.reinit_states_and_errors()
+
+            # check for Heat sinks: these must add DP equations : 
+            # T must be found for which heat flux residual of balance Q_balance = 0
+            for comp in self.component_run_list:
+                if isinstance(comp, THeatsink):
+                    if targets is None:
+                        targets = []
+                    targets.append( (comp, "T", comp, "Q_balance", 0) ) 
 
             if targets is None:
                 self.Do_Run('DP', 0, self.states)

@@ -20,15 +20,13 @@ from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
 
 class TCompressor(TTurboComponent):
-    def __init__(self, owner, name,
-                 MapFileName_or_dict,
-                 ControlComponent,
-                 station_in, station_out, shaft_id,
-                 Ndes, Etades,
-                 Ncmapdes, Betamapdes, PRdes,
+    def __init__(self, 
+                 *,
+                PRdes,
                  SpeedOption,
-                 Bleeds):    # Constructor of the class
-        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, station_in, station_out, shaft_id, Ndes, Etades, Ncmapdes, Betamapdes)
+                 Bleeds,
+                 **kwargs):    # Constructor of the class
+        super().__init__(**kwargs)
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
@@ -42,7 +40,12 @@ class TCompressor(TTurboComponent):
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
-            self.PW = fu.Compression(self.gas_in, self.gas_out, self.PRdes, self.Etades, self.Polytropic_Eta)
+            self.gas_out, self.PW = self.gas_in.compress_real_eta(
+                PR=self.PRdes,
+                out=self.gas_out,
+                eta=self.Etades,
+                Polytropic_Eta=self.Polytropic_DP_eta
+            )
 
             # 1.6 WV
             # self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
@@ -77,7 +80,12 @@ class TCompressor(TTurboComponent):
                   self.vg_angle = self.control.Get_outputvalue_from_schedule(self.Nc)
             self.Wc, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, self.owner.states[self.istate_beta])
 
-            self.PW = fu.Compression(self.gas_in, self.gas_out, self.PR, self.Eta, self.Polytropic_Eta)
+            self.gas_out, self.PW = self.gas_in.compress_real_eta(
+                pressure_ratio=self.PR,
+                out=self.gas_out,
+                eta=self.Eta,
+                Polytropic_Eta=0
+            )
 
             self.W = self.Wc / fu.GetFlowCorrectionFactor(self.gas_in)
             self.owner.errors[self.ierror_wc ] = (self.W - self.gas_in.mass) / self.Wdes
@@ -107,7 +115,8 @@ class TCompressor(TTurboComponent):
                 self.owner.gaspath_conditions[bleed.station_in] = bleed.gas_in
 
                 # Compress Wbleed to bleed point
-                dHW1 = fu.Compression(self.gas_in, bleed.gas_in, (self.gas_in.P+dP*bleed.dPfactor)/self.gas_in.P, self.Eta, self.Polytropic_Eta)
+                dHW1 = fu.Compression(self.gas_in, bleed.gas_in, (self.gas_in.P+dP*bleed.dPfactor)/self.gas_in.P, self.Eta, 
+                                      self.Polytropic_DP_eta if Mode=='DP' else 0)
                 # now delta of compression power due to the bleed is
                 dHW2 = dH * Wbleed  - dHW1
                 dHW_bleeds_total = dHW_bleeds_total + dHW2
@@ -115,6 +124,11 @@ class TCompressor(TTurboComponent):
                 bleed.Run(Mode, PointTime)
             self.gas_out.mass = self.gas_out.mass - dW
             self.PW = self.PW - dHW_bleeds_total
+
+        # Heat transfer with heat sink components
+        # for heatpath in self.heatpaths:
+            
+        
 
         self.shaft.PW_sum = self.shaft.PW_sum - self.PW
         return self.gas_out

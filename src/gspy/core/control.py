@@ -17,28 +17,28 @@ import numpy as np
 from gspy.core.base_component import TComponent
 
 class TControl(TComponent):
-    def __init__(self, owner, name, map_file_name,
+    def __init__(self, 
+                 *,
                  DP_input_value,
                  OD_start_value, OD_end_value, OD_point_step_value,
-                 OD_controlled_parameter_name,
-                 *,    # force optional parameters passing by name
-                 point_time_value_array = None 
-                 ):
+                 OD_controlled_parameter_name=None,
+                 point_time_value_array = None, 
+                 **kwargs):
         # note that, if OD_controlledparname != None:
         #    OD_startvalue, OD_endvalue, OD_pointstepvalue represent the values of the OD_controlledparname
         # else:
         #    they are the direct input values of the component using this control (like fuel flow for a combustor for example)
         # DP_inputvalue always is direct input values of the component using this control
-        super().__init__(owner, name, map_file_name, None) # no control controlling a control (yet)
+        super().__init__(**kwargs) # no control controlling a control (yet)
         # 2.1
-        self.re_init_input(map_file_name,
+        self.re_init_input(self.map_filename,
                     DP_input_value,
                     OD_start_value, OD_end_value, OD_point_step_value,
                     OD_controlled_parameter_name,
                     point_time_value_array = point_time_value_array)
 
     # 2.1
-    def re_init_input(self, map_file_name,
+    def re_init_input(self, map_filename,
                             DP_input_value,
                             OD_start_value, OD_end_value, OD_point_step_value,
                             OD_controlled_parameter_name,
@@ -53,7 +53,7 @@ class TControl(TComponent):
                             #                     [5.0, 9]
                             #                 ])
                             point_time_value_array = None):
-        self.map_filename = map_file_name # for use in customized child classes, e.g. with lookup tables
+        self.map_filename = map_filename # for use in customized child classes, e.g. with lookup tables
         self.DP_input_value = DP_input_value
         if OD_start_value is None:
             self.OD_start_value = self.owner.point_time + 1

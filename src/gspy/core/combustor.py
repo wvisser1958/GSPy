@@ -22,11 +22,13 @@ import gspy.core.constants as c
 import gspy.core.utils as fu
 
 class TCombustor(TGaspath):
-    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, Wfdes, Texitdes, PRdes, Etades,
-                 Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes, A,
+    def __init__(self, 
                  *,
-                 FARdes = None):
-        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
+                 Wfdes, Texitdes, PRdes, Etades,
+                 Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes, A,
+                 FARdes = None,
+                 **kwargs):
+        super().__init__(**kwargs)
         self.Wfdes = Wfdes
         self.Wf = Wfdes
         # Texitdes: set as None, use None or not None to determine input type : Wf or Texit
@@ -60,17 +62,17 @@ class TCombustor(TGaspath):
         self.istate_Wf = None
         self.ierror_Texit = None
 
-        self.C_atom_weight = owner.gas.atomic_weight(owner.gas.element_index('C'))
-        self.O_atom_weight = owner.gas.atomic_weight(owner.gas.element_index('O'))
-        self.H_atom_weight = owner.gas.atomic_weight(owner.gas.element_index('H'))
+        self.C_atom_weight = self.owner.gas.atomic_weight(self.owner.gas.element_index('C'))
+        self.O_atom_weight = self.owner.gas.atomic_weight(self.owner.gas.element_index('O'))
+        self.H_atom_weight = self.owner.gas.atomic_weight(self.owner.gas.element_index('H'))
 
-        self.O2_molar_mass = owner.gas.molecular_weights[owner.gas.species_index('O2')]
-        self.CO2_molar_mass = owner.gas.molecular_weights[owner.gas.species_index('CO2')]
-        self.H2O_molar_mass = owner.gas.molecular_weights[owner.gas.species_index('H2O')]
+        self.O2_molar_mass = self.owner.gas.molecular_weights[self.owner.gas.species_index('O2')]
+        self.CO2_molar_mass = self.owner.gas.molecular_weights[self.owner.gas.species_index('CO2')]
+        self.H2O_molar_mass = self.owner.gas.molecular_weights[self.owner.gas.species_index('H2O')]
 
         # predetermine h_air_ref
-        owner.gas.TPY = c.T_standard_ref, c.P_standard_ref, c.s_air_composition_mass
-        self.h_air_ref = owner.gas.enthalpy_mass
+        self.owner.gas.TPY = c.T_standard_ref, c.P_standard_ref, c.s_air_composition_mass
+        self.h_air_ref = self.owner.gas.enthalpy_mass
 
     #  1.4 use separate routine, for allowing change of fuel for OD simulation cases
     def SetFuel(self, aTfuel, aLHV, aHCratio, aOCratio, aFuelComposition):

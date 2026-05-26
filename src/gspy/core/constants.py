@@ -23,6 +23,9 @@ Air_composition = [
     ('AR',  0.0129159,  0.00934,  0.0446),  # 2.0.0.1 changed from Ar to AR (compliant to Cantera)
     ('N2',  0.75518431, 0.78084,  3.7279)
 ]
+
+dry_air_mole_composition = {species: mole_frac for species, _, mole_frac, _ in Air_composition}
+
 # mole composition
 s_air_composition_mole = {sp: x for sp, _, x, _ in Air_composition}
 # mass composition

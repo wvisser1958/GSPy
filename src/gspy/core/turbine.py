@@ -21,18 +21,18 @@ from gspy.core.turbo_component import TTurboComponent
 from gspy.core.turbinemap import TTurbineMap
 
 class TTurbine(TTurboComponent):
-    def __init__(self, owner, name,
-                 MapFileName_or_dict,
-                 ControlComponent, station_in, station_out, shaft_id,
-                 Ndes, Etades, Ncmapdes, Betamapdes, Etamechdes,
+    def __init__(self, 
+                 *,
+                 Etamechdes,
                  TurbineType,
-                 CoolingFlows):
-        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, station_in, station_out, shaft_id, Ndes, Etades, Ncmapdes, Betamapdes)
+                 CoolingFlows,
+                 **kwargs):
+        super().__init__(**kwargs)
         self.Etamechdes = Etamechdes # spool mechanical efficiency
         self.TurbineType = TurbineType  # gas generator turbine providing all power required by compressor(s)
         # TurbineType = 'PT'  # heavy duty single spool or power turbine, providing power to external loads
         # only call SetDPparameters in instantiable classes in init creator
-        self.map = TTurbineMap(self, name + '_map', self.MapFileName, '', '', shaft_id, Ncmapdes, Betamapdes)
+        self.map = TTurbineMap(self, self.name + '_map', self.MapFileName, '', '', self.shaft_id, self.Ncmapdes, self.Betamapdes)
         self.CoolingFlows = CoolingFlows
 
     # 1.6 virtual method CreateMap will be called in ancestor TTurboComponent
@@ -85,7 +85,8 @@ class TTurbine(TTurboComponent):
                 dPexp = (cf.gas_injected.P - self.gas_out.P) * cf.dPfraction
                 if dPexp > 0:
                     PRexp = (self.gas_out.P + dPexp) / self.gas_out.P
-                    cf.DHWexp = fu.TurbineExpansion(cf.gas_injected, cf.gas_out, PRexp, self.Eta, cf.W, self.Polytropic_Eta)
+                    cf.DHWexp = fu.TurbineExpansion(cf.gas_injected, cf.gas_out, PRexp, self.Eta, cf.W, 
+                                                    self.Polytropic_DP_eta if Mode == 'DP' else 0)
                     self.DHW_cl_exp = self.DHW_cl_exp + cf.DHWexp
                 else:
                     cf.DHWexp = 0
@@ -115,7 +116,8 @@ class TTurbine(TTurboComponent):
             # power without cooling:
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW, mechanical power output = PW
             # PW_PR = fu.TurbineExpansion(self.gas_in, self.gas_out, PR_iter, self.Eta, None, self.Polytropic_Eta)
-            DHW_PR = fu.TurbineExpansion(self.gas_in, self.gas_out, PR_iter, self.Eta, None, self.Polytropic_Eta)
+            DHW_PR = fu.TurbineExpansion(self.gas_in, self.gas_out, PR_iter, self.Eta, None, 
+                                         self.Polytropic_DP_eta if Mode == 'DP' else 0)
 
             # cooling flow effects
             if self.CoolingFlows != None:
@@ -163,7 +165,8 @@ class TTurbine(TTurboComponent):
 
                 # 1.6.0.8 adding thermodynamic power excl. mech. losses = DHW, mechanical power output = PW
                 # self.PW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PRdes, self.Etades, None, self.Polytropic_Eta)
-                self.DHW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PRdes, self.Etades, None, self.Polytropic_Eta)
+                self.DHW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PRdes, self.Etades, None, 
+                                               self.Polytropic_DP_eta)
                 # v1.2
                 # cooling flow effects
                 if self.CoolingFlows != None:
@@ -215,7 +218,7 @@ class TTurbine(TTurboComponent):
 
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
             # self.PW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PR, self.Eta, None, self.Polytropic_Eta)
-            self.DHW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PR, self.Eta, None, self.Polytropic_Eta)
+            self.DHW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PR, self.Eta, None, 0)
 
             # v1.2
             if self.CoolingFlows != None:

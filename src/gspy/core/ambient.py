@@ -18,10 +18,21 @@ import aerocalc as ac     # !!!! install with "pip install aero-calc", see https
 from gspy.core.base_component import TComponent
 # import gspy.core.sys_global as fg
 import gspy.core.constants as c
+from gspy.core.gaspath_condition import TGaspathCondition
 
 class TAmbient(TComponent):
-    def __init__(self, owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa, RH=None):
-        super().__init__(owner, name, '', None)
+    def __init__(self, 
+                 *,
+                 stationnr, 
+                 Altitude, 
+                 Macha, 
+                 dTs, 
+                 Psa, 
+                 Tsa, 
+                #  RH=None,
+                 RH=0,
+                 **kwargs):
+        super().__init__(**kwargs)
         self.station_nr = stationnr
 
         self.humidity_mode_des = None
@@ -31,12 +42,16 @@ class TAmbient(TComponent):
 
         # create Cantera quantity object for Ambient (mass = 1 per default)
         # this quantity is then further copied along the gaspath in the system model
-        self.Gas_Ambient = ct.Quantity(self.owner.gas)
+        
+        # GC
+        # self.Gas_Ambient = ct.Quantity(self.owner.gas)
+        self.Gas_Ambient = TGaspathCondition.from_RH(self.owner.gas, 1, 288.15, 101325, 150, c.dry_air_mole_composition)
+
         self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
 
         self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa, RH=RH)
 
-        owner.ambient = self
+        self.owner.ambient = self
 
     def _get_ambient_mole_fractions_from_static_conditions(self):
         """
@@ -172,8 +187,9 @@ class TAmbient(TComponent):
             # self.Gas_Ambient = ct.Solution('jetsurf.yaml')
             # create Cantera quantity object for Ambient (mass = 1 per default)
             # this quantity is then further copied along the gaspath in the system model
-            self.Gas_Ambient = ct.Quantity(self.owner.gas)
-            self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
+            # 2.1 obsolete
+            # self.Gas_Ambient = ct.Quantity(self.owner.gas)
+            # self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
         if self.Tsa == None:
             # Tsa not defined, use standard atmosphere
             self.Tsa = ac.std_atm.alt2temp(self.Altitude, alt_units='m', temp_units='K')

@@ -19,6 +19,7 @@ from math import log, exp
 from scipy.optimize import root, root_scalar
 import cantera as ct
 import gspy.core.constants as c
+from gspy.core.gaspath_condition import TGaspathCondition
 
 atomweightC = 12.010914
 molemassCO2 = 44.0098
@@ -126,7 +127,8 @@ def exit_T_and_enthalpy_for_pressure_ratio(gas, target_PR, eta_is) :
     gas.HP = final_enthalpy, Pend
     return gas.T, gas.enthalpy_mass
 
-def Compression(gas_in: ct.Quantity, gas_out: ct.Quantity, PR, Eta, Polytropic_Eta = 0):
+# def Compression(gas_in: ct.Quantity, gas_out: ct.Quantity, PR, Eta, Polytropic_Eta = 0):
+def Compression(gas_in: TGaspathCondition, gas_out: TGaspathCondition, PR, Eta, Polytropic_Eta = 0):
     # v1.4 polytropic efficiency option
     if Polytropic_Eta == 1:
         R = ct.gas_constant / gas_in.phase.mean_molecular_weight
@@ -134,14 +136,15 @@ def Compression(gas_in: ct.Quantity, gas_out: ct.Quantity, PR, Eta, Polytropic_E
         Pout = gas_in.P*PR
         gas_out.SP = Sout, Pout # get gas_out at constant s and higher P
     else:
-        Sin = gas_in.s
-        Pout = gas_in.P*PR
-        gas_out.SP = Sin, Pout # get gas_out at constant s and higher P
-        Hisout = gas_out.enthalpy_mass # isentropic exit specific enthalpy
-        Hout = gas_in.enthalpy_mass + (Hisout - gas_in.enthalpy_mass) / Eta
-        gas_out.HP = Hout, Pout
-        # bug fix: for Fan, gas_out<>gas_in: use gas_out as the mass being compressed
-        # PW = gas_out.H - gas_in.H
+        # Sin = gas_in.s
+        # Pout = gas_in.P*PR
+        # gas_out.SP = Sin, Pout # get gas_out at constant s and higher P
+        # Hisout = gas_out.enthalpy_mass # isentropic exit specific enthalpy
+        # Hout = gas_in.enthalpy_mass + (Hisout - gas_in.enthalpy_mass) / Eta
+        # gas_out.HP = Hout, Pout
+        # # bug fix: for Fan, gas_out<>gas_in: use gas_out as the mass being compressed
+        # # PW = gas_out.H - gas_in.H
+        gas_in.compress_real_eta_isentropic(PR, gas_out, Eta)
     PW = gas_out.H - gas_out.mass * gas_in.phase.enthalpy_mass
     return PW
 

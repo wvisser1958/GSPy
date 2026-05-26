@@ -16,12 +16,16 @@
 import numpy as np
 import cantera as ct
 from gspy.core.base_component import TComponent
-# import gspy.core.sys_global as fg
+from gspy.core.gaspath_condition import TGaspathCondition
 import gspy.core.utils as fu
 
 class TGaspath(TComponent):
-    def __init__(self, owner, name, map_filename, control_component, station_in, station_out):    # Constructor of the class
-        super().__init__(owner, name, map_filename, control_component)
+    def __init__(self, 
+                 *,
+                 station_in, 
+                 station_out,
+                 **kwargs):    # Constructor of the class
+        super().__init__(**kwargs)
         self.station_in = station_in
         self.station_out = station_out
         # set design properties to None, if still None in PrintPerformance,
@@ -39,8 +43,16 @@ class TGaspath(TComponent):
 
         if Mode == 'DP':
             # create gas_inDes, gas_out cantera Quantity (gas_in already created)
-            self.gas_inDes = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
-            self.gas_out = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
+
+            # GC: 
+            # self.gas_inDes = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
+            # self.gas_out = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
+            self.gas_inDes = TGaspathCondition.create_empty(self.owner.gas)
+            self.gas_out = TGaspathCondition.create_empty(self.owner.gas)
+
+            self.gas_inDes.copy_from(self.gas_in)
+            self.gas_out.copy_from(self.gas_in)
+
             self.Wdes = fu.scalar(self.gas_inDes.mass)
             self.Wcdes = self.Wdes * fu.GetFlowCorrectionFactor(self.gas_inDes)
             self.W = self.Wdes

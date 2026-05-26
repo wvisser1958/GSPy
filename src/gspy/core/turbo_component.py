@@ -26,15 +26,18 @@ from pathlib import Path
 from gspy.core.turbomap import TTurboMap
 
 class TTurboComponent(TGaspath):
-    def __init__(self, owner, name, map_filename_or_dict, ControlComponent, station_in, station_out, shaft_id,
-                 Ndes, Etades,
-                 Ncmapdes, Betamapdes):
-        super().__init__(owner, name, map_filename_or_dict, ControlComponent, station_in, station_out)
+    def __init__(self, 
+                 *,
+                 shaft_id,
+                 Ndes, 
+                 Etades,
+                 Ncmapdes, 
+                 Betamapdes,
+                 Polytropic_DP_eta = 0,
+                 **kwargs):
+        super().__init__(**kwargs)
 
-        self.gas_in = None
-        self.gas_out = None
         self.shaft_id = shaft_id
-
         self.Ndes = Ndes
         self.N = Ndes
         self.Nc = None
@@ -53,7 +56,7 @@ class TTurboComponent(TGaspath):
         self.Etades = Etades
         self.Eta = None
         # v1.4
-        self.Polytropic_Eta = 0  # default eta is assumed isentropic, if self.Polytropic_Eta == 1, polytropic
+        self.Polytropic_DP_eta = Polytropic_DP_eta  # default DP eta is assumed isentropic, if self.Polytropic_Eta == 1, polytropic (OD always OD)
 
         self.PW = None
         # 1.6.0.8
@@ -62,15 +65,15 @@ class TTurboComponent(TGaspath):
         # 1.6 Wilfried Visser, to accomodate multi-map functionality for variable geometry
         # VGparvalue is set from outside (manually of via TControl component) determining the maps in the MapFileNames list to be used for interpolation
         # type-dependent behavior for MapFileNames (renamed here from 'MapFileName' in TGaspath)
-        if isinstance(map_filename_or_dict, dict):
+        if isinstance(self.map_filename, dict):
             # MapFileName_or_dict holds VGparvaluedes in element 'design_angle' and a list of mapfilename, VGpasvalues in "maps"
             # MapFileNames is list of tuples : Map file path, VGparvalue (e.g. VSV / VIGV angle, VBV position)
-            self.vg_angle_des = map_filename_or_dict['design_angle']           # tuple[0] holds the VGpasvalue in the design point (for scaling map in DP calculation)
+            self.vg_angle_des = self.map_filename['design_angle']           # tuple[0] holds the VGpasvalue in the design point (for scaling map in DP calculation)
             self.vg_angle =self.vg_angle_des
             self.MapFileName = None
 
             self.maps_by_angle: dict[float, TTurboMap] = {}
-            maps_dict = map_filename_or_dict["maps"]
+            maps_dict = self.map_filename["maps"]
             for angle in sorted(maps_dict):
                 fn = Path(maps_dict[angle])
                 if not fn.exists():
@@ -91,10 +94,10 @@ class TTurboComponent(TGaspath):
                     "VGparvaluedes does not match any of the VGpasvalue's in the MapFileNames list")
 
         # single map from single map file path
-        elif isinstance(map_filename_or_dict, (str, Path)):
+        elif isinstance(self.map_filename, (str, Path)):
             # MapFileName_or_dict is just a single map file name/path
             # Normalize to Path internally (best practice)
-            self.MapFileName = Path(map_filename_or_dict)
+            self.MapFileName = Path(self.map_filename)
             self.map = self.CreateMap(self.MapFileName, shaft_id, Ncmapdes, Betamapdes)
 
         else:
@@ -104,9 +107,11 @@ class TTurboComponent(TGaspath):
 
         # 2.1 if shaft not existing yet, create shaft and assume shaft Ntdes = Ndes, assign I = 0 here (specify turbomachinery with an I value)
         if all(shaft.shaft_id != shaft_id for shaft in self.owner.shaft_list):
-            self.owner.shaft_list.append(fshaft.TShaft(self.owner, shaft_id, name + ' shaft ' + str(shaft_id),
-                                                       self.Ndes, # shaft design speed
-                                                       0          # shaft moment of inertia kg.m2
+            self.owner.shaft_list.append(fshaft.TShaft(owner=self.owner, 
+                                                       shaft_id=shaft_id, 
+                                                       name=self.name + ' shaft ' + str(shaft_id),
+                                                       Ntdes=self.Ndes, # shaft design speed
+                                                       I=0          # shaft moment of inertia kg.m2
                                                        ) )
 
     # 1.6 WV

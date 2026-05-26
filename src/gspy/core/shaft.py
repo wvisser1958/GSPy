@@ -15,15 +15,20 @@
 
 import numpy as np
 from math import pi
+from gspy.core.base_component import TComponent
 
 # precalc sqr(2*Pi/60) for TShaf.PWaccel
 sqr2Pi_60 = (2*pi/60) ** 2
 
-class TShaft:
-    def __init__(self, owner, shaft_id, name, Ntdes, I):  # Constructor of the class
-        self.owner = owner
+class TShaft(TComponent):
+    def __init__(self, 
+                 *,
+                 shaft_id,
+                 Ntdes, 
+                 I,
+                 **kwargs):  # Constructor of the class
+        super().__init__(**kwargs)        
         self.shaft_id = shaft_id
-        self.name = name
         self.I = I # moment of inertia [kg.m2]
         self.Ivariable = 0 # variable moment of inertia [kg.m2]
 
