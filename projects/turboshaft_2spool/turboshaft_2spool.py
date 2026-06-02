@@ -39,12 +39,12 @@ def main():
 
     inlet1   = TInlet(turboshaft_2sp, 'Inlet1',      '', None,           0,2,   100, 0.9901311    )
 
-    compressor1 = TCompressor(turboshaft_2sp, 'compressor1', 'compmap.map' , None, 2, 3, '_gg', 4780, 0.915, 1, 0.8   , 20, 'GG', None)
+    compressor1 = TCompressor(turboshaft_2sp, 'compressor1', 'compmap.map' , None, 2, 3, '_gg', 6800, 0.9, 1, 0.79   , 18, 'GG', None)
 
-    combustor1 = TCombustor(turboshaft_2sp, 'combustor1', '',  fuel_control, 3, 4, 2.5, None, 0.95, 0.9998, 458.15,      50025, 4, 0, 'CH4:1', None)
+    combustor1 = TCombustor(turboshaft_2sp, 'combustor1', '',  fuel_control, 3, 4, 2.5, None, 0.95, 0.9998, 340.00,      50025, 4, 0, 'CH4:1', None)
 
     turbine_gg  =  TTurbine(turboshaft_2sp,
-                             'GGT'   , 'turbimap.map', None, 4, 45, '_gg', 4780, 0.8 , 1, 0.50943, 0.99, 'GG', None)
+                             'GGT'   , 'turbimap.map', None, 4, 45, '_gg', 6800, 0.83 , 1, 0.6, 0.99, 'GG', None)
 
     turbine_PT  =    TTurbine(turboshaft_2sp,    # owning system model object
                              'PT'   ,           # component name
@@ -52,8 +52,8 @@ def main():
                              None,              # optional control component
                              45, 5,             # inlet and exit station numbers
                              '_pt',             # shaft number/ID
-                             3000,              # design rotor speed
-                             0.91 ,             # design efficiency
+                             4100,              # design rotor speed
+                             0.9 ,             # design efficiency
                              1,                 # map design Nc rotor speed
                              0.8,               # map design Beta value
                              0.99,              # design mechanical efficiency
@@ -100,7 +100,7 @@ def main():
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turboshaft_2sp.mode = 'OD'
-    turboshaft_2sp.inputpoints = fuel_control.get_OD_input_points()
+    turboshaft_2sp.input_points = fuel_control.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
