@@ -14,7 +14,7 @@
 #   Wilfried Visser
 
 import numpy as np
-from scipy.optimize import root
+from scipy.optimize import root_scalar
 
 import gspy.core.utils as fu
 from gspy.core.turbo_component import TTurboComponent
@@ -85,8 +85,16 @@ class TTurbine(TTurboComponent):
                 dPexp = (cf.gas_injected.P - self.gas_out.P) * cf.dPfraction
                 if dPexp > 0:
                     PRexp = (self.gas_out.P + dPexp) / self.gas_out.P
-                    cf.DHWexp = fu.TurbineExpansion(cf.gas_injected, cf.gas_out, PRexp, self.Eta, cf.W, 
-                                                    self.Polytropic_DP_eta if Mode == 'DP' else 0)
+                    # 2.1
+                    # cf.DHWexp = fu.TurbineExpansion(cf.gas_injected, cf.gas_out, PRexp, self.Eta, cf.W, 
+                    #                                 self.Polytropic_DP_eta if Mode == 'DP' else 0)
+                    cf.gas_out, cf.DHWexp = cf.gas_injected.expand_real_eta(
+                        PR=PRexp,
+                        out=cf.gas_out,
+                        eta=self.Eta,
+                        polytropic_eta=self.Polytropic_DP_eta if Mode == 'DP' else False
+                    )                    
+
                     self.DHW_cl_exp = self.DHW_cl_exp + cf.DHWexp
                 else:
                     cf.DHWexp = 0
@@ -113,11 +121,18 @@ class TTurbine(TTurboComponent):
             self.gas_out.TPY = self.gas_in.TPY
             self.gas_out.mass = self.gas_in.mass
 
+            # 2.1
             # power without cooling:
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW, mechanical power output = PW
             # PW_PR = fu.TurbineExpansion(self.gas_in, self.gas_out, PR_iter, self.Eta, None, self.Polytropic_Eta)
-            DHW_PR = fu.TurbineExpansion(self.gas_in, self.gas_out, PR_iter, self.Eta, None, 
-                                         self.Polytropic_DP_eta if Mode == 'DP' else 0)
+            # DHW_PR = fu.TurbineExpansion(self.gas_in, self.gas_out, PR_iter, self.Eta, None, 
+            #                              self.Polytropic_DP_eta if Mode == 'DP' else 0)
+            self.gas_out, DHW_PR = self.gas_in.expand_real_eta(
+                PR=PR_iter,
+                out=self.gas_out,
+                eta=self.Eta,
+                polytropic_eta=self.Polytropic_DP_eta if Mode == 'DP' else False
+            )
 
             # cooling flow effects
             if self.CoolingFlows != None:
@@ -143,14 +158,20 @@ class TTurbine(TTurboComponent):
                 self.DHW = self.PW / self.Etamechdes
 
                 # Define the function to find the root of
-                initial_guess = [1.9]
+                initial_guess = 1.9
 
                 # Use scipy.optimize.root to find the pressure ratio
-                solution = root(pressure_ratio_for_turbine_power, initial_guess)
+                # solution = root(pressure_ratio_for_turbine_power, initial_guess)
+                solution = root_scalar(
+                    pressure_ratio_for_turbine_power,
+                    x0=1.9,
+                    x1=2.0,      # secant method
+                    method='secant'
+                )
 
                 # Check if the solution converged
-                if solution.success:
-                    self.PRdes = solution.x[0]
+                if solution.converged:
+                    self.PRdes = solution.root
                 else:
                     raise ValueError(self.name + "DP PR iteration did not converge")
 
@@ -165,8 +186,15 @@ class TTurbine(TTurboComponent):
 
                 # 1.6.0.8 adding thermodynamic power excl. mech. losses = DHW, mechanical power output = PW
                 # self.PW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PRdes, self.Etades, None, self.Polytropic_Eta)
-                self.DHW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PRdes, self.Etades, None, 
-                                               self.Polytropic_DP_eta)
+                # self.DHW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PRdes, self.Etades, None, 
+                #                                self.Polytropic_DP_eta)
+                self.gas_out, self.DHW = self.gas_in.expand_real_eta(
+                    PR=self.PRdes,
+                    out=self.gas_out,
+                    eta=self.Etades,
+                    polytropic_eta=self.Polytropic_DP_eta if Mode == 'DP' else False
+                )
+
                 # v1.2
                 # cooling flow effects
                 if self.CoolingFlows != None:
@@ -216,10 +244,17 @@ class TTurbine(TTurboComponent):
             self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, self.owner.states[self.istate_beta])
             self.W = self.Wc / fu.GetFlowCorrectionFactor(self.gas_in)
 
+            # 2.1
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
             # self.PW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PR, self.Eta, None, self.Polytropic_Eta)
-            self.DHW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PR, self.Eta, None, 0)
-
+            # self.DHW = fu.TurbineExpansion(self.gas_in, self.gas_out, self.PR, self.Eta, None, 0)
+            self.gas_out, self.DHW = self.gas_in.expand_real_eta(
+                PR=self.PR,
+                out=self.gas_out,
+                eta=self.Eta,
+                polytropic_eta=self.Polytropic_DP_eta if Mode == 'DP' else False
+            )
+            
             # v1.2
             if self.CoolingFlows != None:
                 self.dDHWcl, self.W_cl_eff = CalcCoolingFlowEffects()

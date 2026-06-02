@@ -34,7 +34,10 @@ class TInlet(TGaspath):
             # Get the ambient conditions for the inlet gas_in conditions
             self.owner.gaspath_conditions[self.station_in] = self.owner.gaspath_conditions[self.owner.ambient.station_nr]
             self.owner.gaspath_conditions[self.station_in].mass = self.Wdes
+
+        # super (TGasPath) Run sets gas_int to self.owner.gaspath_conditions[self.station_in]
         super().Run(Mode, PointTime)
+
         # self.gas_in.TP = self.gas_in.T, self.gas_in.P
         if Mode == 'DP':
             self.gas_in.mass = self.Wdes
@@ -48,11 +51,21 @@ class TInlet(TGaspath):
             if self.wc < 0.001*self.wcdes:
                 self.wc = 0.001*self.wcdes
             self.gas_in.mass = self.wc / fu.GetFlowCorrectionFactor(self.gas_in)
-            self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PRdes
+            # self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PRdes
             # this inlet has constant PR, no OD PR yet (use manual input in code here, or make PR, Ram recovery map)
             self.PR = self.PRdes
+
+        self.gas_in.set_conditions_humidity(
+            T=self.gas_in.T,
+            P=self.gas_in.P,
+            humidity_mode=self.owner.ambient.humidity_mode,
+            humidity_value=self.owner.ambient.humidity_value,
+            dry_X=dict(self.gas_in.X),
+        )
+
+        self.gas_out.copy_from(self.gas_in)
         self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PR
-        self.gas_out.mass = self.gas_in.mass
+        # self.gas_out.mass = self.gas_in.mass
         self.RD = self.gas_in.mass * self.owner.ambient.V / 1000 # kN
         # add ram drag to system level ram drag (note that multiple inlets may exist)
         self.owner.RD = self.owner.RD + self.RD

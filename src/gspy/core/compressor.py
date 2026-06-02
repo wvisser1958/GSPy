@@ -81,10 +81,10 @@ class TCompressor(TTurboComponent):
             self.Wc, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, self.owner.states[self.istate_beta])
 
             self.gas_out, self.PW = self.gas_in.compress_real_eta(
-                pressure_ratio=self.PR,
+                PR=self.PR,
                 out=self.gas_out,
                 eta=self.Eta,
-                Polytropic_Eta=0
+                Polytropic_Eta=False
             )
 
             self.W = self.Wc / fu.GetFlowCorrectionFactor(self.gas_in)
@@ -115,8 +115,16 @@ class TCompressor(TTurboComponent):
                 self.owner.gaspath_conditions[bleed.station_in] = bleed.gas_in
 
                 # Compress Wbleed to bleed point
-                dHW1 = fu.Compression(self.gas_in, bleed.gas_in, (self.gas_in.P+dP*bleed.dPfactor)/self.gas_in.P, self.Eta, 
-                                      self.Polytropic_DP_eta if Mode=='DP' else 0)
+                #  2.1
+                # dHW1 = fu.Compression(self.gas_in, bleed.gas_in, (self.gas_in.P+dP*bleed.dPfactor)/self.gas_in.P, self.Eta, 
+                #                       self.Polytropic_DP_eta if Mode=='DP' else 0)
+                bleed.gas_in, dHW1 = self.gas_in.compress_real_eta(
+                    PR=(self.gas_in.P+dP*bleed.dPfactor)/self.gas_in.P,
+                    out=bleed.gas_in,
+                    eta=self.Eta,
+                    Polytropic_Eta=self.Polytropic_DP_eta if Mode=='DP' else False
+                )
+
                 # now delta of compression power due to the bleed is
                 dHW2 = dH * Wbleed  - dHW1
                 dHW_bleeds_total = dHW_bleeds_total + dHW2
@@ -127,7 +135,7 @@ class TCompressor(TTurboComponent):
 
         # Heat transfer with heat sink components
         # for heatpath in self.heatpaths:
-            
+        #  ******** TBD *******************            
         
 
         self.shaft.PW_sum = self.shaft.PW_sum - self.PW

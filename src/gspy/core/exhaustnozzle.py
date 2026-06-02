@@ -17,6 +17,7 @@
 import numpy as np
 import cantera as ct
 import gspy.core.utils as fu
+from gspy.core.gaspath_condition import TGaspathCondition
 from scipy.optimize import root_scalar
 from gspy.core.gaspath import TGaspath
 # import gspy.core.sys_global as fg
@@ -42,8 +43,11 @@ class TExhaustNozzle(TGaspath):
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         # add nozzle throat station
-        self.GasThroat = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
-        Sin = self.gas_in.entropy_mass
+        # 2.1
+        # self.GasThroat = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
+        self.gas_throat = TGaspathCondition.create_empty(self.owner.gas)
+        self.gas_throat.copy_from(self.gas_in)
+        
         Hin = self.gas_in.enthalpy_mass
         Pin = self.gas_in.P
         Pout = self.owner.ambient.Psa
@@ -55,22 +59,23 @@ class TExhaustNozzle(TGaspath):
         if Mode == 'DP':
             self.PRdes = self.PR
             # Vthroat_is, self.Tthroat = fu.calculate_exit_velocity(self.gas_out.phase, self.PR)
-            Vthroat_is, self.Tthroat = fu.calculate_exit_velocity(self.gas_out.phase, self.PR)
+            Vthroat_is, self.Tthroat = fu.calculate_exit_velocity(self.gas_out.gas_q.phase, self.PR)
             # try full expansion to Pout
-            self.GasThroat.TP = self.Tthroat, Pout
-            self.Mthroat = Vthroat_is / self.GasThroat.phase.sound_speed
+            self.gas_throat.TP = self.Tthroat, Pout
+            self.Mthroat = Vthroat_is / self.gas_throat.phase.sound_speed
             if self.Mthroat > 1: # cannot be, correct for Mthroat = 1
                 self.Mthroat = 1
-
+                Sin = self.gas_throat.S
                 # Function to find the pressure for Mach 1
                 def mach_number_difference(exit_pressure):
 
                     # 1.6.0.5 make sure Pout becomes a single value
                     # self.GasThroat.SP = Sin, float(exit_pressure)  # Set state at the given pressure
-                    self.GasThroat.SP = Sin, float(np.asarray(exit_pressure).squeeze())  # Set state at the given pressure
+                    # self.gas_throat.SP = Sin, float(np.asarray(exit_pressure).squeeze())  # Set state at the given pressure
+                    self.gas_throat.SP = Sin, exit_pressure     # Set state at the given pressure
 
-                    local_speed_of_sound = self.GasThroat.sound_speed
-                    velocity = (2 * (Hin - self.GasThroat.enthalpy_mass))**0.5
+                    local_speed_of_sound = self.gas_throat.sound_speed
+                    velocity = (2 * (Hin - self.gas_throat.enthalpy_mass))**0.5
                     mach_number = velocity / local_speed_of_sound
                     return mach_number - 1.0  # We want Mach number to be exactly 1
                 # Use a numerical solver to find the exit pressure where Mach = 1
@@ -82,20 +87,20 @@ class TExhaustNozzle(TGaspath):
                 self.Pthroat = rootresult.root
                 # 1.301 bug fix do not multiply with CVdes here. CXV is not supposed to affect Athroat and mass flow
                 # self.Vthroat = self.GasThroat.phase.sound_speed * self.CVdes
-                self.Vthroat = self.GasThroat.phase.sound_speed
+                self.Vthroat = self.gas_throat.phase.sound_speed
             else:
                 self.Pthroat = Pout
                 # 1.301
                 # self.Vthroat = Vthroat_is * self.CVdes
                 self.Vthroat = Vthroat_is
-            self.Tthroat = self.GasThroat.T
+            self.Tthroat = self.gas_throat.T
             # exit flow error
             self.owner.errors = np.append(self.owner.errors, 0)
             self.ierror_w = self.owner.errors.size - 1
             if self.Vthroat <= 0:
                 self.Vthroat = 0.001  # always assume a minimal flow velocity: 0.001 will result in a theoretical
                                     # very large exhaust area
-            self.Athroat_des = fu.scalar(self.GasThroat.mass) / self.GasThroat.phase.density / self.Vthroat
+            self.Athroat_des = fu.scalar(self.gas_throat.mass) / self.gas_throat.phase.density / self.Vthroat
             self.Athroat = self.Athroat_des
             # 1.301 now apply CV
             self.Vthroat = self.Vthroat * self.CVdes
@@ -103,18 +108,18 @@ class TExhaustNozzle(TGaspath):
             # Off-design calculation
             self.Athroat = self.Athroat_des # fixed nozzle are still here
             self.Pthroat, self.Tthroat, Vthroat_is, massflow = fu.calculate_expansion_to_A(self.gas_in.phase, Pin/Pout, self.Athroat)
-            self.GasThroat.TP = self.Tthroat, self.Pthroat
+            self.gas_throat.TP = self.Tthroat, self.Pthroat
             self.Vthroat = Vthroat_is * self.CVdes
             self.owner.errors[self.ierror_w] = (fu.scalar(self.gas_in.mass) - massflow) / fu.scalar(self.gas_inDes.mass)
             # 1.301 use Vthroat_is for Mach number
             # self.Mthroat = self.Vthroat / self.GasThroat.phase.sound_speed
-            self.Mthroat = Vthroat_is / self.GasThroat.phase.sound_speed
+            self.Mthroat = Vthroat_is / self.gas_throat.phase.sound_speed
         self.gas_out.TP = self.Tthroat, Pout # assume no further expansion
         self.FG = self.CXdes * (fu.scalar(self.gas_out.mass) * self.Vthroat + self.Athroat*(self.Pthroat-Pout)) / 1000 # kN
         # add gross thrust to system level thrust (note that multiple propelling nozzles may exist)
         self.owner.FG = self.owner.FG + self.FG
         self.Athroat_geom = self.Athroat / self.CDdes
-        self.owner.gaspath_conditions[self.station_throat] = self.GasThroat
+        self.owner.gaspath_conditions[self.station_throat] = self.gas_throat
         return self.gas_out
 
     def PrintPerformance(self, Mode, PointTime):
