@@ -106,6 +106,17 @@ See the LICENSE file for details.
     source code folder. The script is per default configured to generate
     the class hierarchy diagram of the .\src\gspy\core folder.
     The resulting class_diagram.md file is created in the .\docs folder.
+- The .\src\gspy\core folder is meant to contain the core component files,
+  adaptions and derivatives should be placed in .\src\gspy\extentions:
+  └── src/
+      └── gspy/
+          ├── core/
+          │   └── ...
+          └── extensions/
+              ├── adaptive_modelling/
+              │   └── ...
+              └── ambient/
+                  └── AS210.py
 - Shaft component classes are introduced to model components producing or
   consuming power and/or torque, like electric motors, generators etc.
   Class hierarchy:
@@ -412,6 +423,15 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 5. OTHER
 ********************************************************************************
+## Star History
+
+<a href="https://www.star-history.com/?repos=wvisser1958%2FGSPy&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=wvisser1958/GSPy&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=wvisser1958/GSPy&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=wvisser1958/GSPy&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ********************************************************************************
 ## 6. GSPy DEVELOPMENT TEAM
