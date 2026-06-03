@@ -21,6 +21,7 @@ import os
 import cantera as ct
 import matplotlib.pyplot as plt
 import cantera as ct
+import gspy.core.constants as c
 from pathlib import Path
 from scipy.optimize import root
 from gspy.core.ambient import TAmbient
@@ -78,6 +79,9 @@ class TSystemModel:
         self.vprint(f"Using Cantera YAML file {use_yaml}")
         self.gas = ct.Solution(str(use_yaml))
 
+        # 2.0.0.1 moved here from TCombustor
+        self.gas.TPY = c.T_standard_ref, c.P_standard_ref, c.s_air_composition_mass
+
         self.vprint("phase Tmin, Tmax =", self.gas.min_temp, self.gas.max_temp)
         for sp in self.gas.species():
             thermo = sp.thermo
@@ -85,10 +89,9 @@ class TSystemModel:
                 if thermo.max_temp <= 2200:
                     self.vprint(sp.name, thermo.min_temp, thermo.max_temp)
 
-        self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
-
         # use dictionary for gas path conditions oriented by gas path station number
         self.gaspath_conditions = {}
+        self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
 
         # 1.1 WV dictionary for output during iteration (e.g. for control equations)
         self.output_dict = {}
