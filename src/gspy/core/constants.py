@@ -47,7 +47,7 @@ N2_tuple = next(item for item in Air_composition if item[0] == 'N2')
 air_O2_fraction_mass = O2_tuple[1]
 air_O2_fraction_moles = O2_tuple[2]
 air_CO2_fraction_mass = CO2_tuple[1]
-air_Ar_fraction_mass = AR_tuple[1]
+air_AR_fraction_mass = AR_tuple[1]
 air_N2_fraction_mass = N2_tuple[1]
 
 # standard atmosphere sea level conditions

@@ -20,85 +20,20 @@ from gspy.core.base_component import TComponent
 import gspy.core.constants as c
 
 class TAmbient(TComponent):
-    def __init__(self, owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa, RH=None):
+    def __init__(self, owner, name, stationnr, Altitude, Macha, dTs, Psa, Tsa):
         super().__init__(owner, name, '', None)
         self.station_nr = stationnr
 
-        self.humidity_mode_des = None
-        self.humidity_value_des = None
-        self.humidity_mode = None
-        self.humidity_value = None
+        # self.humidity_mode_des = None
+        # self.humidity_value_des = None
+        # self.humidity_mode = None
+        # self.humidity_value = None
 
-        # create Cantera quantity object for Ambient (mass = 1 per default)
-        # this quantity is then further copied along the gaspath in the system model
         self.Gas_Ambient = ct.Quantity(self.owner.gas)
         self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
-
-        self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa, RH=RH)
+        self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa, RH=None, H2O_mass_pct=None, H2O_vol_pct=None)
 
         owner.ambient = self
-
-    def _get_ambient_mole_fractions_from_static_conditions(self):
-        """
-        Return humid ambient composition as mole fractions, based on
-        static ambient conditions Tsa / Psa and the stored humidity spec.
-        """
-
-        # no humidity specified -> dry air
-        if self.humidity_mode is None:
-            return dict(c.s_air_composition_mole)
-
-        # ----------------------------------------------------------
-        # Relative humidity [%]
-        # ----------------------------------------------------------
-        if self.humidity_mode == "RH":
-            water = ct.Water()
-            water.TQ = self.Tsa, 1.0
-            p_sat = water.P_sat
-
-            p_h2o = (self.humidity_value / 100.0) * p_sat
-            x_h2o = p_h2o / self.Psa
-
-            if not (0.0 <= x_h2o < 1.0):
-                raise ValueError(f"Invalid RH gives x_h2o={x_h2o:.6f}")
-
-            X = {k: v * (1.0 - x_h2o) for k, v in c.s_air_composition_mole.items()}
-            X["H2O"] = x_h2o
-            return X
-
-        # ----------------------------------------------------------
-        # Water volume %
-        # for ideal gases: vol% = mole%
-        # ----------------------------------------------------------
-        if self.humidity_mode == "H2O_vol_pct":
-            x_h2o = self.humidity_value / 100.0
-
-            if not (0.0 <= x_h2o < 1.0):
-                raise ValueError(f"Invalid H2O_vol_pct gives x_h2o={x_h2o:.6f}")
-
-            X = {k: v * (1.0 - x_h2o) for k, v in c.s_air_composition_mole.items()}
-            X["H2O"] = x_h2o
-            return X
-
-        # ----------------------------------------------------------
-        # Water mass %
-        # convert mass fractions -> Cantera state -> mole fractions
-        # ----------------------------------------------------------
-        if self.humidity_mode == "H2O_mass_pct":
-            y_h2o = self.humidity_value / 100.0
-
-            if not (0.0 <= y_h2o < 1.0):
-                raise ValueError(f"Invalid H2O_mass_pct gives y_h2o={y_h2o:.6f}")
-
-            Y = {k: v * (1.0 - y_h2o) for k, v in c.s_air_composition_mass.items()}
-            Y["H2O"] = y_h2o
-
-            # temporary set state to convert Y -> X
-            self.Gas_Ambient.TPY = self.Tsa, self.Psa, Y
-            return dict(zip(self.Gas_Ambient.species_names, self.Gas_Ambient.X))
-
-        raise ValueError(f"Unknown humidity_mode '{self.humidity_mode}'")
-
 
     def SetConditions(self, Mode, Altitude, Macha, dTs, Psa, Tsa,
                       *, RH=None, H2O_mass_pct=None, H2O_vol_pct=None):
@@ -115,7 +50,7 @@ class TAmbient(TComponent):
                 f"{', '.join(k for k, _ in specified)}"
             )
 
-        hum_mode, hum_value = (specified[0] if specified else (None, None))
+        # hum_mode, hum_value = (specified[0] if specified else (None, None))
 
         if Mode == 'DP':
             self.Altitude_des = Altitude
@@ -123,102 +58,210 @@ class TAmbient(TComponent):
             self.dTs_des = dTs
             self.Psa_des = Psa
             self.Tsa_des = Tsa
-            self.humidity_mode_des = hum_mode
-            self.humidity_value_des = hum_value
-
+            # self.humidity_mode_des = hum_mode
+            # self.humidity_value_des = hum_value
+            self.H2O_mass_pct_des = H2O_mass_pct
+            self.H2O_vol_pct = H2O_vol_pct
         self.Altitude = Altitude
         self.Macha = Macha
         self.dTs = dTs
-        self.Psa = Psa
-        self.Tsa = Tsa
-        self.humidity_mode = hum_mode
-        self.humidity_value = hum_value
-
-        if self.Tsa == None:
+        if Tsa == None:
             # Tsa not defined, use standard atmosphere
             self.Tsa = ac.std_atm.alt2temp(self.Altitude, alt_units='m', temp_units='K')
             # for standard atmosphere, use dTs if defined
             if self.dTs != None:
                 self.Tsa = self.Tsa + self.dTs
-        if self.Psa == None:
+        else:
+            self.Tsa = Tsa
+        if Psa == None:
             # Ps0 not defined, used standard atmosphere
             self.Psa = ac.std_atm.alt2press(self.Altitude, alt_units='m', press_units='pa')
+        else:
+            self.Psa = Psa
+        # self.humidity_mode = hum_mode
+        # self.humidity_value = hum_value
+        self.RH = RH
+        self.H2O_mass_pct = H2O_mass_pct
+        self.H2O_vol_pct = H2O_vol_pct
 
-        # 1) composition from static ambient humidity definition
-        X = self._get_ambient_mole_fractions_from_static_conditions()
+        self._set_gas_ambient_state()
 
-        # 2) static humid-air state
+        # for debug
+        # for sp, y in zip(self.Gas_Ambient.phase.species_names, self.Gas_Ambient.phase.Y):
+        #     if y > 1e-12:
+        #         print(f"{sp:8s} {y:.8f}")        
+        # return
+
+    def _set_gas_ambient_state(self):
+        """
+        Set total ambient gas state including humidity.
+
+        This is gas-only:
+        - no separate liquid water
+        - RH > 100 is clamped to saturation
+        """
+
+        X = self._get_ambient_mole_fractions_from_static_conditions(
+            T_static=self.Tsa,
+            P_static=self.Psa,
+            RH=self.RH,
+            H2O_vol_pct=self.H2O_vol_pct,
+            H2O_mass_pct=self.H2O_mass_pct,
+        )
+
+        # Static state
         self.Gas_Ambient.TPX = self.Tsa, self.Psa, X
+
         cp = self.Gas_Ambient.cp_mass
         cv = self.Gas_Ambient.cv_mass
         gamma = cp / cv
 
-        # 3) static velocity
         a_s = self.Gas_Ambient.sound_speed
         self.V = self.Macha * a_s
 
-        # 4) total conditions using humid-air gamma
         self.Tta = self.Tsa * (1.0 + 0.5 * (gamma - 1.0) * self.Macha**2)
         self.Pta = self.Psa * (self.Tta / self.Tsa)**(gamma / (gamma - 1.0))
 
+        # Total state, same composition
+        self.Gas_Ambient.TPX = self.Tta, self.Pta, X
+
+    def _get_ambient_mole_fractions_from_static_conditions(self,
+                                                           *,
+                                                           T_static,
+                                                           P_static,
+                                                           RH=None,
+                                                           H2O_vol_pct=None,
+                                                           H2O_mass_pct=None):
+        """
+        Return humid-air mole fractions based on static ambient T/P.
+        """
+
+        n_given = sum(v is not None for v in [RH, H2O_vol_pct, H2O_mass_pct])
+
+        if n_given > 1:
+            raise ValueError("Specify only one of RH, H2O_vol_pct, or H2O_mass_pct")
+
+        # dry_X = {
+        #     "CO2": 0.000412,
+        #     "O2":  0.20946,
+        #     "AR":  0.00934,
+        #     "N2":  0.78084,
+        # }
+        dry_X = c.s_air_composition_mole
+
+        if n_given == 0:
+            return dry_X
+
+        if RH is not None:
+            x_H2O = self._x_H2O_from_RH(T_static, P_static, RH)
+
+        elif H2O_vol_pct is not None:
+            x_H2O = H2O_vol_pct / 100.0
+
+        else:
+            x_H2O = self._x_H2O_from_mass_pct(
+                T_static,
+                P_static,
+                H2O_mass_pct,
+                dry_X,
+            )
+
+        x_sat = self._x_H2O_saturation(T_static, P_static)
+
+        # gas-only model: clamp oversaturation
+        x_H2O = min(x_H2O, x_sat)
+
+        X = {
+            sp: x * (1.0 - x_H2O)
+            for sp, x in dry_X.items()
+        }
+        X["H2O"] = x_H2O
+
+        return X
+
+    def _x_H2O_from_RH(self, T, P, RH):
+        if RH < 0.0:
+            raise ValueError("RH must be >= 0")
+
+        return (RH / 100.0) * self._x_H2O_saturation(T, P)
+
+    def _x_H2O_from_mass_pct(self, T, P, H2O_mass_pct, dry_X):
+        if not (0.0 <= H2O_mass_pct < 100.0):
+            raise ValueError("H2O_mass_pct must be in [0, 100)")
+
+        y_H2O = H2O_mass_pct / 100.0
+
+        dry_Y = self._dry_X_to_Y(T, P, dry_X)
+
+        Y = {
+            sp: y * (1.0 - y_H2O)
+            for sp, y in dry_Y.items()
+        }
+        Y["H2O"] = y_H2O
+
+        self.Gas_Ambient.TPY = T, P, Y
+
+        return self.Gas_Ambient.X[self.Gas_Ambient.species_index("H2O")]
+
+    def _dry_X_to_Y(self, T, P, dry_X):
+        self.Gas_Ambient.TPX = T, P, dry_X
+
+        return {
+            sp: self.Gas_Ambient.Y[self.Gas_Ambient.species_index(sp)]
+            for sp in dry_X
+        }
+
+    def _x_H2O_saturation(self, T, P):
+        """
+        Saturation mole fraction of water vapor at static T/P.
+        """
+
+        if T <= 273.16:
+            raise ValueError("Gas-only humidity model does not handle ice conditions")
+
+        if T >= 647.096:
+            return 1.0
+
+        water = ct.Water()
+        water.TQ = T, 1.0
+        p_sat = water.P_sat
+
+        if p_sat >= P:
+            return 1.0
+
+        return p_sat / P
+
     def Run(self, Mode, PointTime):
-        if Mode == 'DP':  # alway reset de DP conditions
-            self.Altitude = self.Altitude_des
-            self.Macha = self.Macha_des
-            self.dTs = self.dTs_des
-            self.Psa = self.Psa_des      # if None then this will override value from standard atmosphere Alt, Machm dTs
-            self.Tsa = self.Tsa_des      # if None then this will override value from standard atmosphere Alt, Machm dTs
+        # if Mode == 'DP':  # alway reset de DP conditions
+        #     self.Altitude = self.Altitude_des
+        #     self.Macha = self.Macha_des
+        #     self.dTs = self.dTs_des
+        #     self.Psa = self.Psa_des      # if None then this will override value from standard atmosphere Alt, Machm dTs
+        #     self.Tsa = self.Tsa_des      # if None then this will override value from standard atmosphere Alt, Machm dTs
             # create separate Cantera phase object for Ambient, to be used by components if needed
             # self.Gas_Ambient = ct.Solution('jetsurf.yaml')
             # create Cantera quantity object for Ambient (mass = 1 per default)
             # this quantity is then further copied along the gaspath in the system model
-            self.Gas_Ambient = ct.Quantity(self.owner.gas)
-            self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
-        if self.Tsa == None:
-            # Tsa not defined, use standard atmosphere
-            self.Tsa = ac.std_atm.alt2temp(self.Altitude, alt_units='m', temp_units='K')
-            # for standard atmosphere, use dTs if defined
-            if self.dTs != None:
-                self.Tsa = self.Tsa + self.dTs
-        if self.Psa == None:
-            # Ps0 not defined, used standard atmosphere
-            self.Psa = ac.std_atm.alt2press(self.Altitude, alt_units='m', press_units='pa')
-        self.Tta = self.Tsa * ( 1 + 0.2 * self.Macha**2)
-        self.Pta = self.Psa * ((self.Tta/self.Tsa)**3.5)
-        # set values in the Gas_Ambient phase object conditions
+            # self.Gas_Ambient = ct.Quantity(self.owner.gas)
+            # self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
 
-# # 2.0.0.1
-# if self.humidity_mode == "RH":
-#     w = ct.Water()
-#     w.TQ = self.Tsa, 1.0
-#     p_sat = w.P_sat
-#     x_h2o = (self.humidity_value / 100.0) * p_sat / self.Psa
+        # if self.Tsa == None:
+        #     # Tsa not defined, use standard atmosphere
+        #     self.Tsa = ac.std_atm.alt2temp(self.Altitude, alt_units='m', temp_units='K')
+        #     # for standard atmosphere, use dTs if defined
+        #     if self.dTs != None:
+        #         self.Tsa = self.Tsa + self.dTs
+        # if self.Psa == None:
+        #     # Ps0 not defined, used standard atmosphere
+        #     self.Psa = ac.std_atm.alt2press(self.Altitude, alt_units='m', press_units='pa')
+        # self.Tta = self.Tsa * ( 1 + 0.2 * self.Macha**2)
+        # self.Pta = self.Psa * ((self.Tta/self.Tsa)**3.5)
+        # # set values in the Gas_Ambient phase object conditions
+        # self.Gas_Ambient.TPY = self.Tta, self.Pta, c.s_air_composition_mass
+        # self.V = self.Macha * ac.std_atm.temp2speed_of_sound(self.Tsa, speed_units = 'm/s', temp_units = 'K')
 
-#     X = {k: v * (1.0 - x_h2o) for k, v in c.s_air_composition_mole.items()}
-#     X["H2O"] = x_h2o
-
-#     self.Gas_Ambient.TPX = self.Tsa, self.Psa, X
-
-# elif self.humidity_mode == "H2O_vol_pct":
-#     x_h2o = self.humidity_value / 100.0
-
-#     X = {k: v * (1.0 - x_h2o) for k, v in c.s_air_composition_mole.items()}
-#     X["H2O"] = x_h2o
-
-#     self.Gas_Ambient.TPX = self.Tta, self.Pta, X
-
-# elif self.humidity_mode == "H2O_mass_pct":
-#     y_h2o = self.humidity_value / 100.0
-
-#     Y = {k: v * (1.0 - y_h2o) for k, v in c.s_air_composition_mass.items()}
-#     Y["H2O"] = y_h2o
-
-#     self.Gas_Ambient.TPY = self.Tta, self.Pta, Y
-
-# else:
-#     self.Gas_Ambient.TPY = self.Tta, self.Pta, c.s_air_composition_mass
-
-        self.V = self.Macha * ac.std_atm.temp2speed_of_sound(self.Tsa, speed_units = 'm/s', temp_units = 'K')
+        H2O_in_mass = self.Gas_Ambient.phase["H2O"].Y[0]
+        return
 
      # 2.0.0.0
     def get_outputs(self):
