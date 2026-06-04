@@ -54,8 +54,8 @@ class TTurbine(TTurboComponent):
     def Run(self, Mode, PointTime):
 
         super().Run(Mode, PointTime)
-        Sin = self.gas_in.entropy_mass
-        Pin = self.gas_in.P
+        Sin = self.gas_in.gas_q.entropy_mass
+        Pin = self.gas_in.gas_q.P
 
         def CalcCoolingFlowEffects():
             self.DHW_cl_pump = 0
@@ -118,8 +118,8 @@ class TTurbine(TTurboComponent):
         def pressure_ratio_for_turbine_power(PR_iter):
             # Set the initial state
             # reset gas_out to gas_in (in case cooling flow added during previous iteration step)
-            self.gas_out.TPY = self.gas_in.TPY
-            self.gas_out.mass = self.gas_in.mass
+            self.gas_out.gas_q.TPY = self.gas_in.gas_q.TPY
+            self.gas_out.gas_q.mass = self.gas_in.gas_q.mass
 
             # 2.1
             # power without cooling:

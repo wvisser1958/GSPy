@@ -48,8 +48,8 @@ class TExhaustNozzle(TGaspath):
         self.gas_throat = TGaspathCondition.create_empty(self.owner.gas)
         self.gas_throat.copy_from(self.gas_in)
         
-        Hin = self.gas_in.enthalpy_mass
-        Pin = self.gas_in.P
+        Hin = self.gas_in.gas_q.enthalpy_mass
+        Pin = self.gas_in.gas_q.P
         Pout = self.owner.ambient.Psa
         # propelling nozzle, expansion flow
         # PR is nozzle PR Pout/Pin, only calculated (not given)
@@ -62,10 +62,10 @@ class TExhaustNozzle(TGaspath):
             Vthroat_is, self.Tthroat = fu.calculate_exit_velocity(self.gas_out.gas_q.phase, self.PR)
             # try full expansion to Pout
             self.gas_throat.TP = self.Tthroat, Pout
-            self.Mthroat = Vthroat_is / self.gas_throat.phase.sound_speed
+            self.Mthroat = Vthroat_is / self.gas_throat.gas_q.phase.sound_speed
             if self.Mthroat > 1: # cannot be, correct for Mthroat = 1
                 self.Mthroat = 1
-                Sin = self.gas_throat.S
+                Sin = self.gas_throat.gas_q.S
                 # Function to find the pressure for Mach 1
                 def mach_number_difference(exit_pressure):
 
@@ -74,8 +74,8 @@ class TExhaustNozzle(TGaspath):
                     # self.gas_throat.SP = Sin, float(np.asarray(exit_pressure).squeeze())  # Set state at the given pressure
                     self.gas_throat.SP = Sin, exit_pressure     # Set state at the given pressure
 
-                    local_speed_of_sound = self.gas_throat.sound_speed
-                    velocity = (2 * (Hin - self.gas_throat.enthalpy_mass))**0.5
+                    local_speed_of_sound = self.gas_throat.gas_q.phase.sound_speed
+                    velocity = (2 * (Hin - self.gas_throat.gas_q.enthalpy_mass))**0.5
                     mach_number = velocity / local_speed_of_sound
                     return mach_number - 1.0  # We want Mach number to be exactly 1
                 # Use a numerical solver to find the exit pressure where Mach = 1
@@ -87,7 +87,7 @@ class TExhaustNozzle(TGaspath):
                 self.Pthroat = rootresult.root
                 # 1.301 bug fix do not multiply with CVdes here. CXV is not supposed to affect Athroat and mass flow
                 # self.Vthroat = self.GasThroat.phase.sound_speed * self.CVdes
-                self.Vthroat = self.gas_throat.phase.sound_speed
+                self.Vthroat = self.gas_throat.gas_q.phase.sound_speed
             else:
                 self.Pthroat = Pout
                 # 1.301
@@ -100,20 +100,20 @@ class TExhaustNozzle(TGaspath):
             if self.Vthroat <= 0:
                 self.Vthroat = 0.001  # always assume a minimal flow velocity: 0.001 will result in a theoretical
                                     # very large exhaust area
-            self.Athroat_des = fu.scalar(self.gas_throat.mass) / self.gas_throat.phase.density / self.Vthroat
+            self.Athroat_des = fu.scalar(self.gas_throat.mass) / self.gas_throat.gas_q.phase.density / self.Vthroat
             self.Athroat = self.Athroat_des
             # 1.301 now apply CV
             self.Vthroat = self.Vthroat * self.CVdes
         else:
             # Off-design calculation
             self.Athroat = self.Athroat_des # fixed nozzle are still here
-            self.Pthroat, self.Tthroat, Vthroat_is, massflow = fu.calculate_expansion_to_A(self.gas_in.phase, Pin/Pout, self.Athroat)
+            self.Pthroat, self.Tthroat, Vthroat_is, massflow = fu.calculate_expansion_to_A(self.gas_in.gas_q.phase, Pin/Pout, self.Athroat)
             self.gas_throat.TP = self.Tthroat, self.Pthroat
             self.Vthroat = Vthroat_is * self.CVdes
             self.owner.errors[self.ierror_w] = (fu.scalar(self.gas_in.mass) - massflow) / fu.scalar(self.gas_inDes.mass)
             # 1.301 use Vthroat_is for Mach number
             # self.Mthroat = self.Vthroat / self.GasThroat.phase.sound_speed
-            self.Mthroat = Vthroat_is / self.gas_throat.phase.sound_speed
+            self.Mthroat = Vthroat_is / self.gas_throat.gas_q.phase.sound_speed
         self.gas_out.TP = self.Tthroat, Pout # assume no further expansion
         self.FG = self.CXdes * (fu.scalar(self.gas_out.mass) * self.Vthroat + self.Athroat*(self.Pthroat-Pout)) / 1000 # kN
         # add gross thrust to system level thrust (note that multiple propelling nozzles may exist)

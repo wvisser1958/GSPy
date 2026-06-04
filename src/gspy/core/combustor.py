@@ -432,11 +432,11 @@ class TCombustor(TGaspath):
 
         # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
         self.PR = self.PRdes
-        Sin = self.gas_in.s
-        Pin = self.gas_in.P
+        Sin = self.gas_in.gas_q.s
+        Pin = self.gas_in.gas_q.P
         # Pout = self.gas_in.P*self.PRdes
-        w_air = self.gas_in.mass
-        h_air_initial = self.gas_in.enthalpy_mass
+        w_air = self.gas_in.gas_q.mass
+        h_air_initial = self.gas_in.gas_q.enthalpy_mass
 
         if (self.FuelComposition == '') or (self.FuelComposition == None):
             CHyOzMoleMass = self.C_atom_weight + self.H_atom_weight * self.HCratio + self.O_atom_weight * self.OCratio

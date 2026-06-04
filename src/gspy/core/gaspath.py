@@ -62,7 +62,7 @@ class TGaspath(TComponent):
             self.W = fu.scalar(self.gas_in.mass)
             self.Wc = self.W * fu.GetFlowCorrectionFactor(self.gas_in)
 
-            self.gas_out.TPY = self.gas_in.TPY
+            self.gas_out.gas_q.TPY = self.gas_in.gas_q.TPY
             self.gas_out.mass = self.gas_in.mass
 
         self.owner.gaspath_conditions[self.station_out] = self.gas_out

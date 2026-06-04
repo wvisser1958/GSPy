@@ -98,8 +98,8 @@ class TCompressor(TTurboComponent):
         # v1.2 correction for bleed flows
         dW = 0
         dHW_bleeds_total = 0
-        dH = self.gas_out.enthalpy_mass - self.gas_in.enthalpy_mass
-        dP = self.gas_out.P - self.gas_in.P
+        dH = self.gas_out.gas_q.enthalpy_mass - self.gas_in.gas_q.enthalpy_mass
+        dP = self.gas_out.gas_q.P - self.gas_in.gas_q.P
         if self.Bleeds != None:
             for bleed in self.Bleeds:
                 Wbleed = bleed.bleedfraction * self.W

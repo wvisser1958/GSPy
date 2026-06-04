@@ -45,7 +45,7 @@ class TAmbient(TComponent):
         
         # GC
         # self.Gas_Ambient = ct.Quantity(self.owner.gas)
-        self.Gas_Ambient = TGaspathCondition.from_RH(self.owner.gas, 1, 288.15, 101325, 150, c.dry_air_mole_composition)
+        self.Gas_Ambient = TGaspathCondition.from_RH(self.owner.gas, 1, 288.15, 101325, RH, c.dry_air_mole_composition)
 
         self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
 
@@ -164,12 +164,12 @@ class TAmbient(TComponent):
 
         # 2) static humid-air state
         self.Gas_Ambient.TPX = self.Tsa, self.Psa, X
-        cp = self.Gas_Ambient.cp_mass
-        cv = self.Gas_Ambient.cv_mass
+        cp = self.Gas_Ambient.gas_q.cp_mass
+        cv = self.Gas_Ambient.gas_q.cv_mass
         gamma = cp / cv
 
         # 3) static velocity
-        a_s = self.Gas_Ambient.sound_speed
+        a_s = self.Gas_Ambient.gas_q.sound_speed
         self.V = self.Macha * a_s
 
         # 4) total conditions using humid-air gamma
@@ -177,31 +177,31 @@ class TAmbient(TComponent):
         self.Pta = self.Psa * (self.Tta / self.Tsa)**(gamma / (gamma - 1.0))
 
     def Run(self, Mode, PointTime):
-        if Mode == 'DP':  # alway reset de DP conditions
-            self.Altitude = self.Altitude_des
-            self.Macha = self.Macha_des
-            self.dTs = self.dTs_des
-            self.Psa = self.Psa_des      # if None then this will override value from standard atmosphere Alt, Machm dTs
-            self.Tsa = self.Tsa_des      # if None then this will override value from standard atmosphere Alt, Machm dTs
-            # create separate Cantera phase object for Ambient, to be used by components if needed
-            # self.Gas_Ambient = ct.Solution('jetsurf.yaml')
-            # create Cantera quantity object for Ambient (mass = 1 per default)
-            # this quantity is then further copied along the gaspath in the system model
-            # 2.1 obsolete
-            # self.Gas_Ambient = ct.Quantity(self.owner.gas)
-            # self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
-        if self.Tsa == None:
-            # Tsa not defined, use standard atmosphere
-            self.Tsa = ac.std_atm.alt2temp(self.Altitude, alt_units='m', temp_units='K')
-            # for standard atmosphere, use dTs if defined
-            if self.dTs != None:
-                self.Tsa = self.Tsa + self.dTs
-        if self.Psa == None:
-            # Ps0 not defined, used standard atmosphere
-            self.Psa = ac.std_atm.alt2press(self.Altitude, alt_units='m', press_units='pa')
-        self.Tta = self.Tsa * ( 1 + 0.2 * self.Macha**2)
-        self.Pta = self.Psa * ((self.Tta/self.Tsa)**3.5)
-        # set values in the Gas_Ambient phase object conditions
+        # if Mode == 'DP':  # alway reset de DP conditions
+        #     self.Altitude = self.Altitude_des
+        #     self.Macha = self.Macha_des
+        #     self.dTs = self.dTs_des
+        #     self.Psa = self.Psa_des      # if None then this will override value from standard atmosphere Alt, Machm dTs
+        #     self.Tsa = self.Tsa_des      # if None then this will override value from standard atmosphere Alt, Machm dTs
+        #     # create separate Cantera phase object for Ambient, to be used by components if needed
+        #     # self.Gas_Ambient = ct.Solution('jetsurf.yaml')
+        #     # create Cantera quantity object for Ambient (mass = 1 per default)
+        #     # this quantity is then further copied along the gaspath in the system model
+        #     # 2.1 obsolete
+        #     # self.Gas_Ambient = ct.Quantity(self.owner.gas)
+        #     # self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
+        # if self.Tsa == None:
+        #     # Tsa not defined, use standard atmosphere
+        #     self.Tsa = ac.std_atm.alt2temp(self.Altitude, alt_units='m', temp_units='K')
+        #     # for standard atmosphere, use dTs if defined
+        #     if self.dTs != None:
+        #         self.Tsa = self.Tsa + self.dTs
+        # if self.Psa == None:
+        #     # Ps0 not defined, used standard atmosphere
+        #     self.Psa = ac.std_atm.alt2press(self.Altitude, alt_units='m', press_units='pa')
+        # self.Tta = self.Tsa * ( 1 + 0.2 * self.Macha**2)
+        # self.Pta = self.Psa * ((self.Tta/self.Tsa)**3.5)
+        # # set values in the Gas_Ambient phase object conditions
 
 # # 2.0.0.1
 # if self.humidity_mode == "RH":
@@ -234,7 +234,8 @@ class TAmbient(TComponent):
 # else:
 #     self.Gas_Ambient.TPY = self.Tta, self.Pta, c.s_air_composition_mass
 
-        self.V = self.Macha * ac.std_atm.temp2speed_of_sound(self.Tsa, speed_units = 'm/s', temp_units = 'K')
+        # self.V = self.Macha * ac.std_atm.temp2speed_of_sound(self.Tsa, speed_units = 'm/s', temp_units = 'K')
+        return
 
      # 2.0.0.0
     def get_outputs(self):
