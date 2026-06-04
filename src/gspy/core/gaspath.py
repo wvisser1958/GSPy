@@ -18,12 +18,14 @@ import cantera as ct
 from gspy.core.base_component import TComponent
 from gspy.core.gaspath_condition import TGaspathCondition
 import gspy.core.utils as fu
+import gspy.core.constants as c
 
 class TGaspath(TComponent):
     def __init__(self, 
                  *,
                  station_in, 
                  station_out,
+                 gas_out_output_species = None,
                  **kwargs):    # Constructor of the class
         super().__init__(**kwargs)
         self.station_in = station_in
@@ -37,6 +39,13 @@ class TGaspath(TComponent):
         self.PR = None
         # 1.6.0.5
         self.W = None
+        # 2.0.0.2
+        self.gas_out_output_species = list(gas_out_output_species or [])
+        self.gas_out_output_species_indices = [
+            c.LIQUID_WATER_INDEX if sp.upper() == "H2O_LIQ"
+            else self.owner.gas.species_index(sp)
+            for sp in self.gas_out_output_species
+        ]
 
     def Run(self, Mode, PointTime):
         self.gas_in = self.owner.gaspath_conditions[self.station_in]
@@ -124,7 +133,24 @@ class TGaspath(TComponent):
         if self.PR is not None:
             out[f"PR{self.id}"] = self.PR
 
-        # out.update(self._get_species_outputs(self.gas_in, s_in, basis="mass"))
+        #  2.0.0.2 mass fraction outputs for specified species in gas_out
+        s_out = self.station_out
+        gas_out = self.gas_out
+        gas_q = gas_out.gas_q
+        Y = gas_q.Y          # or gas_q.phase.Y if needed
+        m_gas = gas_q.mass
+        m_total = gas_out.m_total
+        if m_total > 0.0:
+            for sp, idx in zip(self.gas_out_output_species,
+                            self.gas_out_output_species_indices):
+                if idx == c.LIQUID_WATER_INDEX:
+                    value = gas_out.m_liq / m_total
+                else:
+                    value = Y[idx] * m_gas / m_total
+                out[f"Y{s_out}_{sp}"] = value
+        else:
+            for sp in self.gas_out_output_species:
+                out[f"Y{s_out}_{sp}"] = 0.0
 
         return out
 

@@ -53,6 +53,8 @@ air_CO2_fraction_mass = CO2_tuple[1]
 air_Ar_fraction_mass = AR_tuple[1]
 air_N2_fraction_mass = N2_tuple[1]
 
+LIQUID_WATER_INDEX = -1
+
 # standard atmosphere sea level conditions
 T_std = 288.15
 P_std = 101325
