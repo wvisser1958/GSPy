@@ -27,8 +27,12 @@ class TCompressor(TTurboComponent):
                  Ndes, Etades,
                  Ncmapdes, Betamapdes, PRdes,
                  SpeedOption,
-                 Bleeds):    # Constructor of the class
-        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, station_in, station_out, shaft_id, Ndes, Etades, Ncmapdes, Betamapdes)
+                 Bleeds, 
+                 *,
+                 gas_out_output_species = None
+                 ):
+        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, station_in, station_out, shaft_id, Ndes, Etades, Ncmapdes, Betamapdes,
+                         gas_out_output_species = gas_out_output_species)
         # only call SetDPparameters in instantiable classes in init creator
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption

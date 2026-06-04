@@ -38,6 +38,15 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
+### GSPy v2.0.0.2                                                     04-06-2026
+--------------------------------------------------------------------------------
+### Improvements/extensions
+--------------------------------------------------------------------------------
+- Gas path components can now specify exit station gas species mass fractionss 
+  to be output to the output table in the form of "Y4_H2O" for water vapor mass 
+  fraction at combustor output (station 4) for example. 
+  See the example project turbojet.py.
+
 ### GSPy v2.0.0.1                                                     03-06-2026
 --------------------------------------------------------------------------------
 ### Fixed

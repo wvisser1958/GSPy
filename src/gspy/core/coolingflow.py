@@ -20,8 +20,12 @@ from gspy.core.gaspath import TGaspath
 class TCoolingFlow(TGaspath):
     def __init__(self, owner, name, map_filename, control_component, station_in, station_out,
                  coolingflownumber, frombleednumber, fractiontakendes,
-                 dPfraction, W_tur_eff_fraction, Rexit) :    # Constructor of the class
-        super().__init__(owner, name, map_filename, control_component, station_in, station_out)
+                 dPfraction, W_tur_eff_fraction, Rexit,
+                 *,
+                 gas_out_output_species = None
+                 ) :    # Constructor of the class
+        super().__init__(owner, name, map_filename, control_component, station_in, station_out,
+                         gas_out_output_species = gas_out_output_species)
         self.coolingflownumber = coolingflownumber
         self.frombleednumber = frombleednumber
         self.fractiontakendes = fractiontakendes

@@ -23,8 +23,12 @@ import gspy.core.utils as fu
 
 class TCombustor(TGaspath):
     def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, Wfdes, Texitdes, PRdes, Etades,
-                 Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes, A):
-        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
+                 Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes, A, 
+                 *,
+                 gas_out_output_species = None
+                 ):
+        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out,
+                         gas_out_output_species = gas_out_output_species)
         self.Wfdes = Wfdes
         self.Wf = Wfdes
         # Texitdes: set as None, use None or not None to determine input type : Wf or Texit

@@ -115,8 +115,8 @@ def main():
                             1.9167,         # HCratio
                             0,              # OCratio
                             None,           # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
-                            None            # Cross flow area to calculate fundamental pressue loss
-                            )
+                            None,           # Cross flow area to calculate fundamental pressue loss
+                            gas_out_output_species = ["CO2", "H2O", "O2"] )
                             # wxample with Texit as input:
                             # TCombustor(turbojet, 'combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
 

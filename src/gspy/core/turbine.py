@@ -26,8 +26,13 @@ class TTurbine(TTurboComponent):
                  ControlComponent, station_in, station_out, shaft_id,
                  Ndes, Etades, Ncmapdes, Betamapdes, Etamechdes,
                  TurbineType,
-                 CoolingFlows):
-        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, station_in, station_out, shaft_id, Ndes, Etades, Ncmapdes, Betamapdes)
+                 CoolingFlows,
+                 #  2.0.0.2
+                 *,
+                 gas_out_output_species = None                                  
+                 ):
+        super().__init__(owner, name, MapFileName_or_dict, ControlComponent, station_in, station_out, shaft_id, Ndes, Etades, Ncmapdes, Betamapdes,
+                         gas_out_output_species = gas_out_output_species)
         self.Etamechdes = Etamechdes # spool mechanical efficiency
         self.TurbineType = TurbineType  # gas generator turbine providing all power required by compressor(s)
         # TurbineType = 'PT'  # heavy duty single spool or power turbine, providing power to external loads

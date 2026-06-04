@@ -19,8 +19,11 @@ import cantera as ct
 from gspy.core.gaspath import TGaspath
 
 class TDuct(TGaspath):
-    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, PRdes):    # Constructor of the class
-        super().__init__(owner,     name, MapFileName, ControlComponent, station_in, station_out)
+    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, PRdes,
+                 *,
+                 gas_out_output_species = None
+                 ):
+        super().__init__(owner,     name, MapFileName, ControlComponent, station_in, station_out, gas_out_output_species = gas_out_output_species)
         self.PRdes = PRdes
 
     def Run(self, Mode, PointTime):

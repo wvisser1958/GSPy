@@ -28,8 +28,12 @@ from gspy.core.turbomap import TTurboMap
 class TTurboComponent(TGaspath):
     def __init__(self, owner, name, map_filename_or_dict, ControlComponent, station_in, station_out, shaft_id,
                  Ndes, Etades,
-                 Ncmapdes, Betamapdes):
-        super().__init__(owner, name, map_filename_or_dict, ControlComponent, station_in, station_out)
+                 Ncmapdes, Betamapdes,
+                #  2.0.0.2
+                 *,
+                 gas_out_output_species = None
+                 ):
+        super().__init__(owner, name, map_filename_or_dict, ControlComponent, station_in, station_out, gas_out_output_species = gas_out_output_species)
 
         self.gas_in = None
         self.gas_out = None
