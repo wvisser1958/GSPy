@@ -80,6 +80,20 @@ class TSystemModel:
         self.vprint(f"Using Cantera YAML file {use_yaml}")
         self.gas = ct.Solution(str(use_yaml))
 
+        # for fast lookup of gas species indices/factions etc. in the gas object, fastest in hot loops.
+        self.i_O2  = self.gas.species_index("O2")
+        self.i_CO2 = self.gas.species_index("CO2")
+        self.i_H2O = self.gas.species_index("H2O")
+        self.i_AR  = self.gas.species_index("AR")
+        self.i_N2  = self.gas.species_index("N2")
+
+        # e.g. self.species_index["NO"] is convenient for diagnostics, emissions, output requests, etc.
+        # use like idx = self.owner.species_index["O2"]   or Y[self.owner.species_index["O2"]]
+        self.species_index = {
+            sp: i
+            for i, sp in enumerate(self.gas.species_names)
+        }
+
         self.vprint("phase Tmin, Tmax =", self.gas.min_temp, self.gas.max_temp)
         for sp in self.gas.species():
             thermo = sp.thermo

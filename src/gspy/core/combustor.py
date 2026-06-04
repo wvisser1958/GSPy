@@ -70,10 +70,6 @@ class TCombustor(TGaspath):
         self.CO2_molar_mass = self.owner.gas.molecular_weights[self.owner.gas.species_index('CO2')]
         self.H2O_molar_mass = self.owner.gas.molecular_weights[self.owner.gas.species_index('H2O')]
 
-        # predetermine h_air_ref
-        self.owner.gas.TPY = c.T_standard_ref, c.P_standard_ref, c.s_air_composition_mass
-        self.h_air_ref = self.owner.gas.enthalpy_mass
-
     #  1.4 use separate routine, for allowing change of fuel for OD simulation cases
     def SetFuel(self, aTfuel, aLHV, aHCratio, aOCratio, aFuelComposition):
         self.Tfuel = aTfuel
@@ -253,28 +249,15 @@ class TCombustor(TGaspath):
             # self.GetLHV()
             if (self.FuelComposition == '') or (self.FuelComposition is None):  # fuel specification based on LHV, HC and OC mole ratio
                 #  2.1
-                # # combustion product mass fractions, assuming complete combustion and air/fuel equivalence ratio >= 1
-                # #  2.1: must use ACTUAL combustor inlet gas fractions
-                # # O2_exit_mass = w_air * c.air_O2_fraction_mass + self.Wf/CHyOzMoleMass * (self.OCratio/2 - 1 - self.HCratio/4) * self.O2_molar_mass
-                # # CO2_exit_mass = self.CO2_molar_mass * self.Wf/CHyOzMoleMass + w_air*c.air_CO2_fraction_mass
-                # # H2O_exit_mass = self.H2O_molar_mass * self.Wf/CHyOzMoleMass * self.HCratio/2
-                # # Ar_exit_mass = w_air * c.air_Ar_fraction_mass
-                # # N2_exit_mass = w_air * c.air_N2_fraction_mass
-                # O2_exit_mass = w_air * c.air_O2_fraction_mass + self.Wf/CHyOzMoleMass * (self.OCratio/2 - 1 - self.HCratio/4) * self.O2_molar_mass
-                # CO2_exit_mass = self.CO2_molar_mass * self.Wf/CHyOzMoleMass + w_air*c.air_CO2_fraction_mass
-                # H2O_exit_mass = self.H2O_molar_mass * self.Wf/CHyOzMoleMass * self.HCratio/2
-                # Ar_exit_mass = w_air * c.air_Ar_fraction_mass
-                # N2_exit_mass = w_air * c.air_N2_fraction_mass
-                Yin = self.gas_in.Y
-                w_gas_in = self.gas_in.mass
-
+                Yin = self.gas_in.gas_q.Y
+                w_gas_in = self.gas_in.gas_q.mass
                 fuel_moles = self.Wf / CHyOzMoleMass
 
-                O2_in_mass  = w_gas_in * Yin.get("O2",  0.0)
-                CO2_in_mass = w_gas_in * Yin.get("CO2", 0.0)
+                O2_in_mass  = w_gas_in * Yin[self.owner.i_O2]
+                CO2_in_mass = w_gas_in * Yin[self.owner.i_CO2]
                 H2O_in_mass = self.gas_in.m_vap + self.gas_in.m_liq
-                AR_in_mass  = w_gas_in * Yin.get("AR",  0.0)
-                N2_in_mass  = w_gas_in * Yin.get("N2",  0.0)
+                AR_in_mass  = w_gas_in * Yin[self.owner.i_AR]
+                N2_in_mass  = w_gas_in * Yin[self.owner.i_N2]
 
                 O2_exit_mass = (
                     O2_in_mass
@@ -296,37 +279,57 @@ class TCombustor(TGaspath):
                 Ar_exit_mass = AR_in_mass
                 N2_exit_mass = N2_in_mass
 
-                #  2.0 make dictionary, not string (avoid 1-d arrays instead of scalars)
-                # compose the composition string
-                # product_composition_mass = f'O2:{O2_exit_mass}, CO2:{CO2_exit_mass}, H2O:{H2O_exit_mass}, AR:{Ar_exit_mass}, N2:{N2_exit_mass}'
-                product_composition_mass = fu.scalar_dict({
-                    "O2": float(np.asarray(O2_exit_mass).squeeze()),
-                    "CO2": float(np.asarray(CO2_exit_mass).squeeze()),
-                    "H2O": float(np.asarray(H2O_exit_mass).squeeze()),
-                    "AR": float(np.asarray(Ar_exit_mass).squeeze()),
-                    "N2": float(np.asarray(N2_exit_mass).squeeze()),
-                })
+                Yprod = np.zeros(self.owner.gas.n_species)
+
+                Yprod[self.owner.i_O2]  = O2_exit_mass
+                Yprod[self.owner.i_CO2] = CO2_exit_mass
+                Yprod[self.owner.i_H2O] = H2O_exit_mass
+                Yprod[self.owner.i_AR]  = Ar_exit_mass
+                Yprod[self.owner.i_N2]  = N2_exit_mass
+
+                Yprod /= Yprod.sum()
                 # for debug:
                 # print(type(product_composition_mass))
                 # print(product_composition_mass)
-
-                # define enthalpy of combustion products mixture at Pref and Tref of
-                self.gas_out.TPY = c.T_standard_ref, c.P_standard_ref, product_composition_mass
                 
-                # 2.1
+                # use self.gas_out to get h_gas_in_ref before combustion (thanks Joao Cardoso Lopes!)                
+                # so we can leave self.gas_in unchanged with the actual inlet composition, 
+                # and use self.gas_out to get the reference enthalpy of the inlet gas composition 
+                # at Tref and Pref, which is needed for the LHV-based calculation of the final enthalpy of the products after combustion
+                m_gas = self.gas_in.gas_q.mass
+                m_liq = self.gas_in.m_liq
+                self.gas_out.TPY = c.T_standard_ref, c.P_standard_ref, self.gas_in.gas_q.Y
+                h_gas_in_ref = self.gas_out.enthalpy_mass
+                #  add liquid water:
+                w = ct.Water()
+                w.TQ = c.T_standard_ref, 0.0          # saturated liquid water at Tref
+                h_liq_ref = w.enthalpy_mass
+                H_in_ref = (
+                    m_gas * h_gas_in_ref
+                    + m_liq * h_liq_ref
+                ) 
+
+                # redefine gas_out for enthalpy of combustion products mixture at Pref and Tref of
+                # assume all gas phase
+                self.gas_out.gas_q.TPY = c.T_standard_ref, c.P_standard_ref, Yprod
                 # make sure fuel mass flow added to the inlet flow (before working on total H !):
                 self.gas_out.mass = self.gas_in.mass + self.Wf
+                # H_prod_ref is the enthalpy of the products at the reference conditions, 
+                # which is used as a baseline for calculating the final enthalpy of the products 
+                # after combustion based on the specified LHV and the enthalpy of the inlet gas 
+                # composition at the reference conditions. This allows us to account for the energy 
+                # added by combustion while keeping track of the reference state for accurate energy balance calculations.
                 H_prod_ref = self.gas_out.H_total  # get total H in J (enthalpy_mass * mass), for use in LHV calculation with Etades
 
                 # now, calculate the final enthalpy of the products based on given LHV:
                 # from equation for conservation of energy ()"in = out"):
                 # w_fuel * LHV_kJ_kg*1000 + w_air * (h_air_initial - self.h_air_ref)  =   (w_air + w_fuel) * (h_prod_final - h_prod_ref)
-                # v1.3  bug fix: Etades was not accounted for
-                # h_prod_final = (self.Wf * self.LHV * 1000 + w_air * (h_air_initial-self.h_air_ref)) / (w_air + self.Wf) + h_prod_ref
-                #  2.0
-                # 2.1
-                # h_prod_final = (self.Wf * self.LHV * 1000 * self.Etades + w_air * (h_air_initial-self.h_air_ref)) / (w_air + self.Wf) + h_prod_ref
-                H_prod_final = (self.Wf * self.LHV * 1000 * self.Etades + w_air * (h_air_initial-self.h_air_ref))  + H_prod_ref
+                # assuming LHV defined at c.T_standard_ref, c.P_standard_ref,
+                # 2.1 energy balance to calculate H_prod_final (final total enthalpy of the products after combustion)
+                # based on the specified LHV and the enthalpy of the inlet gas composition at the reference conditions, 
+                # and accounting for the efficiency (Etades) which represents heat loss during combustion:
+                # assuming all water evaporated
+                H_prod_final = self.Wf * self.LHV * 1000 * self.Etades + H_in_initial - H_in_ref  + H_prod_ref
 
                 # now set exit gas_out H to h_prod_final, this will calculate gas_out.T
                 self.gas_out.HP = H_prod_final, Pin
@@ -436,7 +439,8 @@ class TCombustor(TGaspath):
         Pin = self.gas_in.gas_q.P
         # Pout = self.gas_in.P*self.PRdes
         w_air = self.gas_in.gas_q.mass
-        h_air_initial = self.gas_in.gas_q.enthalpy_mass
+        # h_gas_in_initial = self.gas_in.gas_q.enthalpy_mass
+        H_in_initial = self.gas_in.H_total
 
         if (self.FuelComposition == '') or (self.FuelComposition == None):
             CHyOzMoleMass = self.C_atom_weight + self.H_atom_weight * self.HCratio + self.O_atom_weight * self.OCratio
