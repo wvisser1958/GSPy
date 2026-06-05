@@ -78,6 +78,7 @@ class TSystemModel:
         self.cantera_yaml_filename = cantera_yaml_filename
         self.cantera_yaml_path = use_yaml
         self.vprint(f"Using Cantera YAML file {use_yaml}")
+        self.vprint(f"Cantera version: {ct.__version__}")
         self.gas = ct.Solution(str(use_yaml))
 
         # 2.0.0.1 moved here from TCombustor
@@ -171,6 +172,10 @@ class TSystemModel:
         for error in self.errors:
             state = 0
 
+    def empty_states_and_errors(self):
+        self.states = np.empty(0, dtype=self.states.dtype)
+        self.errors = np.empty(0, dtype=self.errors.dtype)
+
     def reset_output(self):
         self._output_rows = []
         self.output_table = None
@@ -233,7 +238,11 @@ class TSystemModel:
         self.descr = descr
 
         try:
-            self.reinit_states_and_errors()
+            # empty states and errors, so they can be added again for OD simulation after DP simulation 
+            self.empty_states_and_errors()
+            # reset shaft states (avoid skipping initialization of shaft states in case of multiple DP runs)
+            for shaft in self.shaft_list:
+                shaft.istate = None
 
             if targets is None:
                 self.Do_Run('DP', 0, self.states)
@@ -317,9 +326,9 @@ class TSystemModel:
             maxiter=100
             successcount = 0
             failedcount = 0
-            for point_time, value in self.input_points:
+            for point_time in self.input_points:
                 # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
-                # fsys.Do_Output(Mode, inputpoints[ipoint])
+                # fsys.Do_Output(Mode, input_points[ipoint])
                 rmax = 0
                 try:
                     solution = root(residuals,
