@@ -75,10 +75,10 @@ class TSystemModel:
                     f"Tried global fallback:\n  {global_yaml}"
                 )
 
+        self.vprint(f"Cantera version: {ct.__version__}")
         self.cantera_yaml_filename = cantera_yaml_filename
         self.cantera_yaml_path = use_yaml
         self.vprint(f"Using Cantera YAML file {use_yaml}")
-        self.vprint(f"Cantera version: {ct.__version__}")
         self.gas = ct.Solution(str(use_yaml))
 
         # 2.0.0.1 moved here from TCombustor
