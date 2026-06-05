@@ -38,6 +38,14 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
+### GSPy v2.0.0.3                                                     05-06-2026
+--------------------------------------------------------------------------------
+### Improvements/extensions
+--------------------------------------------------------------------------------
+- system.py series calculation poin_time handling improved (allow float 
+  point_time values)
+- added description column in output (set in Run_DP/OD 'descr = "....")
+
 ### GSPy v2.0.0.2                                                     04-06-2026
 --------------------------------------------------------------------------------
 ### Improvements/extensions
