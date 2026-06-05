@@ -94,8 +94,6 @@ class TSystemModel:
         self.gaspath_conditions = {}
         self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
 
-        self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
-
         # 1.1 WV dictionary for output during iteration (e.g. for control equations)
         self.output_dict = {}
 
