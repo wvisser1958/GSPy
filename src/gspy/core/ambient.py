@@ -13,6 +13,8 @@
 # Authors
 #   Wilfried Visser
 
+from statistics import mode
+
 import cantera as ct
 import aerocalc as ac     # !!!! install with "pip install aero-calc", see https://www.kilohotel.com/python/aerocalc/html/
 from gspy.core.base_component import TComponent
@@ -175,6 +177,16 @@ class TAmbient(TComponent):
         # 4) total conditions using humid-air gamma
         self.Tta = self.Tsa * (1.0 + 0.5 * (gamma - 1.0) * self.Macha**2)
         self.Pta = self.Psa * (self.Tta / self.Tsa)**(gamma / (gamma - 1.0))
+
+        self.Gas_Ambient.set_conditions_humidity(
+            T=self.Tsa,
+            P=self.Psa,
+            gas_mass=1.0,
+            humidity_mode=hum_mode,
+            humidity_value=hum_value,
+            dry_X=c.s_air_composition_mole,
+            dry_Y=c.s_air_composition_mass
+            )        
 
     def Run(self, Mode, PointTime):
         # if Mode == 'DP':  # alway reset de DP conditions
