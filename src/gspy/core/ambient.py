@@ -177,6 +177,8 @@ class TAmbient(TComponent):
         }
         X["H2O"] = x_H2O
 
+        self.RH = 100.0 * x_H2O / x_sat if x_sat > 0 else 0.0
+
         return X
 
     def _x_H2O_from_RH(self, T, P, RH):
@@ -275,6 +277,7 @@ class TAmbient(TComponent):
             f"Tt{s}": self.Tta,
             f"Pt{s}": self.Pta,
             f"Mach{s}": self.Macha,
+            f"RH{s}": self.RH
         }
 
     def get_station_nr(self):
