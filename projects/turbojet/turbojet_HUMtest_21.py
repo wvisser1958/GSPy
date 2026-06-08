@@ -199,13 +199,13 @@ def main():
     turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=0)
     turbojet.Run_DP_simulation(descr = 'Dry Air')
 
-    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=100)
-    turbojet.Run_DP_simulation(descr = 'RH=100')
+    # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=100)
+    # turbojet.Run_DP_simulation(descr = 'RH=100')
 
-    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=200)
-    turbojet.Run_DP_simulation(descr = 'RH=200')
+    # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=200)
+    # turbojet.Run_DP_simulation(descr = 'RH=200')
 
-    run_OD = False
+    run_OD = True
 
     if run_OD:
         # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
