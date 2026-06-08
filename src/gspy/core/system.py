@@ -36,7 +36,9 @@ class TSystemModel:
                 *,    # force optional parameters passing by name
                 model_file: str,
                 cantera_yaml_filename: str = DEFAULT_YAML,
-                verbose: bool = DEFAULT_VERBOSE):
+                verbose: bool = DEFAULT_VERBOSE,
+                sys_enable_liquid_water : bool = False
+                ):
 
         self.VERBOSE = verbose
 
@@ -103,6 +105,9 @@ class TSystemModel:
 
         # use dictionary for gas path conditions oriented by gas path station number
         self.gaspath_conditions = {}
+
+        #  2.1
+        self.sys_enable_liquid_water = sys_enable_liquid_water
 
         self.ambient = TAmbient(owner=self, 
                                 name='Ambient', 

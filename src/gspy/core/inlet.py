@@ -55,13 +55,14 @@ class TInlet(TGaspath):
             # this inlet has constant PR, no OD PR yet (use manual input in code here, or make PR, Ram recovery map)
             self.PR = self.PRdes
 
-        self.gas_in.set_conditions_humidity(
-            T=self.owner.ambient.Tsa,
-            P=self.owner.ambient.Psa,
-            humidity_mode=self.owner.ambient.humidity_mode,
-            humidity_value=self.owner.ambient.humidity_value,
-            dry_X=dict(self.gas_in.X),
-        )
+        # self.gas_in.set_conditions_humidity(
+        #     T=self.owner.ambient.Tsa,
+        #     P=self.owner.ambient.Psa,
+        #     humidity_mode=self.owner.ambient.humidity_mode,
+        #     humidity_value=self.owner.ambient.humidity_value,
+        #     dry_X_dict=dict(self.gas_in.X),
+        #     dry_Y_dict=dict(self.gas_in.Y)
+        # )
 
         self.gas_out.copy_from(self.gas_in)
         self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PR

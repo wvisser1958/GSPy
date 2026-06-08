@@ -27,20 +27,22 @@ Air_composition = [
 dry_air_mole_composition = {species: mole_frac for species, _, mole_frac, _ in Air_composition}
 
 # mole composition
-s_air_composition_mole = {sp: x for sp, _, x, _ in Air_composition}
+air_composition_moles = {sp: x for sp, _, x, _ in Air_composition}
 # mass composition
-s_air_composition_mass = {sp: y for sp, y, _, _ in Air_composition}
+air_composition_mass = {sp: y for sp, y, _, _ in Air_composition}
 
-s_air_composition_mass = ''
-# air_composition_moles = ''
+s_air_composition_moles = '' 
+s_air_composition_mass = '' 
+
 for species, massfraction, molefraction, O2_norm_molefraction in Air_composition:
     # m_total = m_total + massfraction            should be 1.0 !
     if s_air_composition_mass != '' :
         s_air_composition_mass = s_air_composition_mass + ', '
     s_air_composition_mass = s_air_composition_mass + species + ':' + str(massfraction)
-    # if air_composition_moles != '' :
-    #     air_composition_moles = air_composition_moles + ', '
-    # air_composition_moles = air_composition_moles + species + ':' + str(O2_norm_molefraction)
+    if s_air_composition_moles != '' :
+        s_air_composition_moles = s_air_composition_moles + ', '
+    s_air_composition_moles = s_air_composition_moles + species + ':' + str(molefraction)
+
 # Accessing the tuple for 'O2' (finding the tuple by its first element)
 O2_tuple = next(item for item in Air_composition if item[0] == 'O2')
 CO2_tuple = next(item for item in Air_composition if item[0] == 'CO2')

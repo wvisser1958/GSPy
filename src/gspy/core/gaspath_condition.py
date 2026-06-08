@@ -25,11 +25,6 @@ class TGaspathCondition:
     
     WATER_TOL = 1e-12
 
-    # default liquid model settings: can be overridden in constructor or via methods
-    # def_enable_liquid_model: bool = False
-    # def_force_gas_only: bool = True
-    def_enable_liquid_water : bool = True
-
     def_debug_flash: bool = False
 
     def __init__(self,
@@ -48,7 +43,7 @@ class TGaspathCondition:
                             # So it's recommended to set force_gas_only=True for 
                             # compressor and combustor conditions, and enable_liquid_model=True 
                             # but force_gas_only=False for ambient inlet conditions if you want to track humidity there.
-                 enable_liquid_water: bool = def_enable_liquid_water,
+                 enable_liquid_water: bool = False,
 
                  debug_flash: bool = def_debug_flash):
         # self.mechanism = mechanism
@@ -261,7 +256,7 @@ class TGaspathCondition:
                 RH: float, dry_X: dict,
                 # enable_liquid_model: bool = def_enable_liquid_model,
                 # force_gas_only: bool = def_force_gas_only,
-                enable_liquid_water: bool = def_enable_liquid_water,
+                enable_liquid_water: bool = False,
                 debug_flash: bool = def_debug_flash):
         obj = cls(
             gas=gas,
@@ -285,7 +280,7 @@ class TGaspathCondition:
     @classmethod
     def from_vol_pct(cls, gas: ct.Solution, gas_mass: float, T: float, P: float,
                      H2O_vol_pct: float, dry_X: dict,
-                     enable_liquid_water: bool = def_enable_liquid_water,
+                     enable_liquid_water: bool = False,
                      debug_flash: bool = def_debug_flash):
         obj = cls(
             gas=gas,
@@ -309,7 +304,7 @@ class TGaspathCondition:
     @classmethod
     def from_mass_pct(cls, gas: ct.Solution, gas_mass: float, T: float, P: float,
                       H2O_mass_pct: float, dry_Y: dict,
-                      enable_liquid_water: bool = def_enable_liquid_water,
+                      enable_liquid_water: bool = False,
                       debug_flash: bool = def_debug_flash):
         obj = cls(
             gas=gas,
@@ -319,7 +314,7 @@ class TGaspathCondition:
             debug_flash=debug_flash,
         )
         obj._initialize_humidity(
-            mode="mass_pct",
+            mode="H2O_mass_pct",
             value=H2O_mass_pct,
             T=T,
             P=P,
@@ -505,8 +500,8 @@ class TGaspathCondition:
         humidity_mode:
             "dry"
             "RH"
-            "vol_pct"
-            "mass_pct"
+            "H2O_vol_pct"
+            "H2O_mass_pct"
         """
 
         if gas_mass is not None:
@@ -543,11 +538,11 @@ class TGaspathCondition:
                 comp_basis="X",
             )
 
-        elif humidity_mode == "mass_pct":
+        elif humidity_mode == "H2O_mass_pct":
             if dry_Y is None:
-                raise ValueError("dry_Y required for mass_pct")
+                raise ValueError("dry_Y required for H2O_mass_pct")
             self._initialize_humidity(
-                mode="mass_pct",
+                mode="H2O_mass_pct",
                 value=humidity_value,
                 T=T,
                 P=P,
@@ -556,7 +551,7 @@ class TGaspathCondition:
             )
 
         else:
-            raise ValueError("humidity_mode must be 'dry', 'RH', 'vol_pct', or 'mass_pct'")
+            raise ValueError("humidity_mode must be 'dry', 'RH', 'H2O_vol_pct', or 'H2O_mass_pct'")
 
         self._set_static_equal_total()
         return self
@@ -990,9 +985,9 @@ class TGaspathCondition:
 
             self._initialize_from_requested_x(T, P, dry_comp, x_req)
 
-        elif mode == "mass_pct":
+        elif mode == "H2O_mass_pct":
             if comp_basis != "Y":
-                raise ValueError("mass_pct requires dry mass fractions")
+                raise ValueError("H2O_mass_pct requires dry mass fractions")
 
             y_req = value / 100.0
             if y_req >= 1.0:
@@ -1026,7 +1021,7 @@ class TGaspathCondition:
                     self.repartition_at_TP(T, P)
 
         else:
-            raise ValueError("mode must be 'RH', 'vol_pct', or 'mass_pct'")
+            raise ValueError("mode must be 'RH', 'vol_pct', or 'H2O_mass_pct'")
 
     # m_liq error at RH=100 problem fix:
     # def _initialize_from_requested_x(self, T, P, dry_basis_X, x_req):
@@ -1344,9 +1339,15 @@ class TGaspathCondition:
     # ------------------------------------------------------------------
     # method to re ininitialize TGaspathCondition
     # ------------------------------------------------------------------
-    def set_conditions_humidity(self, *, T, P, gas_mass=None,
-                                humidity_mode=None, humidity_value=0.0,
-                                dry_X=None, dry_Y=None):
+    def set_conditions_humidity(self, 
+                                *, 
+                                T, 
+                                P, 
+                                gas_mass=None,
+                                humidity_mode=None, 
+                                humidity_value=0.0,
+                                dry_X_dict=None, 
+                                dry_Y_dict=None):
         """
         Reinitialize this existing TGaspathCondition in-place.
 
@@ -1354,60 +1355,59 @@ class TGaspathCondition:
             None / "dry"
             "RH"
             "vol_pct"
-            "mass_pct"
+            "H2O_mass_pct"
         """
-
         if gas_mass is not None:
             self.gas_q.mass = gas_mass
 
         if humidity_mode is None or humidity_mode == "dry":
-            if dry_X is None:
+            if dry_X_dict is None:
                 raise ValueError("dry_X required for dry initialization")
-            dry_X = self._normalize_without_h2o(dry_X)
-            self.gas_q.TPX = T, P, dry_X
+            dry_X_dict = self._normalize_without_h2o(dry_X_dict)
+            self.gas_q.TPX = T, P, dry_X_dict
             self.m_dry = self.mass
             self.m_total_water = 0.0
             self._set_static_equal_total()
             return self
 
         if humidity_mode == "RH":
-            if dry_X is None:
+            if dry_X_dict is None:
                 raise ValueError("dry_X required for RH")
             self._initialize_humidity(
                 mode="RH",
                 value=humidity_value,
                 T=T,
                 P=P,
-                dry_comp=dry_X,
+                dry_comp=dry_X_dict,
                 comp_basis="X",
             )
 
-        elif humidity_mode == "vol_pct":
-            if dry_X is None:
+        elif humidity_mode == "H2O_vol_pct":
+            if dry_X_dict is None:
                 raise ValueError("dry_X required for vol_pct")
             self._initialize_humidity(
                 mode="vol_pct",
                 value=humidity_value,
                 T=T,
                 P=P,
-                dry_comp=dry_X,
+                dry_comp=dry_X_dict,
                 comp_basis="X",
             )
 
-        elif humidity_mode == "mass_pct":
-            if dry_Y is None:
-                raise ValueError("dry_Y required for mass_pct")
+        elif humidity_mode == "H2O_mass_pct":
+            if dry_Y_dict is None:
+                raise ValueError("dry_Y required for H2O_mass_pct")
             self._initialize_humidity(
-                mode="mass_pct",
+                mode="H2O_mass_pct",
                 value=humidity_value,
                 T=T,
                 P=P,
-                dry_comp=dry_Y,
+                dry_comp=dry_Y_dict,
                 comp_basis="Y",
             )
 
         else:
-            raise ValueError("humidity_mode must be None, 'dry', 'RH', 'vol_pct', or 'mass_pct'")
+            raise ValueError("humidity_mode must be None, 'dry', 'RH', 'H2O_vol_pct', or 'H2O_mass_pct'")
 
         self._set_static_equal_total()
         return self    

@@ -26,6 +26,7 @@ class TGaspath(TComponent):
                  station_in, 
                  station_out,
                  gas_out_output_species = None,
+                 enable_liquid_water = None,
                  **kwargs):    # Constructor of the class
         super().__init__(**kwargs)
         self.station_in = station_in
@@ -46,6 +47,11 @@ class TGaspath(TComponent):
             else self.owner.gas.species_index(sp)
             for sp in self.gas_out_output_species
         ]
+        #  2.1
+        if enable_liquid_water is None:
+            self.enable_liquid_water = self.owner.sys_enable_liquid_water
+        else:
+            self.enable_liquid_water = enable_liquid_water
 
     def Run(self, Mode, PointTime):
         self.gas_in = self.owner.gaspath_conditions[self.station_in]

@@ -63,7 +63,7 @@ class TAmbient(TComponent):
 
         # no humidity specified -> dry air
         if self.humidity_mode is None:
-            return dict(c.s_air_composition_mole)
+            return dict(c.air_composition_moles)
 
         # ----------------------------------------------------------
         # Relative humidity [%]
@@ -79,7 +79,7 @@ class TAmbient(TComponent):
             if not (0.0 <= x_h2o < 1.0):
                 raise ValueError(f"Invalid RH gives x_h2o={x_h2o:.6f}")
 
-            X = {k: v * (1.0 - x_h2o) for k, v in c.s_air_composition_mole.items()}
+            X = {k: v * (1.0 - x_h2o) for k, v in c.air_composition_moles.items()}
             X["H2O"] = x_h2o
             return X
 
@@ -93,7 +93,7 @@ class TAmbient(TComponent):
             if not (0.0 <= x_h2o < 1.0):
                 raise ValueError(f"Invalid H2O_vol_pct gives x_h2o={x_h2o:.6f}")
 
-            X = {k: v * (1.0 - x_h2o) for k, v in c.s_air_composition_mole.items()}
+            X = {k: v * (1.0 - x_h2o) for k, v in c.air_composition_moles.items()}
             X["H2O"] = x_h2o
             return X
 
@@ -107,18 +107,23 @@ class TAmbient(TComponent):
             if not (0.0 <= y_h2o < 1.0):
                 raise ValueError(f"Invalid H2O_mass_pct gives y_h2o={y_h2o:.6f}")
 
-            Y = {k: v * (1.0 - y_h2o) for k, v in c.s_air_composition_mass.items()}
+            Y = {k: v * (1.0 - y_h2o) for k, v in c.air_composition_mass.items()}
             Y["H2O"] = y_h2o
 
             # temporary set state to convert Y -> X
             self.Gas_Ambient.TPY = self.Tsa, self.Psa, Y
-            return dict(zip(self.Gas_Ambient.species_names, self.Gas_Ambient.X))
+            # ????? return dict(zip(self.Gas_Ambient.species_names, self.Gas_Ambient.X))
+            return self.Gas_Ambient.X
 
         raise ValueError(f"Unknown humidity_mode '{self.humidity_mode}'")
 
 
     def SetConditions(self, Mode, Altitude, Macha, dTs, Psa, Tsa,
-                      *, RH=None, H2O_mass_pct=None, H2O_vol_pct=None):
+                      *, 
+                      RH=None, 
+                      H2O_mass_pct=None, 
+                      H2O_vol_pct=None,
+                      enable_liquid_water = None):
 
         specified = [(k, v) for k, v in {
             'RH': RH,
@@ -133,6 +138,12 @@ class TAmbient(TComponent):
             )
 
         hum_mode, hum_value = (specified[0] if specified else (None, None))
+
+        #  2.1
+        if enable_liquid_water is None:
+            self.Gas_Ambient.enable_liquid_water = self.owner.sys_enable_liquid_water
+        else:
+            self.Gas_Ambient.enable_liquid_water = enable_liquid_water
 
         if Mode == 'DP':
             self.Altitude_des = Altitude
@@ -184,9 +195,9 @@ class TAmbient(TComponent):
             gas_mass=1.0,
             humidity_mode=hum_mode,
             humidity_value=hum_value,
-            dry_X=c.s_air_composition_mole,
-            dry_Y=c.s_air_composition_mass
-            )        
+            dry_X_dict=c.air_composition_moles,
+            dry_Y_dict=c.air_composition_mass)   
+        return     
 
     def Run(self, Mode, PointTime):
         # if Mode == 'DP':  # alway reset de DP conditions
@@ -222,7 +233,7 @@ class TAmbient(TComponent):
 #     p_sat = w.P_sat
 #     x_h2o = (self.humidity_value / 100.0) * p_sat / self.Psa
 
-#     X = {k: v * (1.0 - x_h2o) for k, v in c.s_air_composition_mole.items()}
+#     X = {k: v * (1.0 - x_h2o) for k, v in c.air_composition_moles.items()}
 #     X["H2O"] = x_h2o
 
 #     self.Gas_Ambient.TPX = self.Tsa, self.Psa, X
@@ -230,7 +241,7 @@ class TAmbient(TComponent):
 # elif self.humidity_mode == "H2O_vol_pct":
 #     x_h2o = self.humidity_value / 100.0
 
-#     X = {k: v * (1.0 - x_h2o) for k, v in c.s_air_composition_mole.items()}
+#     X = {k: v * (1.0 - x_h2o) for k, v in c.air_composition_moles.items()}
 #     X["H2O"] = x_h2o
 
 #     self.Gas_Ambient.TPX = self.Tta, self.Pta, X
@@ -260,7 +271,9 @@ class TAmbient(TComponent):
             f"Ps{s}": self.Psa,
             f"Tt{s}": self.Tta,
             f"Pt{s}": self.Pta,
+            f"dTs{s}": self.dTs,
             f"Mach{s}": self.Macha,
+            f"RH{s}": self.Gas_Ambient.RH_gas
         }
 
     def get_station_nr(self):
