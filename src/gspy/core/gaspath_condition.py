@@ -485,6 +485,18 @@ class TGaspathCondition:
     # ------------------------------------------------------------------
     # public methods
     # ------------------------------------------------------------------
+    # for TInlet: scale mass up from 1 kg (TAmbient) to inlet gas mass flow
+    def scale_mass(self, scale_value: float):
+        f = float(scale_value)
+
+        if f < 0.0:
+            raise ValueError("scale_value must be >= 0")
+
+        self.gas_q.mass *= f
+        self.m_dry *= f
+        self.m_total_water *= f
+
+        return self
 
     def set_conditions_humidity(self, *,
                                 T: float,

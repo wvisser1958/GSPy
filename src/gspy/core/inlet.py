@@ -33,14 +33,19 @@ class TInlet(TGaspath):
         if Mode == 'DP':
             # Get the ambient conditions for the inlet gas_in conditions
             self.owner.gaspath_conditions[self.station_in] = self.owner.gaspath_conditions[self.owner.ambient.station_nr]
-            self.owner.gaspath_conditions[self.station_in].mass = self.Wdes
+
+            # now scale all masses (liquid and gas) from 1 (i.e. the mass of TAmbient) to Wdes
+            # self.owner.gaspath_conditions[self.station_in].mass = self.Wdes
+            self.owner.gaspath_conditions[self.station_in].scale_mass(self.Wdes)
 
         # super (TGasPath) Run sets gas_int to self.owner.gaspath_conditions[self.station_in]
         super().Run(Mode, PointTime)
 
         # self.gas_in.TP = self.gas_in.T, self.gas_in.P
         if Mode == 'DP':
-            self.gas_in.mass = self.Wdes
+            # obsolete
+            # self.gas_in.mass = self.Wdes
+            
             self.wcdes = self.gas_in.mass * fu.GetFlowCorrectionFactor(self.gas_in)
             self.wc = self.wcdes
             self.PR = self.PRdes
@@ -50,19 +55,22 @@ class TInlet(TGaspath):
             self.wc = self.owner.states[self.istate_wc] * self.wcdes
             if self.wc < 0.001*self.wcdes:
                 self.wc = 0.001*self.wcdes
+
+            # use TGaspathCondition mass setter to maintain m_liq while setting the gas phase (m_dry + m_vap)
             self.gas_in.mass = self.wc / fu.GetFlowCorrectionFactor(self.gas_in)
+
             # self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PRdes
             # this inlet has constant PR, no OD PR yet (use manual input in code here, or make PR, Ram recovery map)
             self.PR = self.PRdes
 
-        # self.gas_in.set_conditions_humidity(
-        #     T=self.owner.ambient.Tsa,
-        #     P=self.owner.ambient.Psa,
-        #     humidity_mode=self.owner.ambient.humidity_mode,
-        #     humidity_value=self.owner.ambient.humidity_value,
-        #     dry_X_dict=dict(self.gas_in.X),
-        #     dry_Y_dict=dict(self.gas_in.Y)
-        # )
+        self.gas_in.set_conditions_humidity(
+            T=self.owner.ambient.Tsa,
+            P=self.owner.ambient.Psa,
+            humidity_mode=self.owner.ambient.humidity_mode,
+            humidity_value=self.owner.ambient.humidity_value,
+            dry_X_dict=dict(self.gas_in.X),
+            dry_Y_dict=dict(self.gas_in.Y)
+        )
 
         self.gas_out.copy_from(self.gas_in)
         self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PR

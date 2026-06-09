@@ -312,7 +312,7 @@ class TCombustor(TGaspath):
                 # redefine gas_out for enthalpy of combustion products mixture at Pref and Tref of
                 # assume all gas phase
                 self.gas_out.gas_q.TPY = c.T_standard_ref, c.P_standard_ref, Yprod
-                # make sure fuel mass flow added to the inlet flow (before working on total H !):
+                # make sure fuel mass flow added to the inlet gas flow (before working on total H !):
                 self.gas_out.mass = self.gas_in.mass + self.Wf
                 # H_prod_ref is the enthalpy of the products at the reference conditions, 
                 # which is used as a baseline for calculating the final enthalpy of the products 
