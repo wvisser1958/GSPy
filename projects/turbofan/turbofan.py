@@ -212,7 +212,7 @@ def main():
     print("=========================")
     # set DP ambient/flight conditions
     turbofan.ambient.SetConditions('DP', 0, 0, 0, None, None)
-    turbofan.Run_DP_simulation()
+    turbofan.Run_DP_simulation(descr = 'T/O SL ISA')
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turbofan.mode = 'OD'
@@ -222,15 +222,15 @@ def main():
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
     # conditions is desired
     # typical cruise conditions:
-    turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None)
+    turbofan.ambient.SetConditions('OD', 11000, 0.8, 0, None, None)
     # Run OD simulation
-    turbofan.Run_OD_simulation()
+    turbofan.Run_OD_simulation(descr = '11km / 0.8')
 
     # export OutputTable to CSV
     turbofan.OutputToCSV()
 
     # plot nY vs X parameter
-    turbofan.Plot_X_nY_graph('Performance vs N1 [%] at Alt 10000m, Ma 0.8 (DP at ISA SL)',
+    turbofan.Plot_X_nY_graph('Performance vs N1 [%] at Alt 11000m, Ma 0.8 (DP at ISA SL)',
                             "_1",
                             # common X parameter column name with label
                             ("N1%",           "Fan speed [%]"),

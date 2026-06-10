@@ -137,8 +137,8 @@ def Compression(gas_in: ct.Quantity, gas_out: ct.Quantity, PR, Eta, Polytropic_E
         Sin = gas_in.s
         Pout = gas_in.P*PR
         gas_out.SP = Sin, Pout # get gas_out at constant s and higher P
-        Hisout = gas_out.enthalpy_mass # isentropic exit specific enthalpy
-        Hout = gas_in.enthalpy_mass + (Hisout - gas_in.enthalpy_mass) / Eta
+        his_out = gas_out.enthalpy_mass # isentropic exit specific enthalpy
+        Hout = gas_in.enthalpy_mass + (his_out - gas_in.enthalpy_mass) / Eta
         gas_out.HP = Hout, Pout
         # bug fix: for Fan, gas_out<>gas_in: use gas_out as the mass being compressed
         # PW = gas_out.H - gas_in.H

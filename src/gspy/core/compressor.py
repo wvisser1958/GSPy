@@ -47,14 +47,9 @@ class TCompressor(TTurboComponent):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
             self.PW = fu.Compression(self.gas_in, self.gas_out, self.PRdes, self.Etades, self.Polytropic_Eta)
-
-            # 1.6 WV
-            # self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
             self.ReadTurboMapAndSetScaling()
-
             # add states and errors
             if self.SpeedOption != 'CS':
-                # 1.5
                 if self.shaft.istate == None:
                     self.owner.states = np.append(self.owner.states, 1)
                     self.istate_n = self.owner.states.size-1
@@ -69,14 +64,11 @@ class TCompressor(TTurboComponent):
             self.ierror_wc = self.owner.errors.size-1
             # calculate parameters for output
             self.PR = self.PRdes
-        else:
+        else:  # i.e. OD s
             if self.SpeedOption != 'CS':
-                # self.N = self.owner.states[self.istate_n] * self.Ndes
                 self.N = self.shaft.Nt
             self.Nc = self.N / fu.GetRotorspeedCorrectionFactor(self.gas_in)
 
-            # 1.6 WV
-            # self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
             if self.control != None:
                   self.vg_angle = self.control.Get_outputvalue_from_schedule(self.Nc)
             self.Wc, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, self.owner.states[self.istate_beta])

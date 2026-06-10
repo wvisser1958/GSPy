@@ -44,7 +44,7 @@ class TGaspath(TComponent):
 
     def Run(self, Mode, PointTime):
         self.gas_in = self.owner.gaspath_conditions[self.station_in]
-
+        
         if Mode == 'DP':
             # create gas_inDes, gas_out cantera Quantity (gas_in already created)
             self.gas_inDes = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
@@ -54,10 +54,8 @@ class TGaspath(TComponent):
             self.W = self.Wdes
             self.Wc = self.Wcdes
         else:
-            # v1.2
             self.W = fu.scalar(self.gas_in.mass)
             self.Wc = self.W * fu.GetFlowCorrectionFactor(self.gas_in)
-
             self.gas_out.TPY = self.gas_in.TPY
             self.gas_out.mass = self.gas_in.mass
 

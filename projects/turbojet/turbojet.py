@@ -189,7 +189,7 @@ def main():
     print("=========================")
     # set DP ambient/flight conditions
     turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
-    turbojet.Run_DP_simulation()
+    turbojet.Run_DP_simulation(descr = 'DP ISA SL')
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turbojet.mode = 'OD'
@@ -201,7 +201,7 @@ def main():
     turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
     # Run OD simulation
     # turbojet.VERBOSE = False # suppress OD output to terminal
-    turbojet.Run_OD_simulation()
+    turbojet.Run_OD_simulation(descr = ' SL ISA OD')
 
     # export OutputTable to CSV
     turbojet.OutputToCSV()
