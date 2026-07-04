@@ -199,8 +199,11 @@ def main():
     turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=0)
     turbojet.Run_DP_simulation(descr = 'Dry Air')
 
-    # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=100)
+    # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=100, enable_liquid_water = True)
     # turbojet.Run_DP_simulation(descr = 'RH=100')
+
+    # turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None, H2O_mass_pct=4, enable_liquid_water = True)
+    # turbojet.Run_DP_simulation(descr = '4%')
 
     # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=200)
     # turbojet.Run_DP_simulation(descr = 'RH=200')
@@ -215,8 +218,8 @@ def main():
         print("=======================")
         # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
         # conditions is desired
-        # turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None, RH=100, enable_liquid_water = True)
-        turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None, H2O_mass_pct=8, enable_liquid_water = True)
+        turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None, RH=0)
+        # turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None, H2O_mass_pct=2, enable_liquid_water = True)
         # Run OD simulation
         # turbojet.VERBOSE = False # suppress OD output to terminal
         turbojet.Run_OD_simulation()

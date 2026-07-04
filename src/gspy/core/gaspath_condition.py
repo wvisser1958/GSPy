@@ -144,6 +144,11 @@ class TGaspathCondition:
         if not self.enable_liquid_water:
             self.m_total_water = self.m_vap
 
+        # if self.enable_liquid_water:
+        #     self.m_total_water = self.m_vap + liq_old
+        # else:
+        #     self.m_total_water = self.m_vap
+
     @property
     def m_vap(self):
         mv = self.mass * self._gas_h2o_mass_fraction()
@@ -1725,6 +1730,252 @@ class TGaspathCondition:
 
         PW = out.H_total - self.H_total
         return out, PW
+
+    # ------------------------------------------------------------------
+    # GSP-style wet isentropic compression
+    # ------------------------------------------------------------------
+    # Original TGasConditions method: equilibrium compression
+    # vs.
+    # GSP method                    : post-compression evaporation correction
+    # 
+    # The difference is fundamental:
+    # In original TGasConditions you solve:
+        # S_total(T,P,m_vap,m_liq) = constant
+        # while simultaneously enforcing:
+            # m_vap(T,P)
+            # m_liq(T,P)
+        # through saturation equilibrium.
+    # Physically this means:
+        # Compression
+        # ↓
+        # Temperature rises
+        # ↓
+        # Some liquid evaporates immediately
+        # ↓
+        # Evaporation cools the gas
+        # ↓
+        # Compression continues
+        # ↓
+        # More evaporation
+        # ↓
+        # ...
+    # Evaporation occurs continuously during the compression process.
+    # This gives the lowest outlet temperature.
+
+    # GSP method, GSP effectively assumes:
+    # Step 1:
+        # Compress gas + initial vapor only
+        # (no evaporation during compression)
+    # Step 2:
+        # At outlet T,P determine how much water can evaporate
+    # Step 3:
+        # Subtract evaporation energy
+    # Step 4:
+        # Recompute outlet temperature
+        # Thus the gas is first compressed hotter.
+        # Only afterwards does evaporation cool it down.
+    # This yields:
+        # T_GSP > T_equilibrium
+        # which is exactly what you observe.
+        # Thermodynamic analogy
+        # This is similar to intercooling:
+    # Equilibrium model : compress while cooling continuously
+    # GSP model         : compress adiabatically then apply cooling afterwards
+    # The latter always produces a higher outlet temperature.
+    
+    # Which is physically correct?
+    # For infinitely small droplets with perfect mixing and infinitely fast evaporation TGasConditions equilibrium method is correct.
+    # For larger droplets with finite evaporation times the GSP method may actually be closer to reality.
+    # For Real engines it lies somewhere in between:
+    # instantaneous equilibrium
+    # <
+    # real engine
+    # <
+    # post-compression evaporation
+    # Why only 10 K difference?
+    # My recommendation
+    # Keep both:
+    # wet_model = "equilibrium"     # current TGasConditions
+    # wet_model = "gsp"             # legacy GSP approach
+    # Then:
+    # Validation against GSP → "gsp"
+    # New simulations → "equilibrium"
+    # This gives backwards compatibility while preserving the more rigorous model that Cantera makes possible.
+
+    def _pure_h2o_gas_h(self, T: float, P: float) -> float:
+        """
+        Pure gas-phase H2O enthalpy [J/kg] using the current Cantera gas mechanism.
+        """
+        saved_T = self.T
+        saved_P = self.P
+        saved_X = self.gas_q.X
+        saved_m = self.gas_q.mass
+
+        try:
+            self.gas_q.TPX = T, P, {"H2O": 1.0}
+            return self.gas_q.enthalpy_mass
+        finally:
+            self.gas_q.TPX = saved_T, saved_P, saved_X
+            self.gas_q.mass = saved_m
+
+    #  Note that we can only use Cantera ct.water for Latent heat as the absolute enthalpy reference
+    #  of the gas mchanisme will not match that of ct.water in Cantera
+    def _water_latent_heat(self, T: float) -> float:
+        """
+        Latent heat of vaporization [J/kg] from ct.Water.
+        """
+        w = self._water()
+
+        w.TQ = T, 0.0
+        h_liq = w.enthalpy_mass
+
+        w.TQ = T, 1.0
+        h_vap = w.enthalpy_mass
+
+        return h_vap - h_liq
+
+
+    def _liquid_water_h_aligned(self, T: float, P: float) -> float:
+        """
+        Liquid-water enthalpy [J/kg], aligned to the gas-phase H2O
+        reference enthalpy of the Cantera gas mechanism.
+        """
+        return self._pure_h2o_gas_h(T, P) - self._water_latent_heat(T)
+   
+    def compress_isentropic_gsp_wet(self,
+                                    pressure_ratio: float,
+                                    out: "TGaspathCondition"):
+        """
+        GSP-compatible wet isentropic compression.
+
+        Steps:
+        1) Compress gas + existing vapor only isentropically.
+        2) Determine how much liquid water evaporates at outlet P,T.
+        3) Account for inlet liquid enthalpy on a Cantera-compatible basis.
+        4) Recalculate final gas state at outlet pressure with extra vapor.
+        """
+
+        if pressure_ratio <= 0.0:
+            raise ValueError("pressure_ratio must be > 0")
+
+        out.copy_from(self)
+
+        P2 = self.P * pressure_ratio
+
+        # 1) Compress gas phase only isentropically
+        s1_gas = self.gas_q.entropy_mass
+        X1 = self.gas_q.X
+        m_gas_old = self.gas_q.mass
+
+        out.gas_q.SPX = s1_gas, P2, X1
+        out.gas_q.mass = m_gas_old
+
+        T2_gas = out.T
+        H2_gas_before_evap = out.gas_q.enthalpy
+
+        # 2) Determine vapor/liquid split at compressed gas T/P
+        dry_basis_X = self._current_dry_basis_X()
+
+        st_split = out._state_at_TP_with_split(
+            T=T2_gas,
+            P=P2,
+            dry_basis_X=dry_basis_X,
+            m_dry=self.m_dry,
+            m_total_water=self.m_total_water,
+        )
+
+        m_vap_old = self.m_vap
+        m_liq_old = self.m_liq
+
+        m_vap_eq = st_split["m_vap"]
+
+        m_evap = max(0.0, m_vap_eq - m_vap_old)
+        m_evap = min(m_evap, m_liq_old)
+
+        m_vap_new = m_vap_old + m_evap
+        m_liq_new = m_liq_old - m_evap
+
+        if m_liq_new <= self.LIQ_ABS_TOL:
+            m_liq_new = 0.0
+
+        m_gas_new = self.m_dry + m_vap_new
+
+        # 3) Build gas composition after evaporation
+        out.gas_q.TPX = T2_gas, P2, dry_basis_X
+        mw_dry = out.gas_q.mean_molecular_weight / 1000.0
+
+        n_dry = self.m_dry / mw_dry
+        n_vap = m_vap_new / self.MW_H2O
+
+        x_h2o = n_vap / (n_dry + n_vap) if (n_dry + n_vap) > 0.0 else 0.0
+
+        X_new = {
+            sp: xi * (1.0 - x_h2o)
+            for sp, xi in dry_basis_X.items()
+        }
+        X_new["H2O"] = x_h2o
+
+        # 4) Energy bookkeeping on aligned reference basis
+        #
+        # H2_gas_before_evap contains:
+        #   compressed dry gas + old vapor
+        #
+        # The old liquid was not part of gas compression, so add its inlet
+        # liquid enthalpy on a reference basis aligned with gas H2O.
+        #
+        # If liquid remains after evaporation, subtract its final liquid enthalpy.
+        #
+        # The remaining target is the final GAS enthalpy for:
+        #   dry gas + old vapor + newly evaporated vapor
+        #
+        H_liq_in = m_liq_old * out._liquid_water_h_aligned(self.T, self.P)
+        H_liq_out = m_liq_new * out._liquid_water_h_aligned(T2_gas, P2)
+
+        H_target_gas = H2_gas_before_evap + H_liq_in - H_liq_out
+
+        # 5) Final gas HP solve at outlet pressure and new composition
+        out.gas_q.TPX = T2_gas, P2, X_new
+        out.gas_q.mass = m_gas_new
+        out.gas_q.HP = H_target_gas / m_gas_new, P2
+
+        # 6) Update water bookkeeping
+        out.m_dry = self.m_dry
+        out.m_total_water = m_vap_new + m_liq_new
+
+        if hasattr(out, "_m_vap"):
+            out._m_vap = m_vap_new
+        if hasattr(out, "_m_liq"):
+            out._m_liq = m_liq_new
+
+        out._set_static_equal_total()
+
+        return out
+
+
+    def compress_real_eta_gsp_wet(self,
+                                pressure_ratio: float,
+                                out: "TGaspathCondition",
+                                eta_c: float):
+
+        if not (0.0 < eta_c <= 1.0):
+            raise ValueError("eta_c must be in (0, 1]")
+
+        # Ideal GSP-style wet compression first
+        self.compress_isentropic_gsp_wet(pressure_ratio, out)
+
+        H1 = self.H_total
+        H2s = out.H_total
+
+        H2_target = H1 + (H2s - H1) / eta_c
+
+        # Use ideal result as initial guess, solve final total HP
+        out.update_HP(
+            H_target=H2_target,
+            P_target=self.P * pressure_ratio,
+        )
+
+        out._set_static_equal_total()
+        return out
 
     # ------------------------------------------------------------------
     # turbine expansion
