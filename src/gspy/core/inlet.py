@@ -18,6 +18,7 @@ import cantera as ct
 # import gspy.core.sys_global as fg
 import gspy.core.utils as fu
 from gspy.core.gaspath import TGaspath
+from gspy.core.flow_state import TFlowState
 
 class TInlet(TGaspath):
     def __init__(self, 
@@ -31,51 +32,65 @@ class TInlet(TGaspath):
 
     def Run(self, Mode, PointTime):
         if Mode == 'DP':
-            # Get the ambient conditions for the inlet gas_in conditions
-            self.owner.gaspath_conditions[self.station_in] = self.owner.gaspath_conditions[self.owner.ambient.station_nr]
+            # 2.1 separate TGasCondition for fs_in (do not share with ambient gaspath_condition)
+            # old Get the ambient conditions for the inlet fs_in conditions
+            # old self.owner.gaspath_conditions[self.station_in] = self.owner.gaspath_conditions[self.owner.ambient.station_nr]
+            self.fs_in = TFlowState.create_empty(self.owner.gas, station_nr=self.station_in)
+            self.owner.gaspath_conditions[self.station_in] = self.fs_in
 
+        self.fs_in.copy_from(self.owner.gaspath_conditions[self.owner.ambient.station_nr], self.owner.ambient.station_nr)
+
+        if Mode == 'DP':
             # now scale all masses (liquid and gas) from 1 (i.e. the mass of TAmbient) to Wdes
             # self.owner.gaspath_conditions[self.station_in].mass = self.Wdes
-            self.owner.gaspath_conditions[self.station_in].scale_mass(self.Wdes)
+            self.fs_in.scale_mass(self.Wdes)
 
-        # super (TGasPath) Run sets gas_int to self.owner.gaspath_conditions[self.station_in]
+        # super (TGasPath) Run sets fs_in, fs_in_des and fs_out to self.owner.gaspath_conditions[self.station_in]
+        # and in DP mode sets fs_in_des to fs_in
         super().Run(Mode, PointTime)
 
-        # self.gas_in.TP = self.gas_in.T, self.gas_in.P
+        # self.fs_in.TP = self.fs_in.T, self.fs_in.P
         if Mode == 'DP':
             # obsolete
-            # self.gas_in.mass = self.Wdes
+            # self.fs_in.mass = self.Wdes
             
-            self.wcdes = self.gas_in.mass * fu.GetFlowCorrectionFactor(self.gas_in)
-            self.wc = self.wcdes
+            # Wcdes is the design corrected flow, which is used to scale the inlet flow in OD mode using self.owner.states[self.istate_wc]
+            self.Wcdes = self.fs_in.W_gas * fu.GetFlowCorrectionFactor(self.fs_in)
+            
             self.PR = self.PRdes
             self.owner.states = np.append(self.owner.states, 1)
             self.istate_wc = self.owner.states.size-1   # add state for corrected inlet flow wc more stable... state staying closer to 1 at high altitude
         else:
-            self.wc = self.owner.states[self.istate_wc] * self.wcdes
-            if self.wc < 0.001*self.wcdes:
-                self.wc = 0.001*self.wcdes
+            self.Wc = self.owner.states[self.istate_wc] * self.Wcdes
+            if self.Wc < 0.001*self.Wcdes:
+                self.Wc = 0.001*self.Wcdes
 
             # use TGaspathCondition mass setter to maintain m_liq while setting the gas phase (m_dry + m_vap)
-            self.gas_in.mass = self.wc / fu.GetFlowCorrectionFactor(self.gas_in)
+            # note that
+            # self.fs_in.W_gas = self.Wc / fu.GetFlowCorrectionFactor(self.fs_in)
+            W_gas = self.Wc / fu.GetFlowCorrectionFactor(self.fs_in)
+            # scale fs_in H2O etc. now proportionally to the new W_gas, while keeping the same mass fractions (X, Y) and m_liq
+            self.fs_in.scale_mass(W_gas/self.fs_in.W_gas)
 
-            # self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PRdes
+            # self.fs_out.TP = self.fs_in.T, self.fs_in.P * self.PRdes
             # this inlet has constant PR, no OD PR yet (use manual input in code here, or make PR, Ram recovery map)
             self.PR = self.PRdes
 
-        # self.gas_in.set_conditions_humidity(
+        # self.W = self.fs_in.W
+
+        # self.fs_in.set_conditions_humidity(
         #     T=self.owner.ambient.Tsa,
         #     P=self.owner.ambient.Psa,
         #     humidity_mode=self.owner.ambient.humidity_mode,
         #     humidity_value=self.owner.ambient.humidity_value,
-        #     dry_X_dict=dict(self.gas_in.X),
-        #     dry_Y_dict=dict(self.gas_in.Y)
+        #     dry_X_dict=dict(self.fs_in.X),
+        #     dry_Y_dict=dict(self.fs_in.Y)
         # )
 
-        self.gas_out.copy_from(self.gas_in)
-        self.gas_out.TP = self.gas_in.T, self.gas_in.P * self.PR
-        # self.gas_out.mass = self.gas_in.mass
-        self.RD = self.gas_in.mass * self.owner.ambient.V / 1000 # kN
+        self.fs_out.copy_from(self.fs_in, self.station_out)
+        self.fs_out.TP = self.fs_in.T, self.fs_in.P * self.PR
+        # self.fs_out.mass = self.fs_in.mass
+        self.RD = self.fs_in.W_gas * self.owner.ambient.V / 1000 # kN
         # add ram drag to system level ram drag (note that multiple inlets may exist)
         self.owner.RD = self.owner.RD + self.RD
-        return self.gas_out
+        return self.fs_out

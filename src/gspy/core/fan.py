@@ -76,9 +76,9 @@ class TFan(TTurboComponent):
         if Mode == 'DP':
             self.BPR = self.BPRdes
             # create gas_out_duct ct.Quantity here
-            self.gas_out_duct = ct.Quantity(self.gas_in.phase, mass = 1)
+            self.gas_out_duct = ct.Quantity(self.fs_in.phase, mass = 1)
             #  1.5
-            self.OD_crossFlow = ct.Quantity(self.gas_in.phase, mass = 1)
+            self.OD_crossFlow = ct.Quantity(self.fs_in.phase, mass = 1)
         else:
             self.BPR = self.owner.states[self.istate_BPR] * self.BPRdes
 
@@ -92,11 +92,11 @@ class TFan(TTurboComponent):
 
         # *********** Lucas Cf implementation ***********
         # design split (always based on BPRdes)
-        self.W_core_BPRdes = self.gas_in.mass / (self.BPRdes + 1.0)
-        self.W_duct_BPRdes = self.gas_in.mass * self.BPRdes / (self.BPRdes + 1.0)
+        self.W_core_BPRdes = self.fs_in.mass / (self.BPRdes + 1.0)
+        self.W_duct_BPRdes = self.fs_in.mass * self.BPRdes / (self.BPRdes + 1.0)
 
         # cross-flow due to BPR change (eq. 3-20)
-        self.crossflow = self.gas_in.mass * (self.BPR / (self.BPR + 1.0) - (self.BPRdes / (self.BPRdes + 1.0)))
+        self.crossflow = self.fs_in.mass * (self.BPR / (self.BPR + 1.0) - (self.BPRdes / (self.BPRdes + 1.0)))
 
         # effective inlet flows for maps (eq. 3-21, 3-22)
         self.W_core_in = self.W_core_BPRdes - self.cf * self.crossflow
@@ -109,17 +109,17 @@ class TFan(TTurboComponent):
         if Mode == 'DP':
             # correct mass flow
             self.Wdes_core_in = self.W_core_in
-            self.Wcdes_core_in = self.Wdes_core_in * fu.GetFlowCorrectionFactor(self.gas_in)
+            self.Wcdes_core_in = self.Wdes_core_in * fu.GetFlowCorrectionFactor(self.fs_in)
             self.map_core.ReadMapAndGetScaling(self.Ncdes, self.Wcdes_core_in, self.PRdes_core, self.Etades_core)
-            self.PW_core = fu.Compression(self.gas_in, self.gas_out, self.PRdes_core, self.Etades_core, 
+            self.PW_core = fu.Compression(self.fs_in, self.gas_out, self.PRdes_core, self.Etades_core, 
                                           self.Polytropic_DP_eta)
 
             # # add fan duct side compression
             # self.Wdes_duct = self.gas_in.mass - self.gas_out.mass
             self.Wdes_duct_in = self.W_duct_in
-            self.Wcdes_duct_in = self.W_duct_in * fu.GetFlowCorrectionFactor(self.gas_in)
+            self.Wcdes_duct_in = self.W_duct_in * fu.GetFlowCorrectionFactor(self.fs_in)
             self.map_duct.ReadMapAndGetScaling(self.Ncdes, self.Wcdes_duct_in, self.PRdes_duct, self.Etades_duct)
-            self.PW_duct = fu.Compression(self.gas_in, self.gas_out_duct, self.PRdes_duct, self.Etades_duct, self.Polytropic_DP_eta)
+            self.PW_duct = fu.Compression(self.fs_in, self.gas_out_duct, self.PRdes_duct, self.Etades_duct, self.Polytropic_DP_eta)
 
             self.PW = self.PW_core + self.PW_duct
             self.shaft.PW_sum = self.shaft.PW_sum - self.PW
@@ -155,21 +155,21 @@ class TFan(TTurboComponent):
 
         else:
             self.N = self.owner.states[self.istate_n] * self.Ndes
-            self.Nc = self.N / fu.GetRotorspeedCorrectionFactor(self.gas_in)
+            self.Nc = self.N / fu.GetRotorspeedCorrectionFactor(self.fs_in)
 
             self.Wc_core, self.PR_core, self.Eta_core = self.map_core.GetScaledMapPerformance(self.Nc, self.owner.states[self.istate_beta_core])
             self.Wc_duct, self.PR_duct, self.Eta_duct = self.map_duct.GetScaledMapPerformance(self.Nc, self.owner.states[self.istate_beta_duct])
 
-            self.PW_core = fu.Compression(self.gas_in, self.gas_out, self.PR_core, self.Eta_core, 0)
-            self.PW_duct = fu.Compression(self.gas_in, self.gas_out_duct, self.PR_duct, self.Eta_duct, 0)
+            self.PW_core = fu.Compression(self.fs_in, self.gas_out, self.PR_core, self.Eta_core, 0)
+            self.PW_duct = fu.Compression(self.fs_in, self.gas_out_duct, self.PR_duct, self.Eta_duct, 0)
 
             self.PW = self.PW_core + self.PW_duct
 
             self.shaft.PW_sum = self.shaft.PW_sum - self.PW
 
-            self.W_core = self.Wc_core / fu.GetFlowCorrectionFactor(self.gas_in)
+            self.W_core = self.Wc_core / fu.GetFlowCorrectionFactor(self.fs_in)
             self.owner.errors[self.ierror_wc_core ] = (self.W_core - self.W_core_in) / self.Wdes
-            self.W_duct = self.Wc_duct / fu.GetFlowCorrectionFactor(self.gas_in)
+            self.W_duct = self.Wc_duct / fu.GetFlowCorrectionFactor(self.fs_in)
             self.owner.errors[self.ierror_wc_duct ] = (self.W_duct - self.W_duct_in) / self.Wdes
 
             # self.gas_out.mass = self.W_core  # self.gas_out = core flow = gas_out_core
@@ -209,7 +209,7 @@ class TFan(TTurboComponent):
                 # self.gas_out.equilibrate("HP")
 
         # calculate parameters for output
-        self.Wc = fu.scalar(self.gas_in.mass) * fu.GetFlowCorrectionFactor(self.gas_in)
+        self.Wc = fu.scalar(self.fs_in.mass) * fu.GetFlowCorrectionFactor(self.fs_in)
 
         # assigne gas_out_duct to gaspath_conditions dictionary, for the core flow already done in TGaspath parent class
         self.owner.gaspath_conditions[self.station_out_duct] = self.gas_out_duct

@@ -4,7 +4,7 @@ import cantera as ct
 from scipy.optimize import root_scalar
 from scipy.optimize import root
 
-class TGaspathCondition:
+class TFlowState:
     """
     Gas-path station condition with:
       - gas_q: Cantera Quantity containing the full GAS phase, including H2O vapor
@@ -30,6 +30,7 @@ class TGaspathCondition:
     def __init__(self,
                  gas: ct.Solution,
                  gas_mass: float,
+                 station_nr: str,
                  m_total_water: float | None = None,
                  m_liq: float = 0.0,
 
@@ -60,6 +61,8 @@ class TGaspathCondition:
         self.debug_flash = debug_flash
 
         self.gas_q = ct.Quantity(gas, mass=gas_mass)
+
+        self.station_nr = station_nr
 
         # set Ps, Ts, Mach etc....
         self._set_static_equal_total()
@@ -251,13 +254,12 @@ class TGaspathCondition:
     # constructors
     # ------------------------------------------------------------------
     @classmethod
-    def create_empty(cls, gas):
+    def create_empty(cls, gas, station_nr: str):
         # gas = ct.Solution(mechanism)
-        return cls(gas=gas, gas_mass=1.0)
-
+        return cls(gas=gas, gas_mass=1.0, station_nr=station_nr)
 
     @classmethod
-    def from_RH(cls, gas: ct.Solution, gas_mass: float, T: float, P: float,
+    def from_RH(cls, gas: ct.Solution, gas_mass: float, station_nr: str, T: float, P: float,
                 RH: float, dry_X: dict,
                 # enable_liquid_model: bool = def_enable_liquid_model,
                 # force_gas_only: bool = def_force_gas_only,
@@ -266,6 +268,7 @@ class TGaspathCondition:
         obj = cls(
             gas=gas,
             gas_mass=gas_mass,
+            station_nr=station_nr,
             m_liq=0.0,
             # enable_liquid_model=enable_liquid_model,
             # force_gas_only=force_gas_only,
@@ -283,13 +286,14 @@ class TGaspathCondition:
         return obj
 
     @classmethod
-    def from_vol_pct(cls, gas: ct.Solution, gas_mass: float, T: float, P: float,
+    def from_vol_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str, T: float, P: float,
                      H2O_vol_pct: float, dry_X: dict,
                      enable_liquid_water: bool = False,
                      debug_flash: bool = def_debug_flash):
         obj = cls(
             gas=gas,
             gas_mass=gas_mass,
+            station_nr=station_nr,
             m_liq=0.0,
             # enable_liquid_model=enable_liquid_model,
             # force_gas_only=force_gas_only,
@@ -307,13 +311,14 @@ class TGaspathCondition:
         return obj
 
     @classmethod
-    def from_mass_pct(cls, gas: ct.Solution, gas_mass: float, T: float, P: float,
+    def from_mass_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str, T: float, P: float,
                       H2O_mass_pct: float, dry_Y: dict,
                       enable_liquid_water: bool = False,
                       debug_flash: bool = def_debug_flash):
         obj = cls(
             gas=gas,
             gas_mass=gas_mass,
+            station_nr=station_nr,
             m_liq=0.0,
             enable_liquid_water=enable_liquid_water,
             debug_flash=debug_flash,
@@ -328,9 +333,10 @@ class TGaspathCondition:
         )
         return obj
 
-    def copy_from(self, other: "TGaspathCondition"):
+    def copy_from(self, other: "TFlowState", new_station_nr: str = None) -> "TFlowState":
         self.gas_q.TPX = other.gas_q.T, other.gas_q.P, other.gas_q.X
         self.gas_q.mass = other.gas_q.mass
+        self.station_nr = new_station_nr if new_station_nr is not None else other.station_nr
 
         self.m_dry = other.m_dry
         self.m_total_water = other.m_total_water
@@ -1432,7 +1438,7 @@ class TGaspathCondition:
     # ------------------------------------------------------------------
     # convenience compressor helpers
     # ------------------------------------------------------------------
-    def compress_isentropic(self, PR: float, out: "TGaspathCondition"):
+    def compress_isentropic(self, PR: float, out: "TFlowState"):
         """
         Ideal compression:
         - total entropy gas + liquid conserved
@@ -1465,7 +1471,7 @@ class TGaspathCondition:
         out._set_static_equal_total()
 
     def compress_real_polytropic_eta_fast(self, PR: float,
-                                out: "TGaspathCondition",
+                                out: "TFlowState",
                                 eta_poly: float):
         if PR <= 0.0:
             raise ValueError("PR must be > 0")
@@ -1486,8 +1492,8 @@ class TGaspathCondition:
 
         out._set_static_equal_total()
 
-    def compress_real_polytropic_eta(self, PR: float, out: "TGaspathCondition",
-                            eta_poly: float, tmp: "TGaspathCondition" = None, n_steps: int = 20):
+    def compress_real_polytropic_eta(self, PR: float, out: "TFlowState",
+                            eta_poly: float, tmp: "TFlowState" = None, n_steps: int = 20):
 
         """
         Polytropic compressor model.
@@ -1707,10 +1713,10 @@ class TGaspathCondition:
     def compress_real_eta(self,
                       *,
                       PR: float,
-                      out: "TGaspathCondition",
+                      out: "TFlowState",
                       eta: float,
                       Polytropic_Eta: bool = False,
-                      tmp: "TGaspathCondition" = None,
+                      tmp: "TFlowState" = None,
                       n_steps: int = 20):
 
         if Polytropic_Eta:
@@ -1844,7 +1850,7 @@ class TGaspathCondition:
    
     def compress_isentropic_gsp_wet(self,
                                     pressure_ratio: float,
-                                    out: "TGaspathCondition"):
+                                    out: "TFlowState"):
         """
         GSP-compatible wet isentropic compression.
 
@@ -1954,7 +1960,7 @@ class TGaspathCondition:
 
     def compress_real_eta_gsp_wet(self,
                                 pressure_ratio: float,
-                                out: "TGaspathCondition",
+                                out: "TFlowState",
                                 eta_c: float):
 
         if not (0.0 < eta_c <= 1.0):
@@ -1983,7 +1989,7 @@ class TGaspathCondition:
 
     def expand_real_eta_isentropic(self,
                                 PR: float,
-                                out: "TGaspathCondition",
+                                out: "TFlowState",
                                 eta_is: float):
         """
         Real turbine expansion using isentropic efficiency.
@@ -2026,9 +2032,9 @@ class TGaspathCondition:
 
     def expand_real_polytropic_eta(self,
                                 PR: float,
-                                out: "TGaspathCondition",
+                                out: "TFlowState",
                                 eta_poly: float,
-                                tmp: "TGaspathCondition" = None,
+                                tmp: "TFlowState" = None,
                                 n_steps: int = 20):
         """
         Polytropic turbine expansion.
@@ -2087,10 +2093,10 @@ class TGaspathCondition:
     def expand_real_eta(self,
                         *,
                         PR: float,
-                        out: "TGaspathCondition",
+                        out: "TFlowState",
                         eta: float,
                         polytropic_eta: bool = False,
-                        tmp: "TGaspathCondition" = None,
+                        tmp: "TFlowState" = None,
                         n_steps: int = 20):
         """
         Turbine expansion.
@@ -2107,7 +2113,7 @@ class TGaspathCondition:
             raise ValueError("For turbine expansion, PR should be > 1, where PR = Pin / Pout")
 
         if not (0.0 < eta <= 1.0):
-            raise ValueError("eta must be in (0, 1]")
+            raise ValueError(f"eta must be in (0, 1) in expand_real_eta at station {self.station_nr}")
 
         if polytropic_eta:
             self.expand_real_polytropic_eta(

@@ -40,9 +40,9 @@ class TCompressor(TTurboComponent):
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
-            self.gas_out, self.PW = self.gas_in.compress_real_eta(
+            self.fs_out, self.PW = self.fs_in.compress_real_eta(
                 PR=self.PRdes,
-                out=self.gas_out,
+                out=self.fs_out,
                 eta=self.Etades,
                 Polytropic_Eta=self.Polytropic_DP_eta
             )
@@ -63,7 +63,7 @@ class TCompressor(TTurboComponent):
                     self.istate_n = self.shaft.istate
             self.owner.states = np.append(self.owner.states, 1)
             self.istate_beta = self.owner.states.size-1
-            # error for equation gas_in.wc = wcmap
+            # error for equation fs_in.wc = wcmap
             self.owner.errors = np.append(self.owner.errors, 0)
             self.ierror_wc = self.owner.errors.size-1
             # calculate parameters for output
@@ -72,55 +72,55 @@ class TCompressor(TTurboComponent):
             if self.SpeedOption != 'CS':
                 # self.N = self.owner.states[self.istate_n] * self.Ndes
                 self.N = self.shaft.Nt
-            self.Nc = self.N / fu.GetRotorspeedCorrectionFactor(self.gas_in)
+            self.Nc = self.N / fu.GetRotorspeedCorrectionFactor(self.fs_in)
 
             # 1.6 WV
             # self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
             if self.control != None:
                   self.vg_angle = self.control.Get_outputvalue_from_schedule(self.Nc)
-            self.Wc, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, self.owner.states[self.istate_beta])
+            self.Wc_map, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, self.owner.states[self.istate_beta])
 
-            self.gas_out, self.PW = self.gas_in.compress_real_eta(
+            self.fs_out, self.PW = self.fs_in.compress_real_eta(
                 PR=self.PR,
-                out=self.gas_out,
+                out=self.fs_out,
                 eta=self.Eta,
                 Polytropic_Eta=False
             )
 
-            self.W = self.Wc / fu.GetFlowCorrectionFactor(self.gas_in)
-            self.owner.errors[self.ierror_wc ] = (self.W - self.gas_in.mass) / self.Wdes
+            self.W_map = self.Wc_map / fu.GetFlowCorrectionFactor(self.fs_in)
+            self.owner.errors[self.ierror_wc ] = (self.W_map - self.fs_in.W) / self.fs_in_des.W
 
             # set out flow rate to W according to map
-            # may deviate from self.gas_in.mass during iteration: this is to propagate the effect of mass flow error
+            # may deviate from self.fs_in.mass during iteration: this is to propagate the effect of mass flow error
             # to downstream components for more stable convergence in the solver (?)
-            self.gas_out.mass = self.W
+            self.fs_out.W_gas = self.W_map            
 
         # v1.2 correction for bleed flows
         dW = 0
         dHW_bleeds_total = 0
-        dH = self.gas_out.gas_q.enthalpy_mass - self.gas_in.gas_q.enthalpy_mass
-        dP = self.gas_out.gas_q.P - self.gas_in.gas_q.P
+        dH = self.fs_out.gas_q.enthalpy_mass - self.fs_in.gas_q.enthalpy_mass
+        dP = self.fs_out.gas_q.P - self.fs_in.gas_q.P
         if self.Bleeds != None:
             for bleed in self.Bleeds:
                 Wbleed = bleed.bleedfraction * self.W
                 dW = dW + Wbleed
                 # dHW = dHW + (1 - bleed.dPfactor) * dH * Wbleed
-                if bleed.gas_in == None:
-                    #  define bleed inflow gas_in conditions
-                    bleed.gas_in = ct.Quantity(self.gas_in.phase, Wbleed)
+                if bleed.fs_in == None:
+                    #  define bleed inflow fs_in conditions
+                    bleed.fs_in = ct.Quantity(self.fs_in.phase, Wbleed)
                 else:
-                    bleed.gas_in.TPY = self.gas_in.T, self.gas_in.P, self.gas_in.Y
-                    bleed.gas_in.mass = Wbleed
+                    bleed.fs_in.TPY = self.fs_in.T, self.fs_in.P, self.fs_in.Y
+                    bleed.fs_in.mass = Wbleed
                 #  add to station conditions dictionary
-                self.owner.gaspath_conditions[bleed.station_in] = bleed.gas_in
+                self.owner.gaspath_conditions[bleed.station_in] = bleed.fs_in
 
                 # Compress Wbleed to bleed point
                 #  2.1
-                # dHW1 = fu.Compression(self.gas_in, bleed.gas_in, (self.gas_in.P+dP*bleed.dPfactor)/self.gas_in.P, self.Eta, 
+                # dHW1 = fu.Compression(self.fs_in, bleed.fs_in, (self.fs_in.P+dP*bleed.dPfactor)/self.fs_in.P, self.Eta, 
                 #                       self.Polytropic_DP_eta if Mode=='DP' else 0)
-                bleed.gas_in, dHW1 = self.gas_in.compress_real_eta(
-                    PR=(self.gas_in.P+dP*bleed.dPfactor)/self.gas_in.P,
-                    out=bleed.gas_in,
+                bleed.fs_in, dHW1 = self.fs_in.compress_real_eta(
+                    PR=(self.fs_in.P+dP*bleed.dPfactor)/self.fs_in.P,
+                    out=bleed.fs_in,
                     eta=self.Eta,
                     Polytropic_Eta=self.Polytropic_DP_eta if Mode=='DP' else False
                 )
@@ -128,18 +128,17 @@ class TCompressor(TTurboComponent):
                 # now delta of compression power due to the bleed is
                 dHW2 = dH * Wbleed  - dHW1
                 dHW_bleeds_total = dHW_bleeds_total + dHW2
-                # run the bleed flow run code (default is simply the TGasPath method, sets bleed.gas_out to bleed.gas_in)
+                # run the bleed flow run code (default is simply the TGasPath method, sets bleed.fs_out to bleed.fs_in)
                 bleed.Run(Mode, PointTime)
-            self.gas_out.mass = self.gas_out.mass - dW
+            self.fs_out.mass = self.fs_out.mass - dW
             self.PW = self.PW - dHW_bleeds_total
 
         # Heat transfer with heat sink components
         # for heatpath in self.heatpaths:
         #  ******** TBD *******************            
         
-
         self.shaft.PW_sum = self.shaft.PW_sum - self.PW
-        return self.gas_out
+        return self.fs_out
 
     # v1.2
     def PrintPerformance(self, Mode, PointTime):

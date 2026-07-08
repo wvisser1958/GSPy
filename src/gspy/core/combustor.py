@@ -128,12 +128,12 @@ class TCombustor(TGaspath):
         Verify constant static Pacross the reaction step in your model; mixing in a downstream
         diffuser/geometry change can contaminate the “fundamental” number.
         """
-        q_in, q_out = self.gas_in, self.gas_out
+        q_in, q_out = self.fs_in, self.fs_out
 
         # velocities from continuity (A_in = A_out = A), mass flow mass = out mass flow for both in and out
         # because also the fuel flow must be accelerated during combustion
-        V_in  = float(q_out.mass) / (q_in.density  * float(A))
-        V_out = float(q_out.mass) / (q_out.density * float(A))
+        V_in  = float(q_out.W_gas) / (q_in.density  * float(A))
+        V_out = float(q_out.W_gas) / (q_out.density * float(A))
 
         p0_in  = fu.stagnation_pressure_from_quantity(q_in,  V_in)   # same helper as before
         p0_out = fu.stagnation_pressure_from_quantity(q_out, V_out)
@@ -249,13 +249,13 @@ class TCombustor(TGaspath):
             # self.GetLHV()
             if (self.FuelComposition == '') or (self.FuelComposition is None):  # fuel specification based on LHV, HC and OC mole ratio
                 #  2.1
-                Yin = self.gas_in.gas_q.Y
-                w_gas_in = self.gas_in.gas_q.mass
+                Yin = self.fs_in.gas_q.Y
+                w_gas_in = self.fs_in.gas_q.mass
                 fuel_moles = self.Wf / CHyOzMoleMass
 
                 O2_in_mass  = w_gas_in * Yin[self.owner.i_O2]
                 CO2_in_mass = w_gas_in * Yin[self.owner.i_CO2]
-                H2O_in_mass = self.gas_in.m_vap + self.gas_in.m_liq
+                H2O_in_mass = self.fs_in.m_vap + self.fs_in.m_liq
                 AR_in_mass  = w_gas_in * Yin[self.owner.i_AR]
                 N2_in_mass  = w_gas_in * Yin[self.owner.i_N2]
 
@@ -296,10 +296,10 @@ class TCombustor(TGaspath):
                 # so we can leave self.gas_in unchanged with the actual inlet composition, 
                 # and use self.gas_out to get the reference enthalpy of the inlet gas composition 
                 # at Tref and Pref, which is needed for the LHV-based calculation of the final enthalpy of the products after combustion
-                m_gas = self.gas_in.gas_q.mass
-                m_liq = self.gas_in.m_liq
-                self.gas_out.TPY = c.T_standard_ref, c.P_standard_ref, self.gas_in.gas_q.Y
-                h_gas_in_ref = self.gas_out.enthalpy_mass
+                m_gas = self.fs_in.gas_q.mass
+                m_liq = self.fs_in.m_liq
+                self.fs_out.TPY = c.T_standard_ref, c.P_standard_ref, self.fs_in.gas_q.Y
+                h_gas_in_ref = self.fs_out.enthalpy_mass
                 #  add liquid water:
                 w = ct.Water()
                 w.TQ = c.T_standard_ref, 0.0          # saturated liquid water at Tref
@@ -311,15 +311,15 @@ class TCombustor(TGaspath):
 
                 # redefine gas_out for enthalpy of combustion products mixture at Pref and Tref of
                 # assume all gas phase
-                self.gas_out.gas_q.TPY = c.T_standard_ref, c.P_standard_ref, Yprod
+                self.fs_out.gas_q.TPY = c.T_standard_ref, c.P_standard_ref, Yprod
                 # make sure fuel mass flow added to the inlet gas flow (before working on total H !):
-                self.gas_out.mass = self.gas_in.mass + self.Wf
+                self.fs_out.W_gas = self.fs_in.mass + self.Wf
                 # H_prod_ref is the enthalpy of the products at the reference conditions, 
                 # which is used as a baseline for calculating the final enthalpy of the products 
                 # after combustion based on the specified LHV and the enthalpy of the inlet gas 
                 # composition at the reference conditions. This allows us to account for the energy 
                 # added by combustion while keeping track of the reference state for accurate energy balance calculations.
-                H_prod_ref = self.gas_out.H_total  # get total H in J (enthalpy_mass * mass), for use in LHV calculation with Etades
+                H_prod_ref = self.fs_out.H_total  # get total H in J (enthalpy_mass * mass), for use in LHV calculation with Etades
 
                 # now, calculate the final enthalpy of the products based on given LHV:
                 # from equation for conservation of energy ()"in = out"):
@@ -332,10 +332,10 @@ class TCombustor(TGaspath):
                 H_prod_final = self.Wf * self.LHV * 1000 * self.Etades + H_in_initial - H_in_ref  + H_prod_ref
 
                 # now set exit gas_out H to h_prod_final, this will calculate gas_out.T
-                self.gas_out.HP = H_prod_final, Pin
+                self.fs_out.HP = H_prod_final, Pin
 
                 # fu.robust_combustor_equilibrate(self.gas_out); needed in case of dissociation etc.
-                solver_used = self.gas_out.equilibrate_combustor_mixture()
+                solver_used = self.fs_out.equilibrate_combustor_mixture()
 
             else:                  # fuel specification based on FuelComposition and Tfuel
                 #  1.4 test if fuel exists (DP may be virtual flow, and OD composition specified, so....)
@@ -345,7 +345,7 @@ class TCombustor(TGaspath):
                     self.fuel = ct.Quantity(self.owner.gas)
                 self.fuel.mass = self.Wf
                 if self.Tfuel is None:      # assume Tfuel equal to T of air in
-                    Tfuelin = self.gas_in.T
+                    Tfuelin = self.fs_in.T
                 else:                       # use user specified Tfuel
                     Tfuelin = self.Tfuel
                 # v1.2 set P fuel to Pout, otherwise (using gas_in.P, which is before the pressure loss)
@@ -353,37 +353,37 @@ class TCombustor(TGaspath):
                 # self.fuel.TPY = Tfuelin, self.gas_in.P, self.FuelComposition
                 self.fuel.TPY = Tfuelin, Pin, self.FuelComposition
                 # fuel.TPY = self.gas_in.T, self.gas_in.P, self.FuelComposition
-                self.gas_out = self.gas_in + self.fuel
+                self.fs_out = self.fs_in + self.fuel
 
                 # 1.3
                 if self.Etades < 1.000:
                     # calculate enthalpy loss
                     # 1) Enthalpy of mixed, *unreacted* stream
-                    h_in = self.gas_out.enthalpy_mass
+                    h_in = self.fs_out.enthalpy_mass
                     # Save mixed, unreacted state
-                    gas_out_phase_saved = self.gas_out.phase.state               # stores T, P, composition, etc.
+                    gas_out_phase_saved = self.fs_out.phase.state               # stores T, P, composition, etc.
 
                     # 3) Target enthalpy that includes heat loss via Etades
                     # self.gas_out.equilibrate("TP")                   # equilibrium at fixed T (mix temp) & P
-                    solver_used = self.gas_out.equilibrate_combustor_mixture()
+                    solver_used = self.fs_out.equilibrate_combustor_mixture()
 
-                    dh_rxn_T = self.gas_out.enthalpy_mass - h_in     # this reflects reaction enthalpy at the mix T
+                    dh_rxn_T = self.fs_out.enthalpy_mass - h_in     # this reflects reaction enthalpy at the mix T
 
                     # Apply efficiency (heat loss): scale the enthalpy release
                     h_target = h_in + (1-self.Etades) * dh_rxn_T
 
                     # Restore original mixed state
-                    self.gas_out.phase.state = gas_out_phase_saved
+                    self.fs_out.phase.state = gas_out_phase_saved
 
                     # 4) Set target (H,P) and equilibrate to get final state with losses
-                    self.gas_out.HP = h_target, Pin
+                    self.fs_out.HP = h_target, Pin
                 else:
                     # v1.2 reimpose pressure Pout to gas_out
-                    self.gas_out.HP = self.gas_out.enthalpy_mass, Pin
+                    self.fs_out.HP = self.fs_out.enthalpy_mass, Pin
 
                 # 2.0
                 # self.gas_out.equilibrate("HP")
-                fu.robust_combustor_equilibrate(self.gas_out)
+                fu.robust_combustor_equilibrate(self.fs_out)
 
             # pressure loss
             if (self.A is None) or (self.A ==0):
@@ -397,11 +397,11 @@ class TCombustor(TGaspath):
                     # may want to have option  to specify exit Mach instead and calculate A
                 PRfund = self.fundamental_pressure_loss_rayleigh(self.A)
             Pout = Pin * PRfund * self.PRdes
-            self.gas_out.HP = self.gas_out.H_total, Pout
+            self.fs_out.HP = self.fs_out.H_total, Pout
 
             # we redefined gas_out, so we must reassing self.gas_out to fsys.gaspath_conditions[self.station_out]
-            self.owner.gaspath_conditions[self.station_out] = self.gas_out
-            return self.gas_out.T
+            self.owner.gaspath_conditions[self.station_out] = self.fs_out
+            return self.fs_out.T
 
         super().Run(Mode, PointTime)
 
@@ -410,7 +410,7 @@ class TCombustor(TGaspath):
         # 2.1 assume no liquid water in combustor, 
         # so disable liquid model for the out gas, otherwise it may cause convergence issues when the water 
         # is close to saturation and the solver tries to add/remove liquid water to equilibrate
-        self.gas_out.disable_liquid_model(collapse=True)
+        self.fs_out.disable_liquid_model(collapse=True)
 
         if Mode == 'DP':
             if self.Texitdes is not None: # calc Wf from Texit, use Wfdes as Wf first guess
@@ -419,7 +419,7 @@ class TCombustor(TGaspath):
             # 2.1
             elif self.FARdes is not None:
                 # assuming incoming fluid is pure air (do not use for afterburner/reheat)
-                self.Wf = self.FARdes * self.gas_in.mass
+                self.Wf = self.FARdes * self.fs_in.mass
                 self.Wfdes = self.Wf
 
             else:
@@ -431,16 +431,16 @@ class TCombustor(TGaspath):
                 if self.Wf < 0:
                     self.Wf = 0
             elif self.FAR is not None:
-                self.Wf = self.FAR * self.gas_in.mass
+                self.Wf = self.FAR * self.fs_in.mass
 
         # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
         self.PR = self.PRdes
-        Sin = self.gas_in.gas_q.s
-        Pin = self.gas_in.gas_q.P
+        Sin = self.fs_in.gas_q.s
+        Pin = self.fs_in.gas_q.P
         # Pout = self.gas_in.P*self.PRdes
-        w_air = self.gas_in.gas_q.mass
+        w_air = self.fs_in.gas_q.mass
         # h_gas_in_initial = self.gas_in.gas_q.enthalpy_mass
-        H_in_initial = self.gas_in.H_total
+        H_in_initial = self.fs_in.H_total
 
         if (self.FuelComposition == '') or (self.FuelComposition == None):
             CHyOzMoleMass = self.C_atom_weight + self.H_atom_weight * self.HCratio + self.O_atom_weight * self.OCratio
@@ -498,12 +498,12 @@ class TCombustor(TGaspath):
         #  add fuel to system level total fuel flow
         self.owner.WF = self.owner.WF + self.Wf
 
-        return self.gas_out
+        return self.fs_out
 
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
         print(f"\tFuel flow                 : {self.Wf:.4f} kg/s")
-        print(f"\tCombustion End Temperature: {self.gas_out.T:.2f} K")
+        print(f"\tCombustion End Temperature: {self.fs_out.T:.2f} K")
 
     # 2.0.0.0
     def get_outputs(self):

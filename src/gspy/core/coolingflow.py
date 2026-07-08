@@ -38,13 +38,13 @@ class TCoolingFlow(TGaspath):
         if Mode == 'DP':
             self.fractiontaken = self.fractiontakendes
             # quantity of gas after injection
-            self.gas_injected = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass*self.fractiontaken)
+            self.gas_injected = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass*self.fractiontaken)
             self.gas_out = ct.Quantity(self.gas_injected.phase, mass = self.gas_injected.mass)
         else:
             #  at this state, fraction taken still constant
             self.fractiontaken = self.fractiontakendes
-            self.gas_injected.mass = self.gas_in.mass * self.fractiontaken
-            self.gas_injected.TPY = self.gas_in.TPY
+            self.gas_injected.mass = self.fs_in.mass * self.fractiontaken
+            self.gas_injected.TPY = self.fs_in.TPY
         self.gas_out.mass = self.gas_injected.mass
         self.W = self.gas_out.mass
         return self.gas_out

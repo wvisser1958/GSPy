@@ -20,7 +20,7 @@ import aerocalc as ac     # !!!! install with "pip install aero-calc", see https
 from gspy.core.base_component import TComponent
 # import gspy.core.sys_global as fg
 import gspy.core.constants as c
-from gspy.core.gaspath_condition import TGaspathCondition
+from gspy.core.flow_state import TFlowState
 
 class TAmbient(TComponent):
     def __init__(self, 
@@ -33,6 +33,7 @@ class TAmbient(TComponent):
                  Tsa, 
                 #  RH=None,
                  RH=0,
+                 ambient_output_species = None,
                  **kwargs):
         super().__init__(**kwargs)
         self.station_nr = stationnr
@@ -47,11 +48,18 @@ class TAmbient(TComponent):
         
         # GC
         # self.Gas_Ambient = ct.Quantity(self.owner.gas)
-        self.Gas_Ambient = TGaspathCondition.from_RH(self.owner.gas, 1, 288.15, 101325, RH, c.dry_air_mole_composition)
+        self.fs_ambient = TFlowState.from_RH(self.owner.gas, 1, stationnr, 288.15, 101325, RH, c.dry_air_mole_composition)
 
-        self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
+        self.owner.gaspath_conditions[self.station_nr] = self.fs_ambient
 
-        self.SetConditions('DP', Altitude, Macha, dTs, Psa, Tsa, RH=RH)
+        self.fs_out_output_species = list(ambient_output_species or [])
+        self.fs_out_output_species_indices = [
+            c.LIQUID_WATER_INDEX if sp.upper() == "H2O_LIQ"
+            else self.owner.gas.species_index(sp)
+            for sp in self.fs_out_output_species
+        ]
+
+        self.SetConditions('Init', Altitude, Macha, dTs, Psa, Tsa, RH=RH)
 
         self.owner.ambient = self
 
@@ -111,9 +119,9 @@ class TAmbient(TComponent):
             Y["H2O"] = y_h2o
 
             # temporary set state to convert Y -> X
-            self.Gas_Ambient.TPY = self.Tsa, self.Psa, Y
+            self.fs_ambient.TPY = self.Tsa, self.Psa, Y
             # ????? return dict(zip(self.Gas_Ambient.species_names, self.Gas_Ambient.X))
-            return self.Gas_Ambient.X
+            return self.fs_ambient.X
 
         raise ValueError(f"Unknown humidity_mode '{self.humidity_mode}'")
 
@@ -141,9 +149,9 @@ class TAmbient(TComponent):
 
         #  2.1
         if enable_liquid_water is None:
-            self.Gas_Ambient.enable_liquid_water = self.owner.sys_enable_liquid_water
+            self.fs_ambient.enable_liquid_water = self.owner.sys_enable_liquid_water
         else:
-            self.Gas_Ambient.enable_liquid_water = enable_liquid_water
+            self.fs_ambient.enable_liquid_water = enable_liquid_water
 
         if Mode == 'DP':
             self.Altitude_des = Altitude
@@ -176,23 +184,23 @@ class TAmbient(TComponent):
         X = self._get_ambient_mole_fractions_from_static_conditions()
 
         # 2) static humid-air state
-        self.Gas_Ambient.TPX = self.Tsa, self.Psa, X
-        cp = self.Gas_Ambient.gas_q.cp_mass
-        cv = self.Gas_Ambient.gas_q.cv_mass
+        self.fs_ambient.TPX = self.Tsa, self.Psa, X
+        cp = self.fs_ambient.gas_q.cp_mass
+        cv = self.fs_ambient.gas_q.cv_mass
         gamma = cp / cv
 
         # 3) static velocity
-        a_s = self.Gas_Ambient.gas_q.sound_speed
+        a_s = self.fs_ambient.gas_q.sound_speed
         self.V = self.Macha * a_s
 
         # 4) total conditions using humid-air gamma
         self.Tta = self.Tsa * (1.0 + 0.5 * (gamma - 1.0) * self.Macha**2)
         self.Pta = self.Psa * (self.Tta / self.Tsa)**(gamma / (gamma - 1.0))
 
-        self.Gas_Ambient.set_conditions_humidity(
+        self.fs_ambient.set_conditions_humidity(
             T=self.Tsa,
             P=self.Psa,
-            gas_mass=1.0,
+            total_mass=1.0,
             humidity_mode=hum_mode,
             humidity_value=hum_value,
             dry_X_dict=c.air_composition_moles,
@@ -262,19 +270,37 @@ class TAmbient(TComponent):
 
      # 2.0.0.0
     def get_outputs(self):
-        #  outputs = super().get_outputs()
+        out = super().get_outputs()
         s = self.station_nr
 
-        return {
-            "Alt": self.Altitude,
-            f"Ts{s}": self.Tsa,
-            f"Ps{s}": self.Psa,
-            f"Tt{s}": self.Tta,
-            f"Pt{s}": self.Pta,
-            f"dTs{s}": self.dTs,
-            f"Mach{s}": self.Macha,
-            f"RH{s}": self.Gas_Ambient.RH_gas
-        }
+        # return {
+        #     "Alt": self.Altitude,
+        #     f"Ts{s}": self.Tsa,
+        #     f"Ps{s}": self.Psa,
+        #     f"Tt{s}": self.Tta,
+        #     f"Pt{s}": self.Pta,
+        #     f"dTs{s}": self.dTs,
+        #     f"Mach{s}": self.Macha,
+        #     f"RH{s}": self.Gas_Ambient.RH_gas,
+
+        out[f"Alt"] = self.Altitude
+        out[f"Ts{s}"] = self.Tsa
+        out[f"Ps{s}"] = self.Psa
+        out[f"Tt{s}"] = self.Tta
+        out[f"Pt{s}"] = self.Pta
+        out[f"dTs{s}"] = self.dTs
+        out[f"Mach{s}"] = self.Macha
+        out[f"RH{s}"] = self.fs_ambient.RH_gas
+
+        for sp, idx in zip(self.fs_out_output_species,
+                        self.fs_out_output_species_indices):
+            if idx == c.LIQUID_WATER_INDEX:
+                value = self.fs_ambient.m_liq
+            else:
+                # correct gas mass fractions (gas_q.Y) to total mass fractions (including liquid water) by dividing by total mass
+                value = self.fs_ambient.gas_q.Y[idx] * self.fs_ambient.gas_q.mass / self.fs_ambient.W
+            out[f"Y{s}_{sp}"] = value
+        return out    
 
     def get_station_nr(self):
         return self.station_nr

@@ -33,13 +33,13 @@ class TExhaustDiffuser(TGaspath):
         super().Run(Mode, PointTime)
         # add nozzle throat station
         if Mode == 'DP':
-            self.GasThroat = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
+            self.GasThroat = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass)
         else:
-            self.GasThroat.TPY = self.gas_in.TPY
-            self.GasThroat.mass = self.gas_in.mass
-        Sin = self.gas_in.entropy_mass
-        Hin = self.gas_in.enthalpy_mass
-        Pin = self.gas_in.P
+            self.GasThroat.TPY = self.fs_in.TPY
+            self.GasThroat.mass = self.fs_in.mass
+        Sin = self.fs_in.entropy_mass
+        Hin = self.fs_in.enthalpy_mass
+        Pin = self.fs_in.P
         Pout = self.owner.ambient.Psa
         # diffuser with pressure loss, diffusing flow.
         # 1 - PR is rel. pressure loss proportional to Wc^2
@@ -49,26 +49,26 @@ class TExhaustDiffuser(TGaspath):
         if Mode == 'DP':
             # diffuser
             # use GasThroat as exit here
-            self.GasThroat.TP = self.gas_in.T, Pout
+            self.GasThroat.TP = self.fs_in.T, Pout
             self.owner.errors = np.append(self.owner.errors, 0)
             self.ierror_p = self.owner.errors.size - 1
         else:
             # Off-design calculation
             # fsys.errors[self.ierror_p] = self.gas_in.P*self.PR / Pout
-            self.owner.errors[self.ierror_p] = (self.gas_in.P*self.PR - Pout) / Pout
-        self.gas_out.TP = self.GasThroat.T, Pout
-        return self.gas_out
+            self.owner.errors[self.ierror_p] = (self.fs_in.P*self.PR - Pout) / Pout
+        self.fs_out.TP = self.GasThroat.T, Pout
+        return self.fs_out
 
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
         # Print and return the results
-        print(f"\t\tExit static temperature: {self.gas_out.T:.1f} K")
-        print(f"\t\tExit static pressure: {self.gas_out.P:.0f} Pa")
+        print(f"\t\tExit static temperature: {self.fs_out.T:.1f} K")
+        print(f"\t\tExit static pressure: {self.fs_out.P:.0f} Pa")
 
     def get_outputs(self):
         out = super().get_outputs()
         sout = self.station_out
-        out[f"T{sout}"]  = self.gas_out.T
-        out[f"P{sout}"]  = self.gas_out.P
+        out[f"T{sout}"]  = self.fs_out.T
+        out[f"P{sout}"]  = self.fs_out.P
 
         return out

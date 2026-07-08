@@ -33,15 +33,16 @@ class TDuct(TGaspath):
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         # v1.2 dprel proportional to Wc^2
-        dprel = (1 - self.PRdes) * np.square(self.Wc/self.Wcdes)
+        # dprel = (1 - self.PRdes) * np.square(self.Wc/self.Wcdes)
+        dprel = (1 - self.PRdes) * np.square(self.fs_in.Wc/self.fs_in_des.Wc)
         self.PR = 1 - dprel        
         # 2.1
-        p_out = self.gas_in.P*self.PR
+        p_out = self.fs_in.P*self.PR
         if self.Q is None:
-            self.gas_out.TP = self.gas_in.T, p_out
+            self.fs_out.TP = self.fs_in.T, p_out
         else:
-            self.gas_out.HP = (self.gas_in.H + self.Q) / self.gas_in.mass, p_out
-        return self.gas_out
+            self.fs_out.HP = (self.fs_in.H + self.Q) / self.fs_in.mass, p_out
+        return self.fs_out
     
     def get_outputs(self):
         out = super().get_outputs()

@@ -37,7 +37,8 @@ class TSystemModel:
                 model_file: str,
                 cantera_yaml_filename: str = DEFAULT_YAML,
                 verbose: bool = DEFAULT_VERBOSE,
-                sys_enable_liquid_water : bool = False
+                sys_enable_liquid_water : bool = False,
+                ambient_output_species = None
                 ):
 
         self.VERBOSE = verbose
@@ -117,7 +118,8 @@ class TSystemModel:
                                 dTs=0,
                                 Psa=None,
                                 Tsa=None,   
-                                RH=0)
+                                RH=0,
+                                ambient_output_species = ambient_output_species)
 
         # 1.1 WV dictionary for output during iteration (e.g. for control equations)
         self.output_dict = {}
@@ -128,8 +130,9 @@ class TSystemModel:
         self.input_points = np.array([], dtype=float)
         # self.points_output_interval = 1
 
-        self.states = np.array([], dtype=float)
-        self.errors = np.array([], dtype=float)
+        # self.states = np.array([], dtype=float)
+        # self.errors = np.array([], dtype=float)
+        self.reset_states_and_errors()
 
         # system performance, in this case a gs turbine
         self.FG = 0.0
@@ -189,6 +192,13 @@ class TSystemModel:
     def get_gaspathcomponent_object_inlet_stationnr(self, astationnr):
         return next((obj for obj in self.component_run_list if (isinstance(obj, TGaspath)) and (obj.station_in == astationnr)), None)
 
+    def reset_states_and_errors(self):
+        # global states, errors
+        self.states = np.array([], dtype=float)
+        self.errors = np.array([], dtype=float)
+        for shaft in self.shaft_list:
+            shaft.istate = None
+
     def reinit_states_and_errors(self):
         # global states, errors
         for state in self.states:
@@ -214,7 +224,9 @@ class TSystemModel:
     # from inlet(s) through exhaust(s)
     def Do_Run(self, mode, point_time, states_par):
         # global system_model, states, errors, Ambient, Control
-        self.states = states_par.copy()
+        # states_par may be None (e.g. in DP mode) 
+        if states_par is not None:
+            self.states = states_par.copy()
         self.reinit_system()
 
         self.output_dict['Point/Time'] = point_time
@@ -258,7 +270,7 @@ class TSystemModel:
         self.descr = descr
 
         try:
-            self.reinit_states_and_errors()
+            self.reset_states_and_errors()
 
             # check for Heat sinks: these must add DP equations : 
             # T must be found for which heat flux residual of balance Q_balance = 0
@@ -269,7 +281,8 @@ class TSystemModel:
                     targets.append( (comp, "T", comp, "Q_balance", 0) ) 
 
             if targets is None:
-                self.Do_Run('DP', 0, self.states)
+                # self.Do_Run('DP', 0, self.states)
+                self.Do_Run('DP', 0, None)
             else:
                 try:
                     var_values_ref = [0.0] * len(targets)
@@ -281,7 +294,8 @@ class TSystemModel:
                         for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(targets):
                             setattr(varobj, varattr, dp_variables[i] * var_values_ref[i])
 
-                        self.Do_Run('DP', 0, self.states)
+                        # self.Do_Run('DP', 0, self.states)
+                        self.Do_Run('DP', 0, None)
 
                         residuals = [0.0] * len(targets)
                         for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(targets):

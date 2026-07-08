@@ -89,7 +89,7 @@ class THeatpath(TComponent):
 
     def Run(self, Mode, PointTime):
         if self.owner is TGaspath:
-            T_hx = self.owner.gas_in.T + self.location_factor * (self.owner.gas_out.T - self.owner.gas_in.T)
+            T_hx = self.owner.fs_in.T + self.location_factor * (self.owner.fs_out.T - self.owner.fs_in.T)
 
     def get_outputs(self):
         out = super().get_outputs()

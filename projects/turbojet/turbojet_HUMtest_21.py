@@ -32,7 +32,7 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turbojet = TSystemModel('Turbojet HUM_test_21', model_file = __file__)
+    turbojet = TSystemModel('Turbojet HUM_test_21', model_file = __file__, ambient_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"])
 
     # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # FuelControl for open loop direct control of fuel flow
@@ -46,7 +46,8 @@ def main():
                            DP_input_value=0.38,         # design point (DP) input
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
                            OD_start_value=0.38, 
-                           OD_end_value=0.08, 
+                           #    OD_end_value=0.08,                             
+                           OD_end_value=0.36,                             
                            OD_point_step_value=-0.01,   # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 0.30, None, None,          # off design (OD) input: single input value
@@ -77,7 +78,7 @@ def main():
                     station_out = 2,        # station nr out (station strings are also allowed, e.g. '010' and '020')
                     Wdes = 19.9,            # design inlet mass flow
                     PRdes = 1,              # design pressure ratio (PR = 1 - Ploss_relative)
-                    gas_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
+                    fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
 
     compressor1 = TCompressor(owner=turbojet,               # owning system model object
                               name='Compressor1',           # component name
@@ -93,7 +94,7 @@ def main():
                               SpeedOption='GG',             # speed option
                               Bleeds=None,                  # optional list of bleeds
                               heatpaths = None,             # optional list of heat path links with heatsinks
-                              gas_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
+                              fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
 
     combustor1 = TCombustor(owner=turbojet,                 # owning system model object
                             name='Combustor1',              # component name
@@ -126,7 +127,7 @@ def main():
                             OCratiodes=0,               # OCratio
                             FuelCompositiondes=None,    # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
                             A=None,                     # Cross flow area to calculate fundamental pressue loss
-                            gas_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
+                            fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
                             # example with Texit as design input:
                             # TCombustor(turbojet, 'combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
 
@@ -160,14 +161,14 @@ def main():
                            TurbineType='GG',            # turbine type 'GG' = gas generator delivering all power required by the shaft
                                                         # 'PT' = free power turbine or turbine driving power output shaft
                            CoolingFlows=None,           # optional cooling flows object list
-                           Polytropic_DP_eta=0          # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
-                           )
+                           Polytropic_DP_eta=0,         # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
+                           fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
     duct1    = TDuct(owner=turbojet,                    # owning system model object
                      name='ExhDuct',                    # component name
                      station_in=5, 
                      station_out=7,                     # station nr in and out
-                     PRdes=1.0                          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
-                    )
+                     PRdes=1.0,                          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+                     fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
 
     exhaustnozzle = TExhaustNozzle(owner=turbojet,      # owning system model object
                                    name='ExhaustNozzle',# component name
@@ -177,8 +178,8 @@ def main():
                                                         # con-di nozzle model still to be implemented
                                    CXdes=1,             # design CX thrust coefficient
                                    CVdes=1,             # design CV velocity coefficient
-                                   CDdes=1              # design CD discharge coefficient
-                                   )
+                                   CDdes=1,              # design CD discharge coefficient
+                                   fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
 
     # create a turbojet system model
     turbojet.define_comp_run_list(  fuelcontrol,
@@ -196,17 +197,31 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=0)
-    turbojet.Run_DP_simulation(descr = 'Dry Air')
+    # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
+    # turbojet.Run_DP_simulation(descr = 'Dry Air')
 
-    # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=100, enable_liquid_water = True)
+    # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=100)
     # turbojet.Run_DP_simulation(descr = 'RH=100')
 
-    # turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None, H2O_mass_pct=4, enable_liquid_water = True)
-    # turbojet.Run_DP_simulation(descr = '4%')
+    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=100, enable_liquid_water = True)
+    turbojet.Run_DP_simulation(descr = 'RH=100, L=true')
 
+    # should generate error (oversaturated air, RH>100% and enable_liquid_water = False)
     # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=200)
     # turbojet.Run_DP_simulation(descr = 'RH=200')
+
+    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=200, enable_liquid_water = True)
+    turbojet.Run_DP_simulation(descr = 'RH=200, L=true')
+
+    # should generate error (oversaturated air, RH>100% and enable_liquid_water = False)
+    # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, H2O_mass_pct=4)
+    # turbojet.Run_DP_simulation(descr = '4%')
+
+    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, H2O_mass_pct=4, enable_liquid_water = True)
+    turbojet.Run_DP_simulation(descr = '4%, L=true')
+
+    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, H2O_mass_pct=10, enable_liquid_water = True)
+    turbojet.Run_DP_simulation(descr = '10%, L=true')
 
     run_OD = True
 
@@ -218,8 +233,8 @@ def main():
         print("=======================")
         # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
         # conditions is desired
-        turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None, RH=0)
-        # turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None, H2O_mass_pct=2, enable_liquid_water = True)
+        # turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None, RH=100)
+        turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None, H2O_mass_pct=10, enable_liquid_water = True)
         # Run OD simulation
         # turbojet.VERBOSE = False # suppress OD output to terminal
         turbojet.Run_OD_simulation()

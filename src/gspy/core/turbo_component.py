@@ -123,10 +123,11 @@ class TTurboComponent(TGaspath):
     # 1.6 WV
     def ReadTurboMapAndSetScaling(self):
         if self.maps_by_angle == None:  # single map only in map object
-            self.map.ReadMapAndGetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
+            # self.map.ReadMapAndGetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
+            self.map.ReadMapAndGetScaling(self.Ncdes, self.fs_in_des.Wc, self.PRdes, self.Etades)
         else:
             # scale the desig point map
-            SFnc, SFwc, SFpr, SFeta = self.map.ReadMapAndGetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
+            SFnc, SFwc, SFpr, SFeta = self.map.ReadMapAndGetScaling(self.Ncdes, self.fs_in_des.Wc, self.PRdes, self.Etades)
             # now copy the scaling factors to the other maps
 
             for angle, tmap in self.maps_by_angle.items():
@@ -172,7 +173,7 @@ class TTurboComponent(TGaspath):
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
-            self.Ncdes = self.Ndes / fu.GetRotorspeedCorrectionFactor(self.gas_in)
+            self.Ncdes = self.Ndes / fu.GetRotorspeedCorrectionFactor(self.fs_in)
             self.Nc = self.Ncdes
             self.Eta = self.Etades
             self.shaft = self.owner.get_shaft(self.shaft_id)

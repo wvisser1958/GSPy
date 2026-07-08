@@ -19,7 +19,7 @@ from math import log, exp
 from scipy.optimize import root, root_scalar
 import cantera as ct
 import gspy.core.constants as c
-from gspy.core.gaspath_condition import TGaspathCondition
+from gspy.core.gaspath_condition import TFlowState
 
 atomweightC = 12.010914
 molemassCO2 = 44.0098
@@ -31,12 +31,14 @@ MM_NO2 = 46.00554
 
 # functions for corrected rotor speed Nc and mass flow Wc
 # divide N by GetRotorspeedCorrectionFactor to get Nc corrected
-def GetRotorspeedCorrectionFactor(gas: ct.Quantity):
-    return math.sqrt(gas.T/c.T_std)
+# def GetRotorspeedCorrectionFactor(gas: ct.Quantity):
+def GetRotorspeedCorrectionFactor(fs : TFlowState):
+    return math.sqrt(fs.T/c.T_std)
 
 # multiply W by GetFlowCorrectionFactor to get Wc corrected
-def GetFlowCorrectionFactor(gas: ct.Quantity):
-    return math.sqrt(gas.T/c.T_std) / (gas.P/c.P_std)
+# def GetFlowCorrectionFactor(gas: ct.Quantity):
+def GetFlowCorrectionFactor(fs : TFlowState):
+    return math.sqrt(fs.T/c.T_std) / (fs.P/c.P_std)
 
 def set_enthalpy(gas, target_enthalpy):
     def equation(Titer):
@@ -128,7 +130,7 @@ def exit_T_and_enthalpy_for_pressure_ratio(gas, target_PR, eta_is) :
     return gas.T, gas.enthalpy_mass
 
 # def Compression(gas_in: ct.Quantity, gas_out: ct.Quantity, PR, Eta, Polytropic_Eta = 0):
-def Compression(gas_in: TGaspathCondition, gas_out: TGaspathCondition, PR, Eta, Polytropic_Eta = 0):
+def Compression(gas_in: TFlowState, gas_out: TFlowState, PR, Eta, Polytropic_Eta = 0):
     # v1.4 polytropic efficiency option
     if Polytropic_Eta == 1:
         R = ct.gas_constant / gas_in.phase.mean_molecular_weight
