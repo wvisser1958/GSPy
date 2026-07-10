@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 import cantera as ct
 from pathlib import Path
 from scipy.optimize import root
+import gspy.core.constants as c
 from gspy.core.ambient import TAmbient
 from gspy.core.gaspath import TGaspath
 from gspy.core.heatsink import THeatsink
@@ -82,6 +83,47 @@ class TSystemModel:
         self.cantera_yaml_path = use_yaml
         self.vprint(f"Using Cantera YAML file {use_yaml}")
         self.gas = ct.Solution(str(use_yaml))
+
+        #  moved from constants
+        # Mole fractions from the Air_composition table
+        self.air_X = self._normalize({
+            sp: x
+            for sp, x in c.air_composition_moles_array
+        })
+
+        # mass fractions via Cantera gas from the mole composition
+        self.gas.TPX = c.T_standard_ref, c.P_standard_ref, self.air_X
+        Y = self.gas.Y
+        self.air_Y = {
+            sp: Y[self.gas.species_index(sp)]
+            for sp in self.air_X
+        }
+
+        s_air_composition_moles = '' 
+        s_air_composition_mass = '' 
+
+        for species, molefraction in self.air_X.items():
+            if s_air_composition_moles != '' :
+                s_air_composition_moles = s_air_composition_moles + ', '
+            s_air_composition_moles = s_air_composition_moles + species + ':' + str(molefraction)
+        for species, massfraction in self.air_Y.items():
+            # m_total = m_total + massfraction            should be 1.0 !
+            if s_air_composition_mass != '' :
+                s_air_composition_mass = s_air_composition_mass + ', '
+            s_air_composition_mass = s_air_composition_mass + species + ':' + str(massfraction)
+
+        #  not used at the moment, but could be useful for diagnostics, output etc.
+        # Accessing the tuple for 'O2' (finding the tuple by its first element)
+        # O2_tuple = next(item for item in Air_composition if item[0] == 'O2')
+        # CO2_tuple = next(item for item in Air_composition if item[0] == 'CO2')
+        # AR_tuple = next(item for item in Air_composition if item[0] == 'AR')
+        # N2_tuple = next(item for item in Air_composition if item[0] == 'N2')
+
+        # air_O2_fraction_mass = O2_tuple[1]
+        # air_O2_fraction_moles = O2_tuple[2]
+        # air_CO2_fraction_mass = CO2_tuple[1]
+        # air_Ar_fraction_mass = AR_tuple[1]
+        # air_N2_fraction_mass = N2_tuple[1]
 
         # for fast lookup of gas species indices/factions etc. in the gas object, fastest in hot loops.
         self.i_O2  = self.gas.species_index("O2")
@@ -154,6 +196,17 @@ class TSystemModel:
         self.exception_error = 4
 
         self.continue_next_OD_point_on_error = True
+
+    @staticmethod
+    def _normalize(comp: dict[str, float],
+                tol: float = 1e-12) -> dict[str, float]:
+        total = sum(comp.values())
+
+        if abs(total - 1.0) <= tol:
+            return comp.copy()
+
+        inv_total = 1.0 / total
+        return {sp: val * inv_total for sp, val in comp.items()}
 
     def vprint(self, *args, **kwargs):
         if self.VERBOSE:

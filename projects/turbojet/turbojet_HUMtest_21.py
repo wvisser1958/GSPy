@@ -197,8 +197,8 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
-    # turbojet.Run_DP_simulation(descr = 'Dry Air')
+    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
+    turbojet.Run_DP_simulation(descr = 'Dry Air')
 
     # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=100)
     # turbojet.Run_DP_simulation(descr = 'RH=100')
@@ -210,8 +210,8 @@ def main():
     # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=200)
     # turbojet.Run_DP_simulation(descr = 'RH=200')
 
-    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=200, enable_liquid_water = True)
-    turbojet.Run_DP_simulation(descr = 'RH=200, L=true')
+    # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, RH=200, enable_liquid_water = True)
+    # turbojet.Run_DP_simulation(descr = 'RH=200, L=true')
 
     # should generate error (oversaturated air, RH>100% and enable_liquid_water = False)
     # turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, H2O_mass_pct=4)
@@ -223,7 +223,7 @@ def main():
     turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, H2O_mass_pct=10, enable_liquid_water = True)
     turbojet.Run_DP_simulation(descr = '10%, L=true')
 
-    run_OD = True
+    run_OD = False
 
     if run_OD:
         # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints

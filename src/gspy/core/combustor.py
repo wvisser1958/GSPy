@@ -70,6 +70,8 @@ class TCombustor(TGaspath):
         self.CO2_molar_mass = self.owner.gas.molecular_weights[self.owner.gas.species_index('CO2')]
         self.H2O_molar_mass = self.owner.gas.molecular_weights[self.owner.gas.species_index('H2O')]
 
+        self.scratch_quantity = None  # scratch quantity for enthalpy calculations
+
     #  1.4 use separate routine, for allowing change of fuel for OD simulation cases
     def SetFuel(self, aTfuel, aLHV, aHCratio, aOCratio, aFuelComposition):
         self.Tfuel = aTfuel
@@ -248,14 +250,20 @@ class TCombustor(TGaspath):
         def CalcEndConditions(PointTime):
             # self.GetLHV()
             if (self.FuelComposition == '') or (self.FuelComposition is None):  # fuel specification based on LHV, HC and OC mole ratio
-                #  2.1
-                Yin = self.fs_in.gas_q.Y
-                w_gas_in = self.fs_in.gas_q.mass
+                #  2.1 use fs_out instead as the gas prior to mixing with fuel, 
+                # as fs_out.Y has been corrected for any liquid water (using self.fs_out.disable_liquid_model(collapse=True): 
+                # m_liq added to m_vap so that the gas composition is correct for the combustion calculation
+                # Yin = self.fs_in.gas_q.Y
+                # w_gas_in = self.fs_in.gas_q.mass
+                Yin = self.fs_out.gas_q.Y
+                w_gas_in = self.fs_out.gas_q.mass
+
+                # fuel moles of the virtual fuel based on the specified H/C and O/C ratios (normalized to 1 mole of C)
                 fuel_moles = self.Wf / CHyOzMoleMass
 
                 O2_in_mass  = w_gas_in * Yin[self.owner.i_O2]
                 CO2_in_mass = w_gas_in * Yin[self.owner.i_CO2]
-                H2O_in_mass = self.fs_in.m_vap + self.fs_in.m_liq
+                H2O_in_mass = self.fs_out.m_vap
                 AR_in_mass  = w_gas_in * Yin[self.owner.i_AR]
                 N2_in_mass  = w_gas_in * Yin[self.owner.i_N2]
 
@@ -298,22 +306,31 @@ class TCombustor(TGaspath):
                 # at Tref and Pref, which is needed for the LHV-based calculation of the final enthalpy of the products after combustion
                 m_gas = self.fs_in.gas_q.mass
                 m_liq = self.fs_in.m_liq
-                self.fs_out.TPY = c.T_standard_ref, c.P_standard_ref, self.fs_in.gas_q.Y
-                h_gas_in_ref = self.fs_out.enthalpy_mass
+
+                # self.fs_out.TPY = c.T_standard_ref, c.P_standard_ref, self.fs_in.gas_q.Y
+                if self.scratch_quantity is None:
+                    self.scratch_quantity = ct.Quantity(self.owner.gas)
+                self.scratch_quantity.TPY = c.T_standard_ref, c.P_standard_ref, self.fs_in.gas_q.Y
+                h_gas_in_ref = self.scratch_quantity.enthalpy_mass
+
+                # move to constants
                 #  add liquid water:
-                w = ct.Water()
-                w.TQ = c.T_standard_ref, 0.0          # saturated liquid water at Tref
-                h_liq_ref = w.enthalpy_mass
+                # w = ct.Water()
+                # w = self.fs_out._scratch_water
+                # w.TQ = c.T_standard_ref, 0.0          # saturated liquid water at Tref
+                # h_liq_ref = w.enthalpy_mass
+
                 H_in_ref = (
                     m_gas * h_gas_in_ref
-                    + m_liq * h_liq_ref
+                    + m_liq * c.h_liq_ref
                 ) 
 
                 # redefine gas_out for enthalpy of combustion products mixture at Pref and Tref of
                 # assume all gas phase
                 self.fs_out.gas_q.TPY = c.T_standard_ref, c.P_standard_ref, Yprod
                 # make sure fuel mass flow added to the inlet gas flow (before working on total H !):
-                self.fs_out.W_gas = self.fs_in.mass + self.Wf
+                # self.fs_out.W_gas = self.fs_in.mass + self.Wf
+                self.fs_out.W = self.fs_out.W + self.Wf
                 # H_prod_ref is the enthalpy of the products at the reference conditions, 
                 # which is used as a baseline for calculating the final enthalpy of the products 
                 # after combustion based on the specified LHV and the enthalpy of the inlet gas 
@@ -443,6 +460,7 @@ class TCombustor(TGaspath):
         H_in_initial = self.fs_in.H_total
 
         if (self.FuelComposition == '') or (self.FuelComposition == None):
+            # fuel mole mass for the virtual fuel based on the specified H/C and O/C ratios (normalized to 1 mole of C)
             CHyOzMoleMass = self.C_atom_weight + self.H_atom_weight * self.HCratio + self.O_atom_weight * self.OCratio
 
         # 2.1

@@ -250,15 +250,122 @@ class TFlowState:
         # return self.enable_liquid_model and (not self.force_gas_only) and self._has_water()
         return self.enable_liquid_water and self._has_water()
 
-    def _collapse_to_gas_only(self):
-        self.m_total_water = self.m_vap
 
-    def disable_liquid_model(self, collapse=True):
-        # self.enable_liquid_model = False
-        # self.force_gas_only = True
-        self.enable_liquid_water = False
+    def disable_liquid_model(self, collapse: bool = False):
+        """
+        Disable separate liquid-water tracking.
+
+        After calling this method:
+
+            enable_liquid_water = False
+
+        and the object behaves as a gas-only thermodynamic state. No further
+        condensation or evaporation calculations are performed, improving
+        computational performance.
+
+        Parameters
+        ----------
+        collapse : bool, default=False
+
+            False
+                Disable the liquid-water model only if no liquid water is
+                currently present (m_liq <= LIQ_TOL).
+
+                If liquid water is still present, a RuntimeError is raised.
+                This is useful as a consistency check to detect unexpected
+                liquid water in components where it should not exist.
+
+            True
+                Convert all remaining liquid water into gas-phase H2O,
+                conserving total water mass and total flow mass, then disable
+                the liquid-water model.
+
+                This option should be used whenever the physics guarantees
+                that any remaining liquid water will evaporate before further
+                calculations are performed.
+
+        Typical usage
+        -------------
+        Ambient / inlet with possible fog or rain:
+            enable_liquid_water = True
+
+        Compressor with wet compression:
+            enable_liquid_water = True
+
+        Combustor:
+            disable_liquid_model(collapse=True)
+            # Remaining liquid water is assumed to evaporate before or during
+            # combustion.
+
+        Turbine inlet:
+            Liquid model already disabled.
+
+        Turbine, ducts, nozzles:
+            disable_liquid_model(collapse=False)
+            # Simply disable liquid tracking for maximum performance.
+            # Raises an exception if liquid water unexpectedly remains.
+
+        Recuperator:
+        compressor
+        ↓
+        combustor
+        ↓
+        turbine
+        ↓
+        recuperator
+
+        You know the turbine exit is 900 K.
+        Therefore: m_liq == 0 Always.
+        So the recuperator can simply do:
+        self.fs_in.disable_liquid_model(collapse=False)
+        and from then on all subsequent property setters use the fast gas-only path.            
+
+        Notes
+        -----
+        With collapse=True, the gas mass increases by the evaporated liquid
+        mass and the gas composition is updated so that the liquid water is
+        converted into gas-phase H2O. Mass is therefore conserved.
+
+        With collapse=False, no thermodynamic state is modified; only liquid
+        tracking is disabled. This is therefore only valid if no liquid water
+        is present.
+        """
         if collapse:
-            self._collapse_to_gas_only()
+            m_liq_old = self.m_liq
+
+            if m_liq_old > self.LIQ_ABS_TOL:
+                # Add liquid water to gas phase as H2O vapor
+                m_gas_old = self.gas_q.mass
+                m_gas_new = m_gas_old + m_liq_old
+
+                Y_old = self.gas_q.Y.copy()
+                i_h2o = self.gas_q.species_index("H2O")
+
+                Y_new = Y_old * (m_gas_old / m_gas_new)
+                Y_new[i_h2o] += m_liq_old / m_gas_new
+
+                T = self.T
+                P = self.P
+
+                self.gas_q.TPY = T, P, Y_new
+                self.gas_q.mass = m_gas_new
+
+            self.enable_liquid_water = False
+            self.m_total_water = self.gas_q.mass * self._gas_h2o_mass_fraction()
+
+            if hasattr(self, "_m_vap"):
+                self._m_vap = self.m_total_water
+            if hasattr(self, "_m_liq"):
+                self._m_liq = 0.0
+
+        else:
+            if self.m_liq > self.LIQ_ABS_TOL:
+                raise RuntimeError(
+                    f"Cannot disable liquid model while liquid water is present at station {self.station_nr}. "
+                    "Use collapse=True to convert liquid water to gas-phase H2O."
+                )
+
+            self.enable_liquid_water = False
 
     def maybe_disable_liquid_model(self, T_threshold=700.0):
         if self.T >= T_threshold and self.m_liq <= self.LIQ_ABS_TOL:
@@ -379,7 +486,7 @@ class TFlowState:
         # fastest path: pure gas-only
         if not self._use_liquid_model():
             self.gas_q.TP = T, P
-            self._collapse_to_gas_only()
+            self.disable_liquid_model(collapse=True)
             self._set_static_equal_total()
             return
 
@@ -736,7 +843,7 @@ class TFlowState:
 
         if not self._use_liquid_model():
             self.gas_q.TP = T, P
-            self._collapse_to_gas_only()
+            self.disable_liquid_model(collapse=True)
             return self._quick_state_dict()
 
         dry_basis_X = self._current_dry_basis_X()
@@ -766,7 +873,7 @@ class TFlowState:
 
         if not self._use_liquid_model():
             self.gas_q.HP = H_target / self.W_gas, P_target
-            self._collapse_to_gas_only()
+            self.disable_liquid_model(collapse=True)
             return self._quick_state_dict()
 
         if T_low is None:
@@ -802,7 +909,7 @@ class TFlowState:
 
         if not self._use_liquid_model():
             self.gas_q.SP = S_target / self.W_gas, P_target
-            self._collapse_to_gas_only()
+            self.disable_liquid_model(collapse=True)
             return self._quick_state_dict()
 
         if T_low is None:
@@ -926,7 +1033,7 @@ class TFlowState:
         self.m_total_water = self.m_vap + liq_old
 
         if not self.enable_liquid_water:
-            self._collapse_to_gas_only()
+            self.disable_liquid_model(collapse=True)
             return
 
         if repartition:
@@ -952,7 +1059,7 @@ class TFlowState:
                 self.gas_q.SP = value, P
             else:
                 raise ValueError("mode must be 'H' or 'S'")
-            self._collapse_to_gas_only()
+            self.disable_liquid_model(collapse=True)
             return
 
         if mode == "H":
@@ -1099,7 +1206,7 @@ class TFlowState:
     #     n_h2o_total = x_req / max(1.0 - x_req, 1e-15) * n_dry
     #     self.m_total_water = n_h2o_total * self.MW_H2O
     #     if not self.enable_liquid_water:
-    #         self._collapse_to_gas_only()
+    #         self.disable_liquid_model(collapse=True)
     def _initialize_from_requested_x(self, T, P, dry_basis_X, x_req):
         x_sat = self._sat_water_mole_fraction(T, P)
 
@@ -1133,12 +1240,11 @@ class TFlowState:
         # if m_liq_raw <= liq_tol:
         #     self.m_total_water = self.m_vap
         if (m_liq_raw <= liq_tol) or (not self.enable_liquid_water):
-            self._collapse_to_gas_only()
+            self.disable_liquid_model(collapse=True)
 
     # ------------------------------------------------------------------
     # pure thermodynamic helpers
     # ------------------------------------------------------------------
-
     def _gas_h2o_mass_fraction(self):
         return self.Y.get("H2O", 0.0)
 

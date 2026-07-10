@@ -48,7 +48,7 @@ class TAmbient(TComponent):
         
         # GC
         # self.Gas_Ambient = ct.Quantity(self.owner.gas)
-        self.fs_ambient = TFlowState.from_RH(self.owner.gas, 1, stationnr, 288.15, 101325, RH, c.dry_air_mole_composition)
+        self.fs_ambient = TFlowState.from_RH(self.owner.gas, 1, stationnr, 288.15, 101325, RH, self.owner.air_X)
 
         self.owner.gaspath_conditions[self.station_nr] = self.fs_ambient
 
@@ -71,7 +71,7 @@ class TAmbient(TComponent):
 
         # no humidity specified -> dry air
         if self.humidity_mode is None:
-            return dict(c.air_composition_moles)
+            return dict(self.owner.air_X)
 
         # ----------------------------------------------------------
         # Relative humidity [%]
@@ -87,7 +87,7 @@ class TAmbient(TComponent):
             if not (0.0 <= x_h2o < 1.0):
                 raise ValueError(f"Invalid RH gives x_h2o={x_h2o:.6f}")
 
-            X = {k: v * (1.0 - x_h2o) for k, v in c.air_composition_moles.items()}
+            X = {k: v * (1.0 - x_h2o) for k, v in self.owner.air_X.items()}
             X["H2O"] = x_h2o
             return X
 
@@ -101,7 +101,7 @@ class TAmbient(TComponent):
             if not (0.0 <= x_h2o < 1.0):
                 raise ValueError(f"Invalid H2O_vol_pct gives x_h2o={x_h2o:.6f}")
 
-            X = {k: v * (1.0 - x_h2o) for k, v in c.air_composition_moles.items()}
+            X = {k: v * (1.0 - x_h2o) for k, v in self.owner.air_X.items()}
             X["H2O"] = x_h2o
             return X
 
@@ -115,7 +115,7 @@ class TAmbient(TComponent):
             if not (0.0 <= y_h2o < 1.0):
                 raise ValueError(f"Invalid H2O_mass_pct gives y_h2o={y_h2o:.6f}")
 
-            Y = {k: v * (1.0 - y_h2o) for k, v in c.air_composition_mass.items()}
+            Y = {k: v * (1.0 - y_h2o) for k, v in self.owner.air_Y.items()}
             Y["H2O"] = y_h2o
 
             # temporary set state to convert Y -> X
@@ -203,8 +203,8 @@ class TAmbient(TComponent):
             total_mass=1.0,
             humidity_mode=hum_mode,
             humidity_value=hum_value,
-            dry_X_dict=c.air_composition_moles,
-            dry_Y_dict=c.air_composition_mass)   
+            dry_X_dict=self.owner.air_X,
+            dry_Y_dict=self.owner.air_Y)   
         return     
 
     def Run(self, Mode, PointTime):
