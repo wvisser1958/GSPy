@@ -94,7 +94,7 @@ def main():
                               SpeedOption='GG',             # speed option
                               Bleeds=None,                  # optional list of bleeds
                               heatpaths = None,             # optional list of heat path links with heatsinks
-                              fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
+                              fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ", "N2", "AR"] )
 
     combustor1 = TCombustor(owner=turbojet,                 # owning system model object
                             name='Combustor1',              # component name
@@ -127,7 +127,7 @@ def main():
                             OCratiodes=0,               # OCratio
                             FuelCompositiondes=None,    # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
                             A=None,                     # Cross flow area to calculate fundamental pressue loss
-                            fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
+                            fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ", "N2", "AR"] )
                             # example with Texit as design input:
                             # TCombustor(turbojet, 'combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
 
@@ -162,7 +162,7 @@ def main():
                                                         # 'PT' = free power turbine or turbine driving power output shaft
                            CoolingFlows=None,           # optional cooling flows object list
                            Polytropic_DP_eta=0,         # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
-                           fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ"] )
+                           fs_out_output_species = ["CO2", "H2O", "O2", "H2O_LIQ", "N2", "AR"] )
     duct1    = TDuct(owner=turbojet,                    # owning system model object
                      name='ExhDuct',                    # component name
                      station_in=5, 

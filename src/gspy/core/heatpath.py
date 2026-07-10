@@ -12,12 +12,15 @@
 
 # Authors
 #   Wilfried Visser
-
+import math
 import numpy as np
+import cantera as ct
 from gspy.core.base_component import TComponent
 from gspy.core.gaspath import TGaspath
 import gspy.core.utils as fu
+import gspy.core.constants as c
 import sympy as sp
+from gspy.core.flow_state import TFlowState
 
 class THeatpath(TComponent):
 
@@ -88,8 +91,41 @@ class THeatpath(TComponent):
         return expr, f
 
     def Run(self, Mode, PointTime):
-        if self.owner is TGaspath:
-            T_hx = self.owner.fs_in.T + self.location_factor * (self.owner.fs_out.T - self.owner.fs_in.T)
+        if self.q_user is not None:
+            Q_total = self.q_user
+        else:
+            # set the gas conditions at the heat path location (between entry and exit of the gas path component)
+            if self.owner is TGaspath:
+                T_hx = self.owner.fs_in.T + self.location_factor * (self.owner.fs_out.T - self.owner.fs_in.T)
+                P_hx = self.owner.fs_in.P + self.location_factor * (self.owner.fs_out.P - self.owner.fs_in.P)
+            if self.scratch_fs is None:
+                self.scratch_fs = TFlowState.create_empty(self.owner.gas, station_nr=self.station_in+'_hs')
+            self.scratch_fs.copy_from(self.fs_in, self.station_in+'_hs')
+            # for now we are using the total gas T and P (as near/at the wal there there is stagnation temperature)
+            self.scratch_fs.TPY = T_hx, P_hx, self.fs_in.gas_q.Y
+
+            # calculate the heat transfer from the gas to the wall (convection) and through the wall (conduction)
+            mu_hs = self.scratch_fs.gas_q.viscosity
+            Rho_hs = self.scratch_fs.gas_q.density
+            c_hs = self.scratch_fs.gas_q.mass/self.a_flow/Rho_hs
+            Re = Rho_hs * c_hs * self.d_re / mu_hs
+            Pr = mu_hs * self.scratch_fs.gas_q.cp / self.scratch_fs.gas_q.thermal_conductivity 
+            Nu = self.Nu_func(Re, Pr)
+            hs_convection = Nu * self.k_gas / self.d_re
+            hs_conduction = self.k_mat / self.d_mat
+            hs_total = 1 / (1/hs_convection + 1/hs_conduction)
+            Q_conv_cond = hs_total * self.a_ht * (self.scratch_fs.T - self.heatsink.T)
+
+            # now with the calculated Q_conv_cond, we can calculate the wall temperature Twall for radiation            
+            if math.isclose(hs_conduction, 0.0, abs_tol=1e-12) or math.isclose(self.a_ht, 0.0, rel_tol=1e-12):
+                Twall = self.heatsink.T
+            else:
+                Twall = self.heatsink.T - Q_conv_cond/self.a_ht/hs_conduction
+           
+            # radiation heat transfer (from wall to ambient) is not yet included in the Q calculation
+            Q_rad = self.eps_rad * c.C_StefanBoltzmann * self.a_ht * (Twall**4-self.scratch_fs.T**4)  
+            Q_total = Q_conv_cond + Q_rad
+        return Q_total               
 
     def get_outputs(self):
         out = super().get_outputs()
