@@ -35,10 +35,10 @@ class TInlet(TGaspath):
             # 2.1 separate TGasCondition for fs_in (do not share with ambient gaspath_condition)
             # old Get the ambient conditions for the inlet fs_in conditions
             # old self.owner.gaspath_conditions[self.station_in] = self.owner.gaspath_conditions[self.owner.ambient.station_nr]
-            self.fs_in = TFlowState.create_empty(self.owner.gas, station_nr=self.station_in)
-            self.owner.gaspath_conditions[self.station_in] = self.fs_in
+            self.fs_in = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
+            self.system.gaspath_conditions[self.station_in] = self.fs_in
 
-        self.fs_in.copy_from(self.owner.gaspath_conditions[self.owner.ambient.station_nr], self.owner.ambient.station_nr)
+        self.fs_in.copy_from(self.system.gaspath_conditions[self.system.ambient.station_nr], self.system.ambient.station_nr)
 
         if Mode == 'DP':
             # now scale all masses (liquid and gas) from 1 (i.e. the mass of TAmbient) to Wdes
@@ -58,10 +58,10 @@ class TInlet(TGaspath):
             self.Wcdes = self.fs_in.W_gas * fu.GetFlowCorrectionFactor(self.fs_in)
             
             self.PR = self.PRdes
-            self.owner.states = np.append(self.owner.states, 1)
-            self.istate_wc = self.owner.states.size-1   # add state for corrected inlet flow wc more stable... state staying closer to 1 at high altitude
+            self.system.states = np.append(self.system.states, 1)
+            self.istate_wc = self.system.states.size-1   # add state for corrected inlet flow wc more stable... state staying closer to 1 at high altitude
         else:
-            self.Wc = self.owner.states[self.istate_wc] * self.Wcdes
+            self.Wc = self.system.states[self.istate_wc] * self.Wcdes
             if self.Wc < 0.001*self.Wcdes:
                 self.Wc = 0.001*self.Wcdes
 
@@ -90,7 +90,7 @@ class TInlet(TGaspath):
         self.fs_out.copy_from(self.fs_in, self.station_out)
         self.fs_out.TP = self.fs_in.T, self.fs_in.P * self.PR
         # self.fs_out.mass = self.fs_in.mass
-        self.RD = self.fs_in.W_gas * self.owner.ambient.V / 1000 # kN
+        self.RD = self.fs_in.W_gas * self.system.ambient.V / 1000 # kN
         # add ram drag to system level ram drag (note that multiple inlets may exist)
-        self.owner.RD = self.owner.RD + self.RD
+        self.system.RD = self.system.RD + self.RD
         return self.fs_out

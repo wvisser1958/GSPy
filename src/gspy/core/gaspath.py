@@ -35,6 +35,8 @@ class TGaspath(TComponent):
         # then not assigned anywhere so no need to Print/output.
         self.fs_in = None
         self.fs_out = None
+        # fs_in_q is a 'scratch' TFlowState for heat transfer between entry and start of process (e.g. compression, expansion)
+        self.fs_in_q = None
             # self.Wc = None
         self.PRdes = 1
         self.PR = None
@@ -45,17 +47,17 @@ class TGaspath(TComponent):
         self.fs_out_output_species = list(fs_out_output_species or [])
         self.fs_out_output_species_indices = [
             c.LIQUID_WATER_INDEX if sp.upper() == "H2O_LIQ"
-            else self.owner.gas.species_index(sp)
+            else self.system.gas.species_index(sp)
             for sp in self.fs_out_output_species
         ]
         #  2.1
         if enable_liquid_water is None:
-            self.enable_liquid_water = self.owner.sys_enable_liquid_water
+            self.enable_liquid_water = self.system.sys_enable_liquid_water
         else:
             self.enable_liquid_water = enable_liquid_water
 
     def Run(self, Mode, PointTime):
-        self.fs_in = self.owner.gaspath_conditions[self.station_in]
+        self.fs_in = self.system.gaspath_conditions[self.station_in]
 
         if Mode == 'DP':
             # create fs_inDes, fs_out cantera Quantity (fs_in already created)
@@ -63,8 +65,8 @@ class TGaspath(TComponent):
             # GC: 
             # self.fs_inDes = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass)
             # self.fs_out = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass)
-            self.fs_in_des = TFlowState.create_empty(self.owner.gas, station_nr=self.station_in)
-            self.fs_out = TFlowState.create_empty(self.owner.gas, station_nr=self.station_out)
+            self.fs_in_des = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
+            self.fs_out = TFlowState.create_empty(self.system.gas, station_nr=self.station_out)
 
             self.fs_in_des.copy_from(self.fs_in, self.station_in)
             self.fs_out.copy_from(self.fs_in, self.station_out)
@@ -83,8 +85,41 @@ class TGaspath(TComponent):
             #  here, in this abstract class we assume no phase change (liquid water) 
             self.fs_out.W_gas = self.fs_in.mass
 
-        self.owner.gaspath_conditions[self.station_out] = self.fs_out
+        # if heathpaths, add Q
+        self.Add_Q_to_fs_in_q()
+
+        self.system.gaspath_conditions[self.station_out] = self.fs_out
         return self.fs_out
+
+    def Add_Q_to_fs_in_q(self):
+        # Heat transfer with heat sink components
+        if self.fs_in_q is None:
+            # create fs_in_q
+            self.fs_in_q = TFlowState.create_empty(
+                self.fs_in.gas,
+                station_nr=self.fs_in.station_nr,
+            )
+        # copy from fs_in
+        self.fs_in_q.copy_from(
+            self.fs_in,
+            str(self.fs_in.station_nr) + '_hx',
+        )
+        # if heathpaths, add Q
+        if self.heatpaths:
+            Qhs_in = self.CalculateHeatTransfer(self.fs_in, 'inlet')
+            self.fs_in_q.HP = (
+                self.fs_in_q.H_total + Qhs_in,
+                self.fs_in_q.P,
+            )
+
+    def Add_Q_to_fs_out(self):
+        # if heathpaths, add Q
+        if self.heatpaths:
+            Qhs_out = self.CalculateHeatTransfer(self.fs_out, 'outlet')
+            self.fs_out.HP = (
+                self.fs_out.H_total + Qhs_out,
+                self.fs_out.P
+            )
 
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)

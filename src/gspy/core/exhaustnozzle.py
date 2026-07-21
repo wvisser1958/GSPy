@@ -45,12 +45,12 @@ class TExhaustNozzle(TGaspath):
         # add nozzle throat station
         # 2.1
         # self.GasThroat = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
-        self.fs_throat = TFlowState.create_empty(self.owner.gas, self.station_throat)
+        self.fs_throat = TFlowState.create_empty(self.system.gas, self.station_throat)
         self.fs_throat.copy_from(self.fs_in)
         
         Hin = self.fs_in.gas_q.enthalpy_mass
         Pin = self.fs_in.gas_q.P
-        Pout = self.owner.ambient.Psa
+        Pout = self.system.ambient.Psa
         # propelling nozzle, expansion flow
         # PR is nozzle PR Pout/Pin, only calculated (not given)
         # # v1.2
@@ -95,8 +95,8 @@ class TExhaustNozzle(TGaspath):
                 self.Vthroat = Vthroat_is
             self.Tthroat = self.fs_throat.T
             # exit flow error
-            self.owner.errors = np.append(self.owner.errors, 0)
-            self.ierror_w = self.owner.errors.size - 1
+            self.system.errors = np.append(self.system.errors, 0)
+            self.ierror_w = self.system.errors.size - 1
             if self.Vthroat <= 0:
                 self.Vthroat = 0.001  # always assume a minimal flow velocity: 0.001 will result in a theoretical
                                     # very large exhaust area
@@ -110,16 +110,16 @@ class TExhaustNozzle(TGaspath):
             self.Pthroat, self.Tthroat, Vthroat_is, massflow = fu.calculate_expansion_to_A(self.fs_in.gas_q.phase, Pin/Pout, self.Athroat)
             self.fs_throat.TP = self.Tthroat, self.Pthroat
             self.Vthroat = Vthroat_is * self.CVdes
-            self.owner.errors[self.ierror_w] = (fu.scalar(self.fs_in.mass) - massflow) / fu.scalar(self.fs_in_des.W_gas)
+            self.system.errors[self.ierror_w] = (fu.scalar(self.fs_in.mass) - massflow) / fu.scalar(self.fs_in_des.W_gas)
             # 1.301 use Vthroat_is for Mach number
             # self.Mthroat = self.Vthroat / self.GasThroat.phase.sound_speed
             self.Mthroat = Vthroat_is / self.fs_throat.gas_q.phase.sound_speed
         self.fs_out.TP = self.Tthroat, Pout # assume no further expansion
         self.FG = self.CXdes * (fu.scalar(self.fs_out.W_gas) * self.Vthroat + self.Athroat*(self.Pthroat-Pout)) / 1000 # kN
         # add gross thrust to system level thrust (note that multiple propelling nozzles may exist)
-        self.owner.FG = self.owner.FG + self.FG
+        self.system.FG = self.system.FG + self.FG
         self.Athroat_geom = self.Athroat / self.CDdes
-        self.owner.gaspath_conditions[self.station_throat] = self.fs_throat
+        self.system.gaspath_conditions[self.station_throat] = self.fs_throat
         return self.fs_out
 
     def PrintPerformance(self, Mode, PointTime):

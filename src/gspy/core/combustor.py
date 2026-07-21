@@ -62,13 +62,13 @@ class TCombustor(TGaspath):
         self.istate_Wf = None
         self.ierror_Texit = None
 
-        self.C_atom_weight = self.owner.gas.atomic_weight(self.owner.gas.element_index('C'))
-        self.O_atom_weight = self.owner.gas.atomic_weight(self.owner.gas.element_index('O'))
-        self.H_atom_weight = self.owner.gas.atomic_weight(self.owner.gas.element_index('H'))
+        self.C_atom_weight = self.system.gas.atomic_weight(self.system.gas.element_index('C'))
+        self.O_atom_weight = self.system.gas.atomic_weight(self.system.gas.element_index('O'))
+        self.H_atom_weight = self.system.gas.atomic_weight(self.system.gas.element_index('H'))
 
-        self.O2_molar_mass = self.owner.gas.molecular_weights[self.owner.gas.species_index('O2')]
-        self.CO2_molar_mass = self.owner.gas.molecular_weights[self.owner.gas.species_index('CO2')]
-        self.H2O_molar_mass = self.owner.gas.molecular_weights[self.owner.gas.species_index('H2O')]
+        self.O2_molar_mass = self.system.gas.molecular_weights[self.system.gas.species_index('O2')]
+        self.CO2_molar_mass = self.system.gas.molecular_weights[self.system.gas.species_index('CO2')]
+        self.H2O_molar_mass = self.system.gas.molecular_weights[self.system.gas.species_index('H2O')]
 
         self.scratch_quantity = None  # scratch quantity for enthalpy calculations
 
@@ -103,7 +103,7 @@ class TCombustor(TGaspath):
         Y_CH4 = gas_reactants.Y[gas_reactants.species_index('CH4')]
         LHV = -(h_prod - h_react) / Y_CH4 / 1e3  # convert J/kg → kJ/kg
 
-        self.owner.vprint(f"LHV of CH4 (H2O vapor): {LHV:.2f} kJ/kg")
+        self.system.vprint(f"LHV of CH4 (H2O vapor): {LHV:.2f} kJ/kg")
 
     def fundamental_pressure_loss_rayleigh(self, A):
         """
@@ -241,7 +241,7 @@ class TCombustor(TGaspath):
     def Run(self, Mode, PointTime):
         if isinstance(self.control, str):
             try:
-                self.control = self.owner.components[self.control]   # resolve by name -> object
+                self.control = self.system.components[self.control]   # resolve by name -> object
             except Exception as e:
                 raise ValueError(
                     f"Combustor '{self.name}': Control '{self.control}' cannot be resolved to an object. ({e})"
@@ -261,11 +261,11 @@ class TCombustor(TGaspath):
                 # fuel moles of the virtual fuel based on the specified H/C and O/C ratios (normalized to 1 mole of C)
                 fuel_moles = self.Wf / CHyOzMoleMass
 
-                O2_in_mass  = w_gas_in * Yin[self.owner.i_O2]
-                CO2_in_mass = w_gas_in * Yin[self.owner.i_CO2]
+                O2_in_mass  = w_gas_in * Yin[self.system.i_O2]
+                CO2_in_mass = w_gas_in * Yin[self.system.i_CO2]
                 H2O_in_mass = self.fs_out.m_vap
-                AR_in_mass  = w_gas_in * Yin[self.owner.i_AR]
-                N2_in_mass  = w_gas_in * Yin[self.owner.i_N2]
+                AR_in_mass  = w_gas_in * Yin[self.system.i_AR]
+                N2_in_mass  = w_gas_in * Yin[self.system.i_N2]
 
                 O2_exit_mass = (
                     O2_in_mass
@@ -287,13 +287,13 @@ class TCombustor(TGaspath):
                 Ar_exit_mass = AR_in_mass
                 N2_exit_mass = N2_in_mass
 
-                Yprod = np.zeros(self.owner.gas.n_species)
+                Yprod = np.zeros(self.system.gas.n_species)
 
-                Yprod[self.owner.i_O2]  = O2_exit_mass
-                Yprod[self.owner.i_CO2] = CO2_exit_mass
-                Yprod[self.owner.i_H2O] = H2O_exit_mass
-                Yprod[self.owner.i_AR]  = Ar_exit_mass
-                Yprod[self.owner.i_N2]  = N2_exit_mass
+                Yprod[self.system.i_O2]  = O2_exit_mass
+                Yprod[self.system.i_CO2] = CO2_exit_mass
+                Yprod[self.system.i_H2O] = H2O_exit_mass
+                Yprod[self.system.i_AR]  = Ar_exit_mass
+                Yprod[self.system.i_N2]  = N2_exit_mass
 
                 Yprod /= Yprod.sum()
                 # for debug:
@@ -309,7 +309,7 @@ class TCombustor(TGaspath):
 
                 # self.fs_out.TPY = c.T_standard_ref, c.P_standard_ref, self.fs_in.gas_q.Y
                 if self.scratch_quantity is None:
-                    self.scratch_quantity = ct.Quantity(self.owner.gas)
+                    self.scratch_quantity = ct.Quantity(self.system.gas)
                 self.scratch_quantity.TPY = c.T_standard_ref, c.P_standard_ref, self.fs_in.gas_q.Y
                 h_gas_in_ref = self.scratch_quantity.enthalpy_mass
 
@@ -359,7 +359,7 @@ class TCombustor(TGaspath):
                 # if Mode == 'DP':
                 if self.fuel is None:
                     # create separate fuel quantity for mixing with gas_in
-                    self.fuel = ct.Quantity(self.owner.gas)
+                    self.fuel = ct.Quantity(self.system.gas)
                 self.fuel.mass = self.Wf
                 if self.Tfuel is None:      # assume Tfuel equal to T of air in
                     Tfuelin = self.fs_in.T
@@ -417,7 +417,7 @@ class TCombustor(TGaspath):
             self.fs_out.HP = self.fs_out.H_total, Pout
 
             # we redefined gas_out, so we must reassing self.gas_out to fsys.gaspath_conditions[self.station_out]
-            self.owner.gaspath_conditions[self.station_out] = self.fs_out
+            self.system.gaspath_conditions[self.station_out] = self.fs_out
             return self.fs_out.T
 
         super().Run(Mode, PointTime)
@@ -514,7 +514,7 @@ class TCombustor(TGaspath):
             CalcEndConditions(PointTime) # just calculate using self Wf
 
         #  add fuel to system level total fuel flow
-        self.owner.WF = self.owner.WF + self.Wf
+        self.system.WF = self.system.WF + self.Wf
 
         return self.fs_out
 

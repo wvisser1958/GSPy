@@ -56,7 +56,7 @@ class TControl(TComponent):
         self.map_filename = map_filename # for use in customized child classes, e.g. with lookup tables
         self.DP_input_value = DP_input_value
         if OD_start_value is None:
-            self.OD_start_value = self.owner.point_time + 1
+            self.OD_start_value = self.system.point_time + 1
         else:    
             self.OD_start_value = OD_start_value
         self.OD_end_value = OD_end_value
@@ -122,7 +122,7 @@ class TControl(TComponent):
             self.input_value = self.DP_input_value
         else:
             # 2.1 WV
-            point_time_input_value = self.owner.get_value_at_point_time(PointTime)
+            point_time_input_value = self.system.get_value_at_point_time(PointTime)
             if self.OD_controlled_parameter_name == None:
                 # just simple open loop control
                 # 2.0 OK Allow single value input of OD_start_value only
@@ -134,7 +134,7 @@ class TControl(TComponent):
                     self.input_value = point_time_input_value
             else:
                 # input is coming from state, iterating toward value satisfying control equation
-                self.input_value = self.DP_input_value * self.owner.states[self.istate_control]
+                self.input_value = self.DP_input_value * self.system.states[self.istate_control]
             # 2.0 OK Allow single value input of OD_start_value only
             # self.control_parameter_demand = self.OD_start_value + self.OD_input_points[PointTime] * self.OD_point_step_value
             self.control_parameter_demand = self.OD_start_value
@@ -150,24 +150,24 @@ class TControl(TComponent):
         # super().PostRun(Mode, PointTime)
         if self.OD_controlled_parameter_name is not None:
             if Mode == 'DP':
-                self.owner.states = np.append(self.owner.states, 1)
-                self.istate_control = self.owner.states.size-1
-                self.owner.errors = np.append(self.owner.errors, 0)
-                self.ierror_control = self.owner.errors.size-1
+                self.system.states = np.append(self.system.states, 1)
+                self.istate_control = self.system.states.size-1
+                self.system.errors = np.append(self.system.errors, 0)
+                self.ierror_control = self.system.errors.size-1
                 #  get control parameter DP value
-                self.DP_control_parameter_value = self.owner.output_dict[self.OD_controlled_parameter_name]
+                self.DP_control_parameter_value = self.system.output_dict[self.OD_controlled_parameter_name]
             else:
                 # get control demanded (set point) parameter value from input
                 # self.controlpar_demand = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
                 #  get control parameter current value
                 # lastrownumber = len(self.owner.OutputTable)
-                control_parameter_value = self.owner.output_dict[self.OD_controlled_parameter_name]
-                self.owner.errors[self.ierror_control] = (self.control_parameter_demand - control_parameter_value) / self.DP_control_parameter_value
+                control_parameter_value = self.system.output_dict[self.OD_controlled_parameter_name]
+                self.system.errors[self.ierror_control] = (self.control_parameter_demand - control_parameter_value) / self.DP_control_parameter_value
 
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()
-        if self.owner.mode == 'DP':
+        if self.system.mode == 'DP':
             out[self.name+"_setpoint"] = None
             out[self.name+"_input"] = None
         else:

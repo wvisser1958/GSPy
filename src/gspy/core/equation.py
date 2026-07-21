@@ -39,7 +39,7 @@ class TEquation(TComponent):
     def PreRun(self, Mode, PointTime):
         # super().PostRun(Mode, PointTime)
         if Mode != 'DP':
-            self.free_var_value = self.free_var_norm_factor * self.owner.states[self.istate_equation]
+            self.free_var_value = self.free_var_norm_factor * self.system.states[self.istate_equation]
             if self.active:
                 self.set_free_var_value(-self.free_var_value * 1000) # from W to kW
 
@@ -50,10 +50,10 @@ class TEquation(TComponent):
     def PostRun(self, Mode, PointTime):
         # super().PostRun(Mode, PointTime)
         if Mode == 'DP':
-            self.owner.states = np.append(self.owner.states, 1)
-            self.istate_equation = self.owner.states.size-1
-            self.owner.errors = np.append(self.owner.errors, 0)
-            self.ierror_equation = self.owner.errors.size-1
+            self.system.states = np.append(self.system.states, 1)
+            self.istate_equation = self.system.states.size-1
+            self.system.errors = np.append(self.system.errors, 0)
+            self.ierror_equation = self.system.errors.size-1
             self.free_var_des_value = self.get_free_var_value()
             if self.free_var_norm_factor is None:
                 self.free_var_norm_factor = self.free_var_des_value    
@@ -62,9 +62,9 @@ class TEquation(TComponent):
                 self.free_var_norm_factor = 1
         else:
             # this is custom code for specific application, using the output table columns
-            Qfuel_conditioning = self.owner.output_dict["Q_fuel_cond kW"]
+            Qfuel_conditioning = self.system.output_dict["Q_fuel_cond kW"]
             Qduct = self.free_var_value 
-            self.owner.errors[self.ierror_equation] = (Qfuel_conditioning - Qduct) / self.free_var_norm_factor
+            self.system.errors[self.ierror_equation] = (Qfuel_conditioning - Qduct) / self.free_var_norm_factor
 
     def PrintPerformance(self, Mode, PointTime):
         pass

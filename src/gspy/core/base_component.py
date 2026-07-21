@@ -20,7 +20,7 @@ from typing import Optional
 class TComponent(ABC):
     def __init__(self, 
                  *,
-                 owner, 
+                 system, 
                  name, 
                  map_filename = None, 
                  control_component = None, 
@@ -28,7 +28,7 @@ class TComponent(ABC):
                  **kwargs):    # Constructor of the class
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {list(kwargs)}")
-        self.owner = owner
+        self.system = system
         self.name = name
         self.map_filename = map_filename
         # assume in most cases single map in instantiable child classes
@@ -37,6 +37,18 @@ class TComponent(ABC):
         # 1.1 WV
         self.control = control_component
         self.heatpaths = heatpaths
+        if self.heatpaths is not None:
+            for heatpath in self.heatpaths:
+                heatpath.owner = self
+
+    # # backward compatibility
+    # @property
+    # def owner(self):
+    #     return self.system
+
+    # @owner.setter
+    # def owner(self, value):
+    #     self.system = value
 
     # 2.1
     @property
@@ -61,13 +73,37 @@ class TComponent(ABC):
         # raise NotImplementedError("Subclass must implement Run abstract method")
         pass
 
-    def PrintPerformance(self, Mode, PointTime):
-        print(f"{self.name} ({Mode}) Point/Time:{PointTime}")
-
     def PlotMaps(self): # Plot performance in map(s)
         if self.map != None:
             self.map.PlotMap()
             print(f"{self.name} map with operating curve saved in {self.map.map_figure_file_path}")
 
+    def CalculateHeatTransfer(self, fs_hx, inlet_or_outlet):
+        Q = 0
+        if self.heatpaths:
+            for heatpath in self.heatpaths:
+                Q += heatpath.calc_Q(fs_hx, inlet_or_outlet)
+        return Q
+
+    def PrintPerformance(self, Mode, PointTime):
+        print(f"{self.name} ({Mode}) Point/Time:{PointTime}")
+        if self.heatpaths:
+            for heatpath in self.heatpaths:
+                print(f"\t\tQ inlet : {heatpath.ht.inlet.Q:.0f} W")
+                print(f"\t\tQ outlet: {heatpath.ht.outlet.Q:.0f} W")
+                print(f"\t\tQ total : {heatpath.ht.inlet.Q + heatpath.ht.outlet.Q:.0f} W")
+                if self.system.debug_output:
+                    heatpath.PrintPerformance()
+
     def get_outputs(self):
-        return {}
+        out = {}
+        if self.heatpaths:
+            for heatpath in self.heatpaths:
+                out[f"Q_inlet_{self.name}"] = heatpath.ht.inlet.Q
+                out[f"Q_outlet_{self.name}"] = heatpath.ht.outlet.Q
+                out[f"Q_total_{self.name}"] = heatpath.ht.inlet.Q + heatpath.ht.outlet.Q
+                if self.system.debug_output:
+                    out.update(heatpath.get_outputs())
+                
+        return out
+    

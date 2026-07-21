@@ -54,12 +54,12 @@ class TAMcontrol(TComponent):
             for compmap, SFpar in self.mapmod_comps_pars_list:
                 setattr(compmap, SFpar, 1)
             # read input (points to perform AM analysis on)
-            self.am_input = pd.read_csv(self.owner.input_dir_path / self.measdatafilename)
+            self.am_input = pd.read_csv(self.system.input_dir_path / self.measdatafilename)
             self.am_input.set_index('Point')
         else:
             # set ambient conditions
             for ambientcondpar in self.ambientparnamelist:
-                setattr(self.owner.ambient, ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
+                setattr(self.system.ambient, ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
 
             # set power setting
             psetcomp, psetpar = self.powersettingcomppar
@@ -67,7 +67,7 @@ class TAMcontrol(TComponent):
 
             #  set map modifiers according to states
             for i, (compmap, SFpar) in enumerate(self.mapmod_comps_pars_list, start=0):
-                setattr(compmap, SFpar, self.owner.states[self.first_map_mod_stateindex+i])
+                setattr(compmap, SFpar, self.system.states[self.first_map_mod_stateindex+i])
 
     # note that anything calculated in PostRun will not end up in the output_dict !
     def PostRun(self, mode, PointTime):
@@ -75,18 +75,18 @@ class TAMcontrol(TComponent):
         if mode == 'DP':
             #  add states and errors at end of existing states and errors of system model
             #  save the 1st index
-            self.first_map_mod_stateindex = self.owner.states.size
+            self.first_map_mod_stateindex = self.system.states.size
             for compmap, SFpar in self.mapmod_comps_pars_list:
                 # set the map modifier factors to 1 in case of multiple DP, OD calculations....
                 setattr(compmap, SFpar, 1)
-                self.owner.states = np.append(self.owner.states, 1)
-                self.owner.errors = np.append(self.owner.errors, 0)
+                self.system.states = np.append(self.system.states, 1)
+                self.system.errors = np.append(self.system.errors, 0)
             for parname in self.measparnamelist:
-                self.measpardesvalues = np.append(self.measpardesvalues, self.owner.output_dict[f"{parname}"])
+                self.measpardesvalues = np.append(self.measpardesvalues, self.system.output_dict[f"{parname}"])
         else:
             for i, parname in enumerate(self.measparnamelist, start = 0):
                 parvalue =  self.am_input.at[PointTime, parname]
-                self.owner.errors[self.first_map_mod_stateindex+i] = (self.owner.output_dict[f"{parname}"] - parvalue) / self.measpardesvalues[i]
+                self.system.errors[self.first_map_mod_stateindex+i] = (self.system.output_dict[f"{parname}"] - parvalue) / self.measpardesvalues[i]
 
     def PrintPerformance(self, Mode, PointTime):
         if Mode == 'DP':

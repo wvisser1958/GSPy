@@ -48,20 +48,20 @@ class TAmbient(TComponent):
         
         # GC
         # self.Gas_Ambient = ct.Quantity(self.owner.gas)
-        self.fs_ambient = TFlowState.from_RH(self.owner.gas, 1, stationnr, 288.15, 101325, RH, self.owner.air_X)
+        self.fs_ambient = TFlowState.from_RH(self.system.gas, 1, stationnr, 288.15, 101325, RH, self.system.air_X)
 
-        self.owner.gaspath_conditions[self.station_nr] = self.fs_ambient
+        self.system.gaspath_conditions[self.station_nr] = self.fs_ambient
 
         self.fs_out_output_species = list(ambient_output_species or [])
         self.fs_out_output_species_indices = [
             c.LIQUID_WATER_INDEX if sp.upper() == "H2O_LIQ"
-            else self.owner.gas.species_index(sp)
+            else self.system.gas.species_index(sp)
             for sp in self.fs_out_output_species
         ]
 
         self.SetConditions('Init', Altitude, Macha, dTs, Psa, Tsa, RH=RH)
 
-        self.owner.ambient = self
+        self.system.ambient = self
 
     def _get_ambient_mole_fractions_from_static_conditions(self):
         """
@@ -71,7 +71,7 @@ class TAmbient(TComponent):
 
         # no humidity specified -> dry air
         if self.humidity_mode is None:
-            return dict(self.owner.air_X)
+            return dict(self.system.air_X)
 
         # ----------------------------------------------------------
         # Relative humidity [%]
@@ -87,7 +87,7 @@ class TAmbient(TComponent):
             if not (0.0 <= x_h2o < 1.0):
                 raise ValueError(f"Invalid RH gives x_h2o={x_h2o:.6f}")
 
-            X = {k: v * (1.0 - x_h2o) for k, v in self.owner.air_X.items()}
+            X = {k: v * (1.0 - x_h2o) for k, v in self.system.air_X.items()}
             X["H2O"] = x_h2o
             return X
 
@@ -101,7 +101,7 @@ class TAmbient(TComponent):
             if not (0.0 <= x_h2o < 1.0):
                 raise ValueError(f"Invalid H2O_vol_pct gives x_h2o={x_h2o:.6f}")
 
-            X = {k: v * (1.0 - x_h2o) for k, v in self.owner.air_X.items()}
+            X = {k: v * (1.0 - x_h2o) for k, v in self.system.air_X.items()}
             X["H2O"] = x_h2o
             return X
 
@@ -115,7 +115,7 @@ class TAmbient(TComponent):
             if not (0.0 <= y_h2o < 1.0):
                 raise ValueError(f"Invalid H2O_mass_pct gives y_h2o={y_h2o:.6f}")
 
-            Y = {k: v * (1.0 - y_h2o) for k, v in self.owner.air_Y.items()}
+            Y = {k: v * (1.0 - y_h2o) for k, v in self.system.air_Y.items()}
             Y["H2O"] = y_h2o
 
             # temporary set state to convert Y -> X
@@ -149,7 +149,7 @@ class TAmbient(TComponent):
 
         #  2.1
         if enable_liquid_water is None:
-            self.fs_ambient.enable_liquid_water = self.owner.sys_enable_liquid_water
+            self.fs_ambient.enable_liquid_water = self.system.sys_enable_liquid_water
         else:
             self.fs_ambient.enable_liquid_water = enable_liquid_water
 
@@ -203,11 +203,13 @@ class TAmbient(TComponent):
             total_mass=1.0,
             humidity_mode=hum_mode,
             humidity_value=hum_value,
-            dry_X_dict=self.owner.air_X,
-            dry_Y_dict=self.owner.air_Y)   
+            dry_X_dict=self.system.air_X,
+            dry_Y_dict=self.system.air_Y)   
         return     
 
     def Run(self, Mode, PointTime):
+        Q_ambient = self.CalculateHeatTransfer(self.fs_ambient, 'outlet')
+
         # if Mode == 'DP':  # alway reset de DP conditions
         #     self.Altitude = self.Altitude_des
         #     self.Macha = self.Macha_des

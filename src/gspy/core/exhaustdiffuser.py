@@ -40,7 +40,7 @@ class TExhaustDiffuser(TGaspath):
         Sin = self.fs_in.entropy_mass
         Hin = self.fs_in.enthalpy_mass
         Pin = self.fs_in.P
-        Pout = self.owner.ambient.Psa
+        Pout = self.system.ambient.Psa
         # diffuser with pressure loss, diffusing flow.
         # 1 - PR is rel. pressure loss proportional to Wc^2
         # in derived version, maybe make PR loss map
@@ -50,12 +50,12 @@ class TExhaustDiffuser(TGaspath):
             # diffuser
             # use GasThroat as exit here
             self.GasThroat.TP = self.fs_in.T, Pout
-            self.owner.errors = np.append(self.owner.errors, 0)
-            self.ierror_p = self.owner.errors.size - 1
+            self.system.errors = np.append(self.system.errors, 0)
+            self.ierror_p = self.system.errors.size - 1
         else:
             # Off-design calculation
             # fsys.errors[self.ierror_p] = self.gas_in.P*self.PR / Pout
-            self.owner.errors[self.ierror_p] = (self.fs_in.P*self.PR - Pout) / Pout
+            self.system.errors[self.ierror_p] = (self.fs_in.P*self.PR - Pout) / Pout
         self.fs_out.TP = self.GasThroat.T, Pout
         return self.fs_out
 

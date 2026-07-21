@@ -48,7 +48,7 @@ class TShaft(TComponent):
         if Mode == 'DP':
             self.Nt = self.Ntdes
         else:
-            self.Nt = self.owner.states[self.istate] * self.Ntdes
+            self.Nt = self.system.states[self.istate] * self.Ntdes
 
     def PWaccel(self, dt):
         self.Ndot = (self.Nt - self.Ntprev)/dt

@@ -63,7 +63,7 @@ class TFlowState:
 
         self.gas_q = ct.Quantity(gas, mass=gas_mass)
 
-        self.station_nr = station_nr
+        self.station_nr = str(station_nr)
 
         # set Ps, Ts, Mach etc....
         self._set_static_equal_total()
@@ -457,7 +457,7 @@ class TFlowState:
     def copy_from(self, other: "TFlowState", new_station_nr: str = None) -> "TFlowState":
         self.gas_q.TPX = other.gas_q.T, other.gas_q.P, other.gas_q.X
         self.gas_q.mass = other.gas_q.mass
-        self.station_nr = new_station_nr if new_station_nr is not None else other.station_nr
+        self.station_nr = new_station_nr if str(new_station_nr) is not None else str(other.station_nr)
 
         self.m_dry = other.m_dry
         self.m_total_water = other.m_total_water

@@ -39,10 +39,12 @@ class TSystemModel:
                 cantera_yaml_filename: str = DEFAULT_YAML,
                 verbose: bool = DEFAULT_VERBOSE,
                 sys_enable_liquid_water : bool = False,
-                ambient_output_species = None
+                ambient_output_species = None,
+                ambient_heatpaths = None
                 ):
 
         self.VERBOSE = verbose
+        self.debug_output = False
 
         self.initialized = False
         self.model_name = Path(model_file).stem if model_name is None else model_name
@@ -152,7 +154,11 @@ class TSystemModel:
         #  2.1
         self.sys_enable_liquid_water = sys_enable_liquid_water
 
-        self.ambient = TAmbient(owner=self, 
+        # self.ambient_heatpaths = ambient_heatpaths or []
+        # for hp in self.ambient_heatpaths:
+        #     hp.system = self
+
+        self.ambient = TAmbient(system=self, 
                                 name='Ambient', 
                                 stationnr='a', 
                                 Altitude=0, 
@@ -161,7 +167,8 @@ class TSystemModel:
                                 Psa=None,
                                 Tsa=None,   
                                 RH=0,
-                                ambient_output_species = ambient_output_species)
+                                ambient_output_species = ambient_output_species
+                                )
 
         # 1.1 WV dictionary for output during iteration (e.g. for control equations)
         self.output_dict = {}
@@ -196,6 +203,14 @@ class TSystemModel:
         self.exception_error = 4
 
         self.continue_next_OD_point_on_error = True
+
+    # def AddAmbientHeatPaths(self, heatpaths):
+    #     self.ambient.heatpaths.append(hp)
+    #     # for hp in heatpaths:
+    #     #     self.ambient.heatpaths.append(hp)
+    #         # already defined:
+    #         # hp.system = self
+    #         # hp.component = self.ambient
 
     @staticmethod
     def _normalize(comp: dict[str, float],
@@ -331,7 +346,8 @@ class TSystemModel:
                 if isinstance(comp, THeatsink):
                     if targets is None:
                         targets = []
-                    targets.append( (comp, "T", comp, "Q_balance", 0) ) 
+                    targets.append( (comp, "T", comp, "Q_balance", 0, comp.Q_norm_factor) ) 
+                    print(f"DP Target Q=0 for {comp.name} (Q_norm = {comp.Q_norm_factor} [W])")
 
             if targets is None:
                 # self.Do_Run('DP', 0, self.states)
@@ -340,20 +356,23 @@ class TSystemModel:
                 try:
                     var_values_ref = [0.0] * len(targets)
 
-                    for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(targets):
+                    for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
                         var_values_ref[i] = getattr(varobj, varattr)
 
                     def targetresiduals(dp_variables):
-                        for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(targets):
+                        for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
                             setattr(varobj, varattr, dp_variables[i] * var_values_ref[i])
-
+                            test = getattr(varobj, varattr)
                         # self.Do_Run('DP', 0, self.states)
                         self.Do_Run('DP', 0, None)
 
                         residuals = [0.0] * len(targets)
-                        for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(targets):
+                        for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
                             actual = getattr(targetobj, targetattr)
-                            residuals[i] = (actual - targetvalue) / targetvalue
+                            if F_norm:
+                                residuals[i] = (actual - targetvalue) / F_norm
+                            else:
+                                residuals[i] = (actual - targetvalue) / targetvalue
 
                         return residuals
 
@@ -365,12 +384,21 @@ class TSystemModel:
                         method='krylov',
                         # tol=self.error_tolerance,
                         # options={'maxiter': 100}
-                         options={
+                        options={
                                 'maxiter': 100,
                                 'fatol': self.error_tolerance,     # absolute residual target
                                 'xatol': 1e-12,                     # avoid premature "small step" success
                                 }
-                    )
+                        # options={
+                        #     "maxiter": 100,
+                        #     "fatol": 1e-8,
+                        #     "xatol": 1e-8,
+                        #     "line_search": None,
+                        #     "jac_options": {
+                        #         "rdiff": 1e-4,
+                        #         },                    
+                        #     }   
+                        )
                 except Exception as e:
                     self.Do_Output(0, self.exception_error)
                     print(f"DP target iteration exception error: {e}")

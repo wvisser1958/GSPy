@@ -32,7 +32,7 @@ class TMap:
         self.map_filename = map_filename
 
         # 2.0 standard map directory (default 'maps' subdirectory under project file)
-        self.map_dir_path = self.host_component.owner.maps_dir_path
+        self.map_dir_path = self.host_component.system.maps_dir_path
 
         # the textIOwrapper into which the map file data are read
         self.map_file = None
@@ -53,20 +53,20 @@ class TMap:
 
         # Output folder
         # # output_dir = './output/'
-        # output_dir = self.owner.output_dir_path
+        # output_dir = self.system.output_dir_path
 
         # # Mapnaming, override or extend in child classes
         # # 1.4
         # # self.map_figure_file_path = output_dir + self.name + '.jpg'
-        self.map_figure_dir_path = self.host_component.owner.output_dir_path
-        self.map_figure_file_path = self.host_component.owner.output_dir_path / (self.name + ".jpg")
+        self.map_figure_dir_path = self.host_component.system.output_dir_path
+        self.map_figure_file_path = self.host_component.system.output_dir_path / (self.name + ".jpg")
         # # Create the directory if it doesn't exist
         # if not os.path.isdir(output_dir):
         #     os.makedirs(output_dir)
 
     @property
     def simresultstable(self):
-        return self.host_component.owner.output_table
+        return self.host_component.system.output_table
 
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         try:

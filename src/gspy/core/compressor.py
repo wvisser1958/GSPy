@@ -16,8 +16,10 @@
 import numpy as np
 import cantera as ct
 import gspy.core.utils as fu
+from gspy.core.flow_state import TFlowState
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
+
 
 class TCompressor(TTurboComponent):
     def __init__(self, 
@@ -39,8 +41,10 @@ class TCompressor(TTurboComponent):
 
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
+        # note that fs_in_q is the flow state with Q added, if any...
+
         if Mode == 'DP':
-            self.fs_out, self.PW = self.fs_in.compress_real_eta(
+            self.fs_out, self.PW = self.fs_in_q.compress_real_eta(
                 PR=self.PRdes,
                 out=self.fs_out,
                 eta=self.Etades,
@@ -55,17 +59,17 @@ class TCompressor(TTurboComponent):
             if self.SpeedOption != 'CS':
                 # 1.5
                 if self.shaft.istate == None:
-                    self.owner.states = np.append(self.owner.states, 1)
-                    self.istate_n = self.owner.states.size-1
+                    self.system.states = np.append(self.system.states, 1)
+                    self.istate_n = self.system.states.size-1
                     self.shaft.istate = self.istate_n
                 else:
                     # already assigned (e.g. by fan or compressor upstream in the gas path)
                     self.istate_n = self.shaft.istate
-            self.owner.states = np.append(self.owner.states, 1)
-            self.istate_beta = self.owner.states.size-1
+            self.system.states = np.append(self.system.states, 1)
+            self.istate_beta = self.system.states.size-1
             # error for equation fs_in.wc = wcmap
-            self.owner.errors = np.append(self.owner.errors, 0)
-            self.ierror_wc = self.owner.errors.size-1
+            self.system.errors = np.append(self.system.errors, 0)
+            self.ierror_wc = self.system.errors.size-1
             # calculate parameters for output
             self.PR = self.PRdes
         else:
@@ -78,7 +82,7 @@ class TCompressor(TTurboComponent):
             # self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, fsys.states[self.istate_beta])
             if self.control != None:
                   self.vg_angle = self.control.Get_outputvalue_from_schedule(self.Nc)
-            self.Wc_map, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, self.owner.states[self.istate_beta])
+            self.Wc_map, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, self.system.states[self.istate_beta])
 
             self.fs_out, self.PW = self.fs_in.compress_real_eta(
                 PR=self.PR,
@@ -88,7 +92,7 @@ class TCompressor(TTurboComponent):
             )
 
             self.W_map = self.Wc_map / fu.GetFlowCorrectionFactor(self.fs_in)
-            self.owner.errors[self.ierror_wc ] = (self.W_map - self.fs_in.W) / self.fs_in_des.W
+            self.system.errors[self.ierror_wc ] = (self.W_map - self.fs_in.W) / self.fs_in_des.W
 
             # set out flow rate to W according to map
             # may deviate from self.fs_in.mass during iteration: this is to propagate the effect of mass flow error
@@ -112,7 +116,7 @@ class TCompressor(TTurboComponent):
                     bleed.fs_in.TPY = self.fs_in.T, self.fs_in.P, self.fs_in.Y
                     bleed.fs_in.mass = Wbleed
                 #  add to station conditions dictionary
-                self.owner.gaspath_conditions[bleed.station_in] = bleed.fs_in
+                self.system.gaspath_conditions[bleed.station_in] = bleed.fs_in
 
                 # Compress Wbleed to bleed point
                 #  2.1
@@ -133,11 +137,10 @@ class TCompressor(TTurboComponent):
             self.fs_out.mass = self.fs_out.mass - dW
             self.PW = self.PW - dHW_bleeds_total
 
-        # Heat transfer with heat sink components
-        # for heatpath in self.heatpaths:
-        #  ******** TBD *******************            
-        
         self.shaft.PW_sum = self.shaft.PW_sum - self.PW
+
+        self.Add_Q_to_fs_out()
+        
         return self.fs_out
 
     # v1.2

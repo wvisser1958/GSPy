@@ -57,7 +57,7 @@ class TShaftComponent(TComponent, ABC):
         """
         if isinstance(self.control, str):
             try:
-                self.control = self.owner.components[self.control]
+                self.control = self.system.components[self.control]
             except Exception as e:
                 raise ValueError(
                     f"ShaftDevice '{self.name}': Control '{self.control}' "
@@ -136,7 +136,7 @@ class TOneShaftComponent(TShaftComponent, ABC):
 
     def Run(self, mode, point_time):
         # Get shaft by shaft_id
-        self.drive_shaft = self.owner.get_shaft(self.shaft_id)
+        self.drive_shaft = self.system.get_shaft(self.shaft_id)
 
         # Resolve control component
         self._resolve_control()
@@ -209,8 +209,8 @@ class TTwoShaftComponent(TShaftComponent, ABC):
         because the relationship between drive-side power, driven-side power,
         losses, and shaft speed depends on the specific device type.
         """
-        self.drive_shaft = self.owner.get_shaft(self.shaft_id)
-        self.driven_shaft = self.owner.get_shaft(self.driven_shaft_id)
+        self.drive_shaft = self.system.get_shaft(self.shaft_id)
+        self.driven_shaft = self.system.get_shaft(self.driven_shaft_id)
 
         self._resolve_control()
 

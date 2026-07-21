@@ -1614,10 +1614,10 @@ if TComponent is not None:
             # --------------------------------------------------------------
             # Set the inlet state in Cantera (if available)
             # --------------------------------------------------------------
-            if ct is not None and self.owner is not None:
-                gas =self.owner.gas
+            if ct is not None and self.system is not None:
+                gas =self.system.gas
                 self.Gas_Ambient = ct.Quantity(gas)
-                self.owner.gaspath_conditions[self.station_nr] = self.Gas_Ambient
+                self.system.gaspath_conditions[self.station_nr] = self.Gas_Ambient
 
                 dry_comp = str(c.s_air_composition_mass).strip()
 

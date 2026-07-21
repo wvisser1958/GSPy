@@ -45,10 +45,10 @@ class TTurbine(TTurboComponent):
         # this means Exhaust PRdes must be 1 or corresponding to some error loss (total-to-total)
         # (Exhast PR (off-design) actually is total to throat static PR)
         PRdesuntilAmbient = 1
-        agaspathcomponent = self.owner.get_gaspathcomponent_object_inlet_stationnr(self.station_out)
+        agaspathcomponent = self.system.get_gaspathcomponent_object_inlet_stationnr(self.station_out)
         while agaspathcomponent != None:
             PRdesuntilAmbient = PRdesuntilAmbient * agaspathcomponent.PRdes
-            agaspathcomponent = self.owner.get_gaspathcomponent_object_inlet_stationnr(agaspathcomponent.station_out)
+            agaspathcomponent = self.system.get_gaspathcomponent_object_inlet_stationnr(agaspathcomponent.station_out)
         return PRdesuntilAmbient
 
     def Run(self, Mode, PointTime):
@@ -180,7 +180,7 @@ class TTurbine(TTurboComponent):
                 self.shaft.PW_sum = 0
             else:
                 PRdesuntilAmbient = self.GetTotalPRdesUntilAmbient()
-                Pout = self.owner.ambient.Psa / PRdesuntilAmbient
+                Pout = self.system.ambient.Psa / PRdesuntilAmbient
                 self.PRdes = self.fs_in.P/Pout
                 self.PR = self.PRdes
 
@@ -209,7 +209,7 @@ class TTurbine(TTurboComponent):
 
             # reset fs_out to gaspath_conditions dictionary (because link broken by adding cooling flow to fs_out
             #                                                self.fs_out = self.fs_out + cf.fs_out)
-            self.owner.gaspath_conditions[self.station_out] = self.fs_out
+            self.system.gaspath_conditions[self.station_out] = self.fs_out
 
             self.PWdes = self.PW
 
@@ -223,15 +223,15 @@ class TTurbine(TTurboComponent):
 
             # add states and errors
             # rotor speed state is same as compressor's
-            self.owner.states = np.append(self.owner.states, 1)
-            self.istate_beta = self.owner.states.size-1
+            self.system.states = np.append(self.system.states, 1)
+            self.istate_beta = self.system.states.size-1
             # error for equation fs_in.wc = wcmap
-            self.owner.errors = np.append(self.owner.errors, 0)
-            self.ierror_wc = self.owner.errors.size-1
+            self.system.errors = np.append(self.system.errors, 0)
+            self.ierror_wc = self.system.errors.size-1
             # shaft power error
             if self.TurbineType == 'GG':
-                self.owner.errors = np.append(self.owner.errors, 0)
-                self.ierror_shaftpw = self.owner.errors.size-1
+                self.system.errors = np.append(self.system.errors, 0)
+                self.ierror_shaftpw = self.system.errors.size-1
             # calculate parameters for output
             self.N = self.Nc * fu.GetRotorspeedCorrectionFactor(self.fs_in)
         # ******************** end DP design mode *************************
@@ -239,10 +239,10 @@ class TTurbine(TTurboComponent):
         # ******************** OD off design mode *************************
         else:
             if self.TurbineType == 'GG':
-                self.N = self.owner.states[self.shaft.istate] * self.Ndes
+                self.N = self.system.states[self.shaft.istate] * self.Ndes
             self.Nc = self.N / fu.GetRotorspeedCorrectionFactor(self.fs_in)
 
-            self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, self.owner.states[self.istate_beta])
+            self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, self.system.states[self.istate_beta])
             self.W = self.Wc / fu.GetFlowCorrectionFactor(self.fs_in)
 
             # 2.1
@@ -262,7 +262,7 @@ class TTurbine(TTurboComponent):
                 # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
                 # self.PW = self.PW + self.dPWcl
                 self.DHW = self.DHW + self.dDHWcl
-            self.owner.errors[self.ierror_wc ] = (self.W - fu.scalar(self.fs_in.mass) - self.W_cl_eff) / self.fs_in_des.W
+            self.system.errors[self.ierror_wc ] = (self.W - fu.scalar(self.fs_in.mass) - self.W_cl_eff) / self.fs_in_des.W
 
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
             self.PW = self.DHW * self.Etamechdes
@@ -271,12 +271,14 @@ class TTurbine(TTurboComponent):
             # self.shaft.PW_sum = self.shaft.PW_sum + self.PW * self.Etamechdes
             self.shaft.PW_sum = self.shaft.PW_sum + self.PW
             if self.TurbineType == 'GG':
-                self.owner.errors[self.ierror_shaftpw] = self.shaft.PW_sum / self.PWdes
+                self.system.errors[self.ierror_shaftpw] = self.shaft.PW_sum / self.PWdes
 
             # reset fs_out to gaspath_conditions dictionary (because link broken by adding cooling flow to fs_out
             #                                                self.fs_out = self.fs_out + cf.fs_out)
-            self.owner.gaspath_conditions[self.station_out] = self.fs_out
+            self.system.gaspath_conditions[self.station_out] = self.fs_out
         # ******************** end OD off design mode *************************
+
+        self.Add_Q_to_fs_out()
 
         return self.fs_out
 

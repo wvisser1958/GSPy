@@ -106,8 +106,8 @@ class TTurboComponent(TGaspath):
             )
 
         # 2.1 if shaft not existing yet, create shaft and assume shaft Ntdes = Ndes, assign I = 0 here (specify turbomachinery with an I value)
-        if all(shaft.shaft_id != shaft_id for shaft in self.owner.shaft_list):
-            self.owner.shaft_list.append(fshaft.TShaft(owner=self.owner, 
+        if all(shaft.shaft_id != shaft_id for shaft in self.system.shaft_list):
+            self.system.shaft_list.append(fshaft.TShaft(system=self.system, 
                                                        shaft_id=shaft_id, 
                                                        name=self.name + ' shaft ' + str(shaft_id),
                                                        Ntdes=self.Ndes, # shaft design speed
@@ -176,7 +176,7 @@ class TTurboComponent(TGaspath):
             self.Ncdes = self.Ndes / fu.GetRotorspeedCorrectionFactor(self.fs_in)
             self.Nc = self.Ncdes
             self.Eta = self.Etades
-            self.shaft = self.owner.get_shaft(self.shaft_id)
+            self.shaft = self.system.get_shaft(self.shaft_id)
             self.vg_angle = self.vg_angle_des
 
     #  2.0

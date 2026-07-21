@@ -91,6 +91,8 @@ P_std = 101325
 T_standard_ref = 298.15 # (25°C)
 P_standard_ref = ct.one_atm  # (1 atm)
 
+C_StefanBoltzmann = 5.67e-8; # [W/m2/K4]
+
 w = ct.Water()
 w.TQ = T_standard_ref, 0.0          # saturated liquid water at Tref
 h_liq_ref = w.enthalpy_mass

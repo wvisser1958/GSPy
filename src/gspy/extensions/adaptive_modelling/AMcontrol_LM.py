@@ -60,7 +60,7 @@ class TAMcontrol(TComponent):
                 # fsys.states = np.append(fsys.states, 1)
                 # fsys.errors = np.append(fsys.errors, 0)
             # read input (points to perform AM analysis on)
-            self.am_input = pd.read_csv(self.owner.input_dir_path / self.measdatafilename)
+            self.am_input = pd.read_csv(self.system.input_dir_path / self.measdatafilename)
             self.am_input.set_index('Point')
 
             # ======================== AM Powersetting control ========================
@@ -68,15 +68,15 @@ class TAMcontrol(TComponent):
                 self.powersettingcomppar = (self.powersettingcomppar[0], 'Wf')
 
             if self.powersettingcomppar[1] != 'Wf':
-                self.istate_Wf = self.owner.states.size
-                self.owner.states = np.append(self.owner.states, 1.0)   # Wf scale factor
-                self.owner.errors = np.append(self.owner.errors, 0.0)
-                self.ierror_powerset = self.owner.errors.size - 1
+                self.istate_Wf = self.system.states.size
+                self.system.states = np.append(self.system.states, 1.0)   # Wf scale factor
+                self.system.errors = np.append(self.system.errors, 0.0)
+                self.ierror_powerset = self.system.errors.size - 1
         else:
             # set ambient conditions
             for ambientcondpar in self.ambientparnamelist:
                 # fsys.ambient.__setattr__(ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
-                setattr(self.owner.ambient, ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
+                setattr(self.system.ambient, ambientcondpar, self.am_input.at[PointTime, ambientcondpar])
 
             # set power setting
             psetcomp, psetpar = self.powersettingcomppar
@@ -84,7 +84,7 @@ class TAMcontrol(TComponent):
             # ======================== AM input control ========================
             if self.powersettingcomppar[1] != 'Wf':
                 Wf_meas = self.am_input.at[PointTime, 'Wf']
-                SF_Wf = self.owner.states[self.istate_Wf]
+                SF_Wf = self.system.states[self.istate_Wf]
                 setattr(psetcomp, 'Wf', Wf_meas * SF_Wf)
             else:
                 setattr(psetcomp, psetpar, self.am_input.at[PointTime, psetpar])
@@ -92,7 +92,7 @@ class TAMcontrol(TComponent):
             #  set map modifiers according to states
             # setattr(compmap, SFpar, fsys.states[self.first_map_mod_stateindex+i])
             for i, (compmap, SFpar) in enumerate(self.mapmod_comps_pars_list, start=0):
-                setattr(compmap, SFpar, self.owner.states[self.first_map_mod_stateindex+i])
+                setattr(compmap, SFpar, self.system.states[self.first_map_mod_stateindex+i])
 
     # note that anything calculated in PostRun will not end up in the output_dict !
     def PostRun(self, mode, PointTime):
@@ -100,44 +100,44 @@ class TAMcontrol(TComponent):
         if mode == 'DP':
             #  add states and errors at end of existing states and errors of system model
             #  save the 1st index
-            self.first_map_mod_stateindex = self.owner.states.size
+            self.first_map_mod_stateindex = self.system.states.size
             for compmap, SFpar in self.mapmod_comps_pars_list:
                 # set the map modifier factors to 1 in case of multiple DP, OD calculations....
                 setattr(compmap, SFpar, 1)
-                self.owner.states = np.append(self.owner.states, 1)
-                self.owner.errors = np.append(self.owner.errors, 0)
+                self.system.states = np.append(self.system.states, 1)
+                self.system.errors = np.append(self.system.errors, 0)
             for parname in self.measparnamelist:
-                self.measpardesvalues = np.append(self.measpardesvalues, self.owner.output_dict[f"{parname}"])
+                self.measpardesvalues = np.append(self.measpardesvalues, self.system.output_dict[f"{parname}"])
 
             # ======================== AM Powersetting control ========================
             if self.powersettingcomppar[1] != 'Wf':
-                self.powerset_DP = self.owner.output_dict[f"{self.powersettingcomppar[1]}"]
+                self.powerset_DP = self.system.output_dict[f"{self.powersettingcomppar[1]}"]
 
         else:
             # ===================== AM Errors with Tolerance =====================
             # Determine start index for mapmod states in the error vector
-            mapmod_start = len(self.owner.states) - len(self.mapmod_bounds)
+            mapmod_start = len(self.system.states) - len(self.mapmod_bounds)
 
             for i, parname in enumerate(self.measparnamelist):
                 # Retrieve measurement and model value for each parameter
                 par_value_measured = self.am_input.at[PointTime, parname]
                 error_idx = mapmod_start + i
                 # Apply tolerance to the error calculation
-                self.owner.errors[error_idx] = (
-                    self.tolerance[i] * (self.owner.output_dict[parname] - par_value_measured) / self.measpardesvalues[i]
+                self.system.errors[error_idx] = (
+                    self.tolerance[i] * (self.system.output_dict[parname] - par_value_measured) / self.measpardesvalues[i]
                 )
 
              # ==================== Bounds Enforcement with Penalty ====================
             for i, (compmap, SFpar) in enumerate(self.mapmod_comps_pars_list):
                 state_idx = mapmod_start + i
-                state_value = self.owner.states[state_idx]
+                state_value = self.system.states[state_idx]
                 lower_bound_perc, upper_bound_perc = self.mapmod_bounds[i]
 
                 # Apply lower bound penalty if defined
                 if lower_bound_perc is not None:
                     lower_bound = lower_bound_perc / 100 + 1
                     if state_value < lower_bound:
-                        self.owner.errors[:] += (lower_bound - state_value) ** 2 * self.bounds_penalty
+                        self.system.errors[:] += (lower_bound - state_value) ** 2 * self.bounds_penalty
                         # print(f'Penalty: {state_value} below lower bound {lower_bound} for {compmap.name}_{SFpar}')
                         continue
 
@@ -145,7 +145,7 @@ class TAMcontrol(TComponent):
                 if upper_bound_perc is not None:
                     upper_bound = upper_bound_perc / 100 + 1
                     if state_value > upper_bound:
-                        self.owner.errors[:] += (state_value - upper_bound) ** 2 * self.bounds_penalty
+                        self.system.errors[:] += (state_value - upper_bound) ** 2 * self.bounds_penalty
                         # print(f'Penalty: {state_value} above upper bound {upper_bound} for {compmap.name}_{SFpar}')
                         continue
 
@@ -153,14 +153,14 @@ class TAMcontrol(TComponent):
             if self.powersettingcomppar[1] != 'Wf':
                 # Get measured and modeled power setting
                 powerset_meas = self.am_input.at[PointTime, self.powersettingcomppar[1]]
-                powerset_model = self.owner.output_dict[self.powersettingcomppar[1]]
+                powerset_model = self.system.output_dict[self.powersettingcomppar[1]]
 
                 # Set normalization reference if not already set
                 if not hasattr(self, 'powerset_DP'):
                     self.powerset_DP = powerset_model
 
                 # Add normalized power setting error to the error vector
-                self.owner.errors[self.ierror_powerset] = (powerset_meas - powerset_model) / self.powerset_DP
+                self.system.errors[self.ierror_powerset] = (powerset_meas - powerset_model) / self.powerset_DP
 
 
     def PrintPerformance(self, Mode, PointTime):

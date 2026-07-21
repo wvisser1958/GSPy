@@ -26,6 +26,7 @@ class THeatsink(TComponent):
                  T_trans_init = None,   # DP initial temperature for transient simulation
                  T_first_guess,         # DP iteration first guess temperature
                  Q_norm_factor,         # Q error normalization factor for iteration
+                 connected_heatsinks = None,  # list of connected heatsinks and heat transfer coefficients for heatpaths between heatsinks
                  **kwargs): 
         super().__init__(**kwargs)
         self.mass = mass
@@ -36,14 +37,21 @@ class THeatsink(TComponent):
         self.Q_norm_factor = Q_norm_factor 
         self.T = T_first_guess
 
+    def PreRun(self, Mode, PointTime):
+        self.Q_balance = 0
+
     def Run(self, Mode, PointTime):
-        # add nozzle throat station
+        # 
         return self.T
     
+    def PrintPerformance(self, Mode, PointTime):
+        super().PrintPerformance(Mode, PointTime)
+        print(f"\t\tT        : {self.T:.1f} K")
+        print(f"\t\tQ_balance: {self.Q_balance:.0f} W")
+
     def get_outputs(self):
         out = super().get_outputs()
-
-        out[f"mass{self.id}"] = self.mass
-        out[f"cp{self.id}"] = self.cp
+        out[f"T{self.id}"] = self.T
+        out[f"Q_balance{self.id}"] = self.Q_balance
 
         return out
