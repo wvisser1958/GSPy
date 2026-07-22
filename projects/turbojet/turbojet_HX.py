@@ -77,16 +77,16 @@ def main():
                     PRdes = 1               # design pressure ratio (PR = 1 - Ploss_relative)
                     )
 
-    heatsink_c_b = THeatsink(system=turbojet, 
-                             name='Heatsink_c_b', 
-                             mass = 1,               # mass not relevant here (steady state)
+    heatsink_c_t = THeatsink(system=turbojet, 
+                             name='Heatsink_c_t', 
+                             mass = 1,               # mass and cp not relevant here (steady state)
                              cp = 1,
                              T_first_guess = 1200,
                              Q_norm_factor = 1000)    
 
     heatpath_c = THeatpath(system=turbojet,                  # system : to be changed to TGaspath upon TGaspath creation 
                            name='Heatpath_c', 
-                           heatsink = heatsink_c_b,          # heat sink path is connected to
+                           heatsink = heatsink_c_t,          # heat sink path is connected to
                            a_ht = 0.2,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
                            d_re = 0.1,                      # D for Reynolds number
@@ -102,7 +102,7 @@ def main():
 
     heatpath_t = THeatpath(system=turbojet,                  # system : to be changed to TGaspath upon TGaspath creation
                            name='Heatpath_t',               
-                           heatsink = heatsink_c_b,          # heat sink path is connected to
+                           heatsink = heatsink_c_t,          # heat sink path is connected to
                            a_ht = 10.2,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
                            d_re = 0.1,                      # D for Reynolds number
@@ -131,6 +131,29 @@ def main():
                               Bleeds=None,                  # optional list of bleeds
                               heatpaths = [heatpath_c])     # optional list of heat path links with heatsinks
 
+    heatsink_b_a = THeatsink(system=turbojet, 
+                             name='Heatsink_b_a', 
+                             mass = 1,               # mass not and cp relevant here (steady state)
+                             cp = 1,
+                             T_first_guess = 1000,
+                             Q_norm_factor = 1000)  
+
+    heatpath_b = THeatpath(system=turbojet,                  # system : to be changed to TGaspath upon TGaspath creation
+                           name='Heatpath_b',               
+                           heatsink = heatsink_b_a,          # heat sink path is connected to
+                           a_ht = 10.2,                      # heat transfer area m2
+                           a_flow = 0.1,                    # flow cross area m2
+                           d_re = 0.1,                      # D for Reynolds number
+                           k_gas = 0.067,                   # gas conductivity
+                           Nu = '0.023*Re^(4/5)*Pr^(1/3)',  # Nusselt expression
+                           d_mat = 0.002,                   # wall material thickness
+                           k_mat = 17.5,                    # wall material conductivity
+                           eps_rad = 0,                     # no radiation heat transfer
+                           h_user = None,                   # user specified heat transfer coefficient overriding the above
+                           Q_user = None,                   # no user specified Q overriding the above
+                           in_out_split_fraction = 0.5      # location factor
+                           )
+    
     combustor1 = TCombustor(system=turbojet,                 # owning system model object
                             name='Combustor1',              # component name
                             map_filename = None,            # map file name             # for future use of a combustor efficiency map
@@ -161,7 +184,8 @@ def main():
                             HCratiodes=1.9167,          # HCratio
                             OCratiodes=0,               # OCratio
                             FuelCompositiondes=None,    # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
-                            A=None                      # Cross flow area to calculate fundamental pressue loss
+                            A=None,                     # Cross flow area to calculate fundamental pressue loss
+                            heatpaths = [heatpath_b]    # optional list of heat path links with heatsinks
                             )
                             # example with Texit as design input:
                             # TCombustor(turbojet, 'combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
@@ -219,10 +243,10 @@ def main():
                                    )
 
     #  note that only now, once the system model and the heatsinks are defined, we can define the heatpath from system.ambient to the heatsinks
-    heatpath_ambient = THeatpath(system = turbojet,      
-                           name='Heatpath_amb', 
+    heatpath_ambient_c_t = THeatpath(system = turbojet,      
+                           name='Heatpath_amb_ct', 
                            component = turbojet.ambient,
-                           heatsink = heatsink_c_b,     
+                           heatsink = heatsink_c_t,     
                            a_ht = 10.0,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
                            d_re = 0.1,                      # D for Reynolds number
@@ -235,15 +259,34 @@ def main():
                            Q_user = None,                   # no user specified Q
                            in_out_split_fraction = 0        # not applicable, use outlet state
                            )
-    # now must also add the heatpath to system.ambient
+    
+    heatpath_ambient_b = THeatpath(system = turbojet,      
+                           name='Heatpath_amb_b', 
+                           component = turbojet.ambient,
+                           heatsink = heatsink_b_a,     
+                           a_ht = 10.0,                      # heat transfer area m2
+                           a_flow = 0.1,                    # flow cross area m2
+                           d_re = 0.1,                      # D for Reynolds number
+                           k_gas = 0.067,                   # gas conductivity
+                           Nu = '0.023*Re^(4/5)*Pr^(1/3)',  # Nusselt expression
+                           d_mat = 0.002,                   # wall material thickness
+                           k_mat = 17.5,                    # wall material conductivity
+                           eps_rad = 0.5,                     # no radiation heat transfer
+                           h_user = None,                   # user specified heat transfer coefficient overriding the above
+                           Q_user = None,                   # no user specified Q
+                           in_out_split_fraction = 0        # not applicable, use outlet state
+                           )
+
+    # now must also add the heatpaths to system.ambient
     # turbojet.AddAmbientHeatPaths([heatpath_ambient])
-    turbojet.ambient.heatpaths = [heatpath_ambient]
+    turbojet.ambient.heatpaths = [heatpath_ambient_c_t, heatpath_ambient_b]
 
     # create a turbojet system model
     turbojet.define_comp_run_list(  fuelcontrol,
                                     inlet1,
-                                    heatsink_c_b,
+                                    heatsink_c_t,
                                     compressor1,
+                                    heatsink_b_a,
                                     combustor1,
                                     turbine1,
                                     duct1,

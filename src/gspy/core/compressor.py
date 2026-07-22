@@ -84,11 +84,11 @@ class TCompressor(TTurboComponent):
                   self.vg_angle = self.control.Get_outputvalue_from_schedule(self.Nc)
             self.Wc_map, self.PR, self.Eta = self.GetTurboMapPerformance(self.vg_angle, self.Nc, self.system.states[self.istate_beta])
 
-            self.fs_out, self.PW = self.fs_in.compress_real_eta(
+            self.fs_out, self.PW = self.fs_in_q.compress_real_eta(
                 PR=self.PR,
                 out=self.fs_out,
                 eta=self.Eta,
-                Polytropic_Eta=False
+                Polytropic_Eta=False  # OD eta always isentropic
             )
 
             self.W_map = self.Wc_map / fu.GetFlowCorrectionFactor(self.fs_in)
@@ -102,8 +102,9 @@ class TCompressor(TTurboComponent):
         # v1.2 correction for bleed flows
         dW = 0
         dHW_bleeds_total = 0
-        dH = self.fs_out.gas_q.enthalpy_mass - self.fs_in.gas_q.enthalpy_mass
-        dP = self.fs_out.gas_q.P - self.fs_in.gas_q.P
+        # dH due to compression from fs_in_q
+        dH = self.fs_out.gas_q.enthalpy_mass - self.fs_in_q.gas_q.enthalpy_mass
+        dP = self.fs_out.gas_q.P - self.fs_in_q.gas_q.P
         if self.Bleeds != None:
             for bleed in self.Bleeds:
                 Wbleed = bleed.bleedfraction * self.W
@@ -111,9 +112,9 @@ class TCompressor(TTurboComponent):
                 # dHW = dHW + (1 - bleed.dPfactor) * dH * Wbleed
                 if bleed.fs_in == None:
                     #  define bleed inflow fs_in conditions
-                    bleed.fs_in = ct.Quantity(self.fs_in.phase, Wbleed)
+                    bleed.fs_in = ct.Quantity(self.fs_in_q.phase, Wbleed)
                 else:
-                    bleed.fs_in.TPY = self.fs_in.T, self.fs_in.P, self.fs_in.Y
+                    bleed.fs_in.TPY = self.fs_in_q.T, self.fs_in_q.P, self.fs_in_q.Y
                     bleed.fs_in.mass = Wbleed
                 #  add to station conditions dictionary
                 self.system.gaspath_conditions[bleed.station_in] = bleed.fs_in
@@ -122,8 +123,8 @@ class TCompressor(TTurboComponent):
                 #  2.1
                 # dHW1 = fu.Compression(self.fs_in, bleed.fs_in, (self.fs_in.P+dP*bleed.dPfactor)/self.fs_in.P, self.Eta, 
                 #                       self.Polytropic_DP_eta if Mode=='DP' else 0)
-                bleed.fs_in, dHW1 = self.fs_in.compress_real_eta(
-                    PR=(self.fs_in.P+dP*bleed.dPfactor)/self.fs_in.P,
+                bleed.fs_in, dHW1 = self.fs_in_q.compress_real_eta(
+                    PR=(self.fs_in_q.P+dP*bleed.dPfactor)/self.fs_in_q.P,
                     out=bleed.fs_in,
                     eta=self.Eta,
                     Polytropic_Eta=self.Polytropic_DP_eta if Mode=='DP' else False

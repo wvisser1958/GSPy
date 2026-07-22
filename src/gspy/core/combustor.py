@@ -304,13 +304,13 @@ class TCombustor(TGaspath):
                 # so we can leave self.gas_in unchanged with the actual inlet composition, 
                 # and use self.gas_out to get the reference enthalpy of the inlet gas composition 
                 # at Tref and Pref, which is needed for the LHV-based calculation of the final enthalpy of the products after combustion
-                m_gas = self.fs_in.gas_q.mass
-                m_liq = self.fs_in.m_liq
+                m_gas = self.fs_in_q.gas_q.mass
+                m_liq = self.fs_in_q.m_liq
 
                 # self.fs_out.TPY = c.T_standard_ref, c.P_standard_ref, self.fs_in.gas_q.Y
                 if self.scratch_quantity is None:
                     self.scratch_quantity = ct.Quantity(self.system.gas)
-                self.scratch_quantity.TPY = c.T_standard_ref, c.P_standard_ref, self.fs_in.gas_q.Y
+                self.scratch_quantity.TPY = c.T_standard_ref, c.P_standard_ref, self.fs_in_q.gas_q.Y
                 h_gas_in_ref = self.scratch_quantity.enthalpy_mass
 
                 # move to constants
@@ -362,7 +362,7 @@ class TCombustor(TGaspath):
                     self.fuel = ct.Quantity(self.system.gas)
                 self.fuel.mass = self.Wf
                 if self.Tfuel is None:      # assume Tfuel equal to T of air in
-                    Tfuelin = self.fs_in.T
+                    Tfuelin = self.fs_in_q.T
                 else:                       # use user specified Tfuel
                     Tfuelin = self.Tfuel
                 # v1.2 set P fuel to Pout, otherwise (using gas_in.P, which is before the pressure loss)
@@ -370,7 +370,7 @@ class TCombustor(TGaspath):
                 # self.fuel.TPY = Tfuelin, self.gas_in.P, self.FuelComposition
                 self.fuel.TPY = Tfuelin, Pin, self.FuelComposition
                 # fuel.TPY = self.gas_in.T, self.gas_in.P, self.FuelComposition
-                self.fs_out = self.fs_in + self.fuel
+                self.fs_out = self.fs_in_q + self.fuel
 
                 # 1.3
                 if self.Etades < 1.000:
@@ -436,7 +436,7 @@ class TCombustor(TGaspath):
             # 2.1
             elif self.FARdes is not None:
                 # assuming incoming fluid is pure air (do not use for afterburner/reheat)
-                self.Wf = self.FARdes * self.fs_in.mass
+                self.Wf = self.FARdes * self.fs_in_q.mass
                 self.Wfdes = self.Wf
 
             else:
@@ -448,16 +448,16 @@ class TCombustor(TGaspath):
                 if self.Wf < 0:
                     self.Wf = 0
             elif self.FAR is not None:
-                self.Wf = self.FAR * self.fs_in.mass
+                self.Wf = self.FAR * self.fs_in_q.mass
 
         # this combustor has constant PR, no OD PR yet (use manual input in code here, or make PR map)
         self.PR = self.PRdes
-        Sin = self.fs_in.gas_q.s
-        Pin = self.fs_in.gas_q.P
+        Sin = self.fs_in_q.gas_q.s
+        Pin = self.fs_in_q.gas_q.P
         # Pout = self.gas_in.P*self.PRdes
-        w_air = self.fs_in.gas_q.mass
+        w_air = self.fs_in_q.gas_q.mass
         # h_gas_in_initial = self.gas_in.gas_q.enthalpy_mass
-        H_in_initial = self.fs_in.H_total
+        H_in_initial = self.fs_in_q.H_total
 
         if (self.FuelComposition == '') or (self.FuelComposition == None):
             # fuel mole mass for the virtual fuel based on the specified H/C and O/C ratios (normalized to 1 mole of C)
@@ -515,6 +515,8 @@ class TCombustor(TGaspath):
 
         #  add fuel to system level total fuel flow
         self.system.WF = self.system.WF + self.Wf
+
+        self.Add_Q_to_fs_out()
 
         return self.fs_out
 

@@ -112,6 +112,27 @@ class TGaspath(TComponent):
                 self.fs_in_q.P,
             )
 
+    # def Add_Q_to_fs(self, fs_0, fs_1):
+    #     # Heat transfer with heat sink components
+    #     if self.fs_in_q is None:
+    #         # create fs_in_q
+    #         self.fs_in_q = TFlowState.create_empty(
+    #             self.fs_in.gas,
+    #             station_nr=self.fs_in.station_nr,
+    #         )
+    #     # copy from fs_in
+    #     self.fs_in_q.copy_from(
+    #         self.fs_in,
+    #         str(self.fs_in.station_nr) + '_hx',
+    #     )
+    #     # if heathpaths, add Q
+    #     if self.heatpaths:
+    #         Qhs_in = self.CalculateHeatTransfer(self.fs_in, 'inlet')
+    #         self.fs_in_q.HP = (
+    #             self.fs_in_q.H_total + Qhs_in,
+    #             self.fs_in_q.P,
+    #         )
+
     def Add_Q_to_fs_out(self):
         # if heathpaths, add Q
         if self.heatpaths:
