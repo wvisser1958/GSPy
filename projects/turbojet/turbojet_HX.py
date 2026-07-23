@@ -84,7 +84,7 @@ def main():
                              T_first_guess = 1200,
                              Q_norm_factor = 1000)    
 
-    heatpath_c = THeatpath(system=turbojet,                  # system : to be changed to TGaspath upon TGaspath creation 
+    heatpath_c = THeatpath(system=turbojet,                  
                            name='Heatpath_c', 
                            heatsink = heatsink_c_t,          # heat sink path is connected to
                            a_ht = 0.2,                      # heat transfer area m2
@@ -97,10 +97,10 @@ def main():
                            eps_rad = 0,                     # no radiation heat transfer
                            h_user = None,                   # user specified heat transfer coefficient overriding the above
                            Q_user = None,                   # no user specified Q
-                           in_out_split_fraction = 1        # location factor
+                           in_out_split_fraction = 0.5      # location factor
                            )
 
-    heatpath_t = THeatpath(system=turbojet,                  # system : to be changed to TGaspath upon TGaspath creation
+    heatpath_t = THeatpath(system=turbojet,                  
                            name='Heatpath_t',               
                            heatsink = heatsink_c_t,          # heat sink path is connected to
                            a_ht = 10.2,                      # heat transfer area m2
@@ -131,17 +131,36 @@ def main():
                               Bleeds=None,                  # optional list of bleeds
                               heatpaths = [heatpath_c])     # optional list of heat path links with heatsinks
 
+    #  heat path between heatsinks _c_t and _b_a
+    heatpath_hs_ct_ba = THeatpath(system=turbojet,                  
+                           name='Heatpath_ct_ba',               
+                           heatsink = heatsink_c_t,         # heat sink path is connected to
+                           a_ht = 10.0,                     # heat transfer area m2
+                           a_flow = 0.1,                    # flow cross area m2
+                           d_re = 0.1,                      # D for Reynolds number
+                           k_gas = 0.067,                   # gas conductivity
+                           Nu = '0.023*Re^(4/5)*Pr^(1/3)',  # Nusselt expression
+                           d_mat = 0.002,                   # wall material thickness
+                           k_mat = 17.5,                    # wall material conductivity
+                           eps_rad = 0,                     # no radiation heat transfer
+                           h_user = 100,                   # user specified heat transfer coefficient overriding the above
+                           Q_user = None,                   # no user specified Q overriding the above
+                           in_out_split_fraction = 0.5            # location factor
+                           )
+
     heatsink_b_a = THeatsink(system=turbojet, 
                              name='Heatsink_b_a', 
                              mass = 1,               # mass not and cp relevant here (steady state)
                              cp = 1,
                              T_first_guess = 1000,
-                             Q_norm_factor = 1000)  
+                             Q_norm_factor = 1000,
+                             heatpaths = [heatpath_hs_ct_ba]
+                             )   
 
-    heatpath_b = THeatpath(system=turbojet,                  # system : to be changed to TGaspath upon TGaspath creation
+    heatpath_b = THeatpath(system=turbojet,                  
                            name='Heatpath_b',               
                            heatsink = heatsink_b_a,          # heat sink path is connected to
-                           a_ht = 10.2,                      # heat transfer area m2
+                           a_ht = 10.0,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
                            d_re = 0.1,                      # D for Reynolds number
                            k_gas = 0.067,                   # gas conductivity
@@ -224,11 +243,28 @@ def main():
                         # option for working with polytropic efficiency: uncomment next line:
                         # turbine1.Polytropic_Eta = 1
 
+    heatpath_d_a = THeatpath(system=turbojet,                  
+                           name='Heatpath_d_a',               
+                           heatsink = heatsink_b_a,          # heat sink path is connected to
+                           a_ht = 10.0,                      # heat transfer area m2
+                           a_flow = 0.1,                    # flow cross area m2
+                           d_re = 0.1,                      # D for Reynolds number
+                           k_gas = 0.067,                   # gas conductivity
+                           Nu = '0.023*Re^(4/5)*Pr^(1/3)',  # Nusselt expression
+                           d_mat = 0.002,                   # wall material thickness
+                           k_mat = 17.5,                    # wall material conductivity
+                           eps_rad = 0,                     # no radiation heat transfer
+                           h_user = None,                   # user specified heat transfer coefficient overriding the above
+                           Q_user = None,                   # no user specified Q overriding the above
+                           in_out_split_fraction = 0.5            # location factor
+                           )
+
     duct1    = TDuct(system=turbojet,                    # owning system model object
                      name='ExhDuct',                    # component name
                      station_in=5, 
                      station_out=7,                     # station nr in and out
-                     PRdes=1.0                          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+                     PRdes=1.0,                          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+                     heatpaths = [heatpath_d_a]
                     )
 
     exhaustnozzle = TExhaustNozzle(system=turbojet,      # owning system model object
@@ -277,9 +313,10 @@ def main():
                            in_out_split_fraction = 0        # not applicable, use outlet state
                            )
 
-    # now must also add the heatpaths to system.ambient
+    # now must also add and initialize the heatpaths to system.ambient
     # turbojet.AddAmbientHeatPaths([heatpath_ambient])
     turbojet.ambient.heatpaths = [heatpath_ambient_c_t, heatpath_ambient_b]
+    turbojet.ambient.init_heatpaths()
 
     # create a turbojet system model
     turbojet.define_comp_run_list(  fuelcontrol,

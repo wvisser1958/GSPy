@@ -34,10 +34,11 @@ class TGaspath(TComponent):
         # set design properties to None, if still None in PrintPerformance,
         # then not assigned anywhere so no need to Print/output.
         self.fs_in = None
+        self.fs_in_des = None
         self.fs_out = None
         # fs_in_q is a 'scratch' TFlowState for heat transfer between entry and start of process (e.g. compression, expansion)
         self.fs_in_q = None
-            # self.Wc = None
+        self.fs_in_des_q = None
         self.PRdes = 1
         self.PR = None
         # 1.6.0.5
@@ -86,12 +87,12 @@ class TGaspath(TComponent):
             self.fs_out.W_gas = self.fs_in.mass
 
         # if heathpaths, add Q
-        self.Add_Q_to_fs_in_q()
+        self.Add_Q_to_fs_in_q(Mode)
 
         self.system.gaspath_conditions[self.station_out] = self.fs_out
         return self.fs_out
 
-    def Add_Q_to_fs_in_q(self):
+    def Add_Q_to_fs_in_q(self, Mode):
         # Heat transfer with heat sink components
         if self.fs_in_q is None:
             # create fs_in_q
@@ -104,6 +105,19 @@ class TGaspath(TComponent):
             self.fs_in,
             str(self.fs_in.station_nr) + '_hx',
         )
+        if Mode == 'DP':
+            if self.fs_in_des_q is None:
+                # create fs_in_q
+                self.fs_in_des_q = TFlowState.create_empty(
+                    self.fs_in.gas,
+                    station_nr=self.fs_in.station_nr,
+                )
+            # copy from fs_in
+            self.fs_in_des_q.copy_from(
+                self.fs_in,
+                str(self.fs_in.station_nr) + '_hx',
+            )
+
         # if heathpaths, add Q
         if self.heatpaths:
             Qhs_in = self.CalculateHeatTransfer(self.fs_in, 'inlet')
@@ -112,26 +126,26 @@ class TGaspath(TComponent):
                 self.fs_in_q.P,
             )
 
-    # def Add_Q_to_fs(self, fs_0, fs_1):
-    #     # Heat transfer with heat sink components
-    #     if self.fs_in_q is None:
-    #         # create fs_in_q
-    #         self.fs_in_q = TFlowState.create_empty(
-    #             self.fs_in.gas,
-    #             station_nr=self.fs_in.station_nr,
-    #         )
-    #     # copy from fs_in
-    #     self.fs_in_q.copy_from(
-    #         self.fs_in,
-    #         str(self.fs_in.station_nr) + '_hx',
-    #     )
-    #     # if heathpaths, add Q
-    #     if self.heatpaths:
-    #         Qhs_in = self.CalculateHeatTransfer(self.fs_in, 'inlet')
-    #         self.fs_in_q.HP = (
-    #             self.fs_in_q.H_total + Qhs_in,
-    #             self.fs_in_q.P,
-    #         )
+    def Add_Q_to_fs(self, fs_from, fs_to, station_nr_to):
+        # Heat transfer with heat sink components
+        if fs_to is None:
+            # create fs_in_to
+            fs_to = TFlowState.create_empty(
+                fs_from.gas,
+                station_nr=station_nr_to,
+            )
+        # copy from fs_from
+        fs_to.copy_from(
+            fs_from,
+            station_nr_to
+        )
+        # if heathpaths, add Q
+        if self.heatpaths:
+            Qhs_in = self.CalculateHeatTransfer(self.fs_in, 'inlet')
+            self.fs_in_q.HP = (
+                self.fs_in_q.H_total + Qhs_in,
+                self.fs_in_q.P,
+            )
 
     def Add_Q_to_fs_out(self):
         # if heathpaths, add Q

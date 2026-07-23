@@ -208,7 +208,7 @@ class TAmbient(TComponent):
         return     
 
     def Run(self, Mode, PointTime):
-        Q_ambient = self.CalculateHeatTransfer(self.fs_ambient, 'outlet')
+        Q_ambient = self.CalculateHeatTransfer(self.fs_ambient, 'ambient')
 
         # if Mode == 'DP':  # alway reset de DP conditions
         #     self.Altitude = self.Altitude_des

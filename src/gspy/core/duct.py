@@ -34,14 +34,21 @@ class TDuct(TGaspath):
         super().Run(Mode, PointTime)
         # v1.2 dprel proportional to Wc^2
         # dprel = (1 - self.PRdes) * np.square(self.Wc/self.Wcdes)
-        dprel = (1 - self.PRdes) * np.square(self.fs_in.Wc/self.fs_in_des.Wc)
+        
+        # assume PRloss is determined by flowstate after inlet side heat transfer from heatpath, so
+        dprel = (1 - self.PRdes) * np.square(self.fs_in_q.Wc/self.fs_in_des_q.Wc)
         self.PR = 1 - dprel        
         # 2.1
-        p_out = self.fs_in.P*self.PR
+        p_out = self.fs_in_q.P*self.PR
+        # user specified Q
         if self.Q is None:
-            self.fs_out.TP = self.fs_in.T, p_out
+            self.fs_out.TP = self.fs_in_q.T, p_out
         else:
-            self.fs_out.HP = (self.fs_in.H + self.Q) / self.fs_in.mass, p_out
+            self.fs_out.HP = (self.fs_in_q.H + self.Q) / self.fs_in_q.mass, p_out
+
+        # now add Q heatpath
+        self.Add_Q_to_fs_out()
+        
         return self.fs_out
     
     def get_outputs(self):

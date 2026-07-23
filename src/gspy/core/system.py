@@ -288,6 +288,8 @@ class TSystemModel:
         self.WF = 0.0    # Total fuel kg/s
         self.PW = 0.0    # Total net output shaft power kW
 
+        
+
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
     def Do_Run(self, mode, point_time, states_par):
@@ -315,6 +317,10 @@ class TSystemModel:
             # load comp data into the output_dict
             self.output_dict.update(comp.get_outputs())
 
+        # update again all outputs: in case component properties updated 
+        # by other components Run code later in the component list (e.g. heatsing Q_balance)
+        for comp in self.component_run_list:
+            self.output_dict.update(comp.get_outputs())
         # load system performance (self) data into the output_dict
         self.output_dict.update(self.get_outputs())
 

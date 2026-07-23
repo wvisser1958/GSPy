@@ -28,7 +28,7 @@ from gspy.core.flow_state import TFlowState
 
 @dataclass
 class THeatTransferState:
-    name: str = ""
+    typename: str = ""
     a: float = 0.0
 
     mu: float = 0.0
@@ -72,7 +72,7 @@ class THeatpath(ABC):
                                 # - optional for gaspath components, if not None, 
                                 #   then overruling all above parameters (a_ht, a_flow, d_re, k_gas, Nu, d_mat, k_mat, eps_rad)                q_user,         # manual user specified total heat flux Q 
                 Q_user = None,  # if not None, overriding all other parameters
-                in_out_split_fraction = 0.5):   # factor for splitting heat transfer over start and end of compression, combustion etc.
+                in_out_split_fraction = None):  # factor for splitting heat transfer over start and end of compression, combustion etc.
                                                 # 1 = all Q from gas path component entry
                                                 # 0 = all Q from gas path component exit
                                                 # 0.5 (default is half / half)
@@ -96,7 +96,7 @@ class THeatpath(ABC):
         self.component = component
         self.name = name
 
-        self.hx_with = heatsink
+        self.with_heatsink = heatsink
         self.a_ht = a_ht
         self.a_flow = a_flow    
         self.d_re = d_re   
@@ -108,7 +108,6 @@ class THeatpath(ABC):
 
         self.h_user = h_user
         self.Q_user = Q_user   
-        self.in_out_split_fraction = in_out_split_fraction
 
         self.Re, self.Pr, self.Ra = sp.symbols("Re Pr Ra")
 
@@ -123,13 +122,28 @@ class THeatpath(ABC):
             # now self.Nu_func can be used to calculate Nu like
             # self.Nu_func(4, 5)
 
-        self.ht = THeatPathStates(
-            inlet=THeatTransferState(name = "inlet"),
-            outlet=THeatTransferState(name = "outlet"),
-        )
-        # fixed split of heat transfer between inlet and outlet of connected (gaspathc) component
-        self.ht.inlet.a = self.a_ht * self.in_out_split_fraction
-        self.ht.outlet.a = self.a_ht * (1 - self.in_out_split_fraction)
+        self.in_out_split_fraction = in_out_split_fraction
+
+    def init_heattransferstates(self, component):
+        if isinstance(component, TGaspath):
+            self.ht = THeatPathStates(
+                inlet=THeatTransferState(typename = "inlet"),
+                outlet=THeatTransferState(typename = "outlet"),
+            )
+            # fixed split of heat transfer between inlet and outlet of connected (gaspathc) component
+            self.ht.inlet.a = self.a_ht * self.in_out_split_fraction
+            self.ht.outlet.a = self.a_ht * (1 - self.in_out_split_fraction)
+        elif isinstance(component, TAmbient):
+            self.in_out_split_fraction = 1
+            self.ht = THeatTransferState(typename = "ambient")
+            self.ht.a = self.a_ht
+        elif isinstance(component, THeatsink):
+            self.in_out_split_fraction = 1
+            self.ht = THeatTransferState(typename = "heatsink")
+            self.ht.a = self.a_ht
+            self.hs_comp = component
+        else:
+            raise ValueError(f'Component in heatpath {self.name} must be either TGasPath, TAmbient or THeatsink')
 
     def compile_nusselt_correlation(self, equation: str):
         # Allow both "Nu = ..." and plain expression
@@ -148,21 +162,34 @@ class THeatpath(ABC):
         f = sp.lambdify((self.Re, self.Pr), expr, "math")
         return expr, f
 
-    def calc_Q(self, fs_hx, inlet_or_outlet):
-        if inlet_or_outlet == 'inlet':
+    def calc_Q(self, fs_hx, gaspath_position):
+        if gaspath_position == 'inlet':
             ht_state = self.ht.inlet
-        else:
+            T_self_hx = fs_hx.T
+        elif gaspath_position == 'outlet':
             ht_state = self.ht.outlet
+            T_self_hx = fs_hx.T
+        elif gaspath_position == 'ambient':
+            ht_state = self.ht
+            T_self_hx = fs_hx.T
+        elif gaspath_position == 'heatsink':
+            ht_state = self.ht
+            T_self_hx = self.hs_comp.T
+        else:
+            raise ValueError("Invalid gaspath_position in HeatPath calc_C") 
 
         if self.Q_user:
-            if inlet_or_outlet == 'inlet':
+            # total Q for hx to component given: must split in case of inlet / outlet here:
+            if gaspath_position == 'inlet':
                 ht_state.Q = self.Q_user * self.in_out_split_fraction
-            else:
+            elif gaspath_position == 'outlet':
                 ht_state.Q = self.Q_user * (1 - self.in_out_split_fraction)
+            else:     
+                ht_state.Q = self.Q_user
         else:
             if self.h_user:
                 # user given h_user overriding the rest....
-                ht_state.Q = self.h_user * ht_state.a * (fs_hx.T - self.hx_with.T)
+                ht_state.Q = self.h_user * ht_state.a * (self.with_heatsink.T - T_self_hx)
                 ht_state.h_total = self.h_user                
             else:
                 # calculate the heat transfer from the gas to the wall (convection) and through the wall (conduction)
@@ -178,25 +205,20 @@ class THeatpath(ABC):
                 ht_state.h_total = 1 / (1/ht_state.h_conv + 1/ht_state.h_cond)
                 
                 # heat going into the gas is positive, so:
-                ht_state.Q_conv_cond = ht_state.h_total * ht_state.a * (self.hx_with.T - fs_hx.T)
+                ht_state.Q_conv_cond = ht_state.h_total * ht_state.a * (self.with_heatsink.T - T_self_hx)
 
                 # now with the calculated Q_conv_cond, we can calculate the wall temperature T_wall for radiation            
                 # Q_conv_cond  = (T_heatsink-T_wall)*A*h__cond, so
                 if math.isclose(ht_state.h_cond, 0.0, abs_tol=1e-12) or math.isclose(ht_state.a, 0.0, rel_tol=1e-12):
-                    ht_state.T_wall = self.hx_with.T # assume temperature of heat sink
+                    ht_state.T_wall = self.with_heatsink.T # assume temperature of heat sink
                 else:
-                    ht_state.T_wall = self.hx_with.T - ht_state.Q_conv_cond/ht_state.a/ht_state.h_cond
+                    ht_state.T_wall = self.with_heatsink.T - ht_state.Q_conv_cond/ht_state.a/ht_state.h_cond
             
                 # radiation heat transfer (from wall to ambient) is not yet included in the Q calculation
-                ht_state.Q_rad = self.eps_rad * c.C_StefanBoltzmann * ht_state.a * (ht_state.T_wall**4-fs_hx.T**4)  
+                ht_state.Q_rad = self.eps_rad * c.C_StefanBoltzmann * ht_state.a * (ht_state.T_wall**4-T_self_hx**4)  
                 ht_state.Q = ht_state.Q_conv_cond + ht_state.Q_rad
 
-        # take fraction according to location_factor
-        # if inlet_or_outlet == 'inlet':
-        #     self.Q = Q_total * self.in_out_split_fraction
-        # elif inlet_or_outlet == 'outlet':
-        #     self.Q = Q_total * (1-self.in_out_split_fraction)
-        self.hx_with.Q_balance += ht_state.Q
+        self.with_heatsink.Q_balance -= ht_state.Q
         return ht_state.Q
 
     def Print_Inlet_or_Outlet_hx_performance(self, ht):
@@ -210,46 +232,62 @@ class THeatpath(ABC):
         print(f"Q_rad: {ht.Q_rad}")
 
     def PrintPerformance(self):
-        self.Print_Inlet_or_Outlet_hx_performance(ht = self.ht.inlet)
-        self.Print_Inlet_or_Outlet_hx_performance(ht = self.ht.outlet)
+        if isinstance(self.ht, THeatPathStates):
+            print(f"\t\tQ inlet : {self.ht.inlet.Q:.0f} W")
+            print(f"\t\tQ outlet: {self.ht.outlet.Q:.0f} W")
+            print(f"\t\tQ total : {self.ht.inlet.Q + self.ht.outlet.Q:.0f} W")
+        else:   # ht is a single THeatTransferState 
+            print(f"\t\tQ  : {self.ht.Q:.0f} W")
+        if self.system.debug_output:
+            if isinstance(self.ht, THeatPathStates):
+                self.Print_Inlet_or_Outlet_hx_performance(ht = self.ht.inlet)
+                self.Print_Inlet_or_Outlet_hx_performance(ht = self.ht.outlet)
+            else:
+                self.Print_Inlet_or_Outlet_hx_performance(ht = self.ht)
 
     def Get_Inlet_or_Outlet_Output(self, ht, out):
-        out[f"a_{ht.name} {self.name}"] = ht.a
-        out[f"Nu_{ht.name} {self.name}"] = ht.Nu_value
-        out[f"hs_conv_{ht.name} {self.name}"] = ht.h_conv
-        out[f"hs_cond_{ht.name} {self.name}"] = ht.h_cond
-        out[f"T_wall_{ht.name} {self.name}"] = ht.T_wall
-        out[f"Q_rad_{ht.name} {self.name}"] = ht.Q_rad
-        out[f"Q_{ht.name} {self.name}"] = ht.Q
+        if self.system.debug_output:
+            out[f"a_{ht.typename} {self.name}"] = ht.a
+            out[f"Nu_{ht.typename} {self.name}"] = ht.Nu_value
+            out[f"hs_conv_{ht.typename} {self.name}"] = ht.h_conv
+            out[f"hs_cond_{ht.typename} {self.name}"] = ht.h_cond
+            out[f"T_wall_{ht.typename} {self.name}"] = ht.T_wall
+            out[f"Q_rad_{ht.typename} {self.name}"] = ht.Q_rad
+        out[f"Q_{ht.typename} {self.name}"] = ht.Q
 
     def get_outputs(self):
         out = {}
 
-        if self.hx_with is not None:
-            out[f"hx_with_{self.name}"] = self.hx_with.name
-        if self.a_ht is not None:
-            out[f"a_ht_{self.name}"] = self.a_ht
-        if self.a_flow is not None:
-            out[f"a_flow_{self.name}"] = self.a_flow
-        if self.d_re is not None:
-            out[f"d_re_{self.name}"] = self.d_re
-        if self.k_gas is not None:
-            out[f"k_gas_{self.name}"] = self.k_gas
-        if self.Nu is not None:
-            out[f"Nu_{self.name}"] = self.Nu
-        if self.d_mat is not None:
-            out[f"d_mat_{self.name}"] = self.d_mat
-        if self.k_mat is not None:
-            out[f"k_mat_{self.name}"] = self.k_mat
-        if self.eps_rad is not None:
-            out[f"eps_rad_{self.name}"] = self.eps_rad
-        if self.h_user is not None:
-            out[f"h_user_{self.name}"] = self.h_user
-        if self.Q_user is not None:
-            out[f"Q_user_{self.name}"] = self.Q_user
+        if self.system.debug_output:
+            if self.with_heatsink is not None:
+                out[f"hx_with_{self.name}"] = self.with_heatsink.name
+            if self.a_ht is not None:
+                out[f"a_ht_{self.name}"] = self.a_ht
+            if self.a_flow is not None:
+                out[f"a_flow_{self.name}"] = self.a_flow
+            if self.d_re is not None:
+                out[f"d_re_{self.name}"] = self.d_re
+            if self.k_gas is not None:
+                out[f"k_gas_{self.name}"] = self.k_gas
+            if self.Nu is not None:
+                out[f"Nu_{self.name}"] = self.Nu
+            if self.d_mat is not None:
+                out[f"d_mat_{self.name}"] = self.d_mat
+            if self.k_mat is not None:
+                out[f"k_mat_{self.name}"] = self.k_mat
+            if self.eps_rad is not None:
+                out[f"eps_rad_{self.name}"] = self.eps_rad
+            if self.h_user is not None:
+                out[f"h_user_{self.name}"] = self.h_user
+            if self.Q_user is not None:
+                out[f"Q_user_{self.name}"] = self.Q_user
 
-        self.Get_Inlet_or_Outlet_Output(self.ht.inlet, out)
-        self.Get_Inlet_or_Outlet_Output(self.ht.outlet, out)
+        if isinstance(self.ht, THeatPathStates):
+            self.Get_Inlet_or_Outlet_Output(self.ht.inlet, out)
+            self.Get_Inlet_or_Outlet_Output(self.ht.outlet, out)
+            out[f"Q_total {self.name}"] = self.ht.inlet.Q + self.ht.outlet.Q
+        else:
+            self.Get_Inlet_or_Outlet_Output(self.ht, out)
 
         return out
     

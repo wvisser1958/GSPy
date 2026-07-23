@@ -37,9 +37,14 @@ class TComponent(ABC):
         # 1.1 WV
         self.control = control_component
         self.heatpaths = heatpaths
+
+        self.init_heatpaths()
+
+    def init_heatpaths(self):
         if self.heatpaths is not None:
             for heatpath in self.heatpaths:
-                heatpath.owner = self
+                # heatpath.owner = self
+                heatpath.init_heattransferstates(self)
 
     # # backward compatibility
     # @property
@@ -89,21 +94,13 @@ class TComponent(ABC):
         print(f"{self.name} ({Mode}) Point/Time:{PointTime}")
         if self.heatpaths:
             for heatpath in self.heatpaths:
-                print(f"\t\tQ inlet : {heatpath.ht.inlet.Q:.0f} W")
-                print(f"\t\tQ outlet: {heatpath.ht.outlet.Q:.0f} W")
-                print(f"\t\tQ total : {heatpath.ht.inlet.Q + heatpath.ht.outlet.Q:.0f} W")
-                if self.system.debug_output:
-                    heatpath.PrintPerformance()
+                heatpath.PrintPerformance()
 
     def get_outputs(self):
         out = {}
         if self.heatpaths:
             for heatpath in self.heatpaths:
-                out[f"Q_inlet_{self.name}"] = heatpath.ht.inlet.Q
-                out[f"Q_outlet_{self.name}"] = heatpath.ht.outlet.Q
-                out[f"Q_total_{self.name}"] = heatpath.ht.inlet.Q + heatpath.ht.outlet.Q
-                if self.system.debug_output:
-                    out.update(heatpath.get_outputs())
+                out.update(heatpath.get_outputs())
                 
         return out
     

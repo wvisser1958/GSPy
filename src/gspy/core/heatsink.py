@@ -41,7 +41,9 @@ class THeatsink(TComponent):
         self.Q_balance = 0
 
     def Run(self, Mode, PointTime):
-        # 
+        if self.heatpaths:
+            Qhs_out = self.CalculateHeatTransfer(None, 'heatsink')
+            self.Q_balance += Qhs_out
         return self.T
     
     def PrintPerformance(self, Mode, PointTime):
