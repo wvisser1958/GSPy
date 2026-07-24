@@ -63,6 +63,8 @@ class TFlowState:
 
         self.gas_q = ct.Quantity(gas, mass=gas_mass)
 
+        self.velocity = None
+
         self.station_nr = str(station_nr)
 
         # set Ps, Ts, Mach etc....

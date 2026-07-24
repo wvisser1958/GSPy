@@ -19,6 +19,7 @@ from math import log, exp
 from scipy.optimize import root, root_scalar
 import cantera as ct
 import gspy.core.constants as c
+from enum import Enum
 from gspy.core.gaspath_condition import TFlowState
 
 atomweightC = 12.010914
@@ -28,6 +29,12 @@ molemassO2 = 31.9988
 atomweightH = 1.0079832
 atomweightN = 14
 MM_NO2 = 46.00554
+
+class HeatTransferLocation(Enum):
+    INLET = "Inlet"
+    OUTLET = "Outlet"
+    AMBIENT = "Ambient"
+    HEATSINK = "Heatsink"
 
 # functions for corrected rotor speed Nc and mass flow Wc
 # divide N by GetRotorspeedCorrectionFactor to get Nc corrected

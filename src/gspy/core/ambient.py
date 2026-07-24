@@ -18,7 +18,7 @@ from statistics import mode
 import cantera as ct
 import aerocalc as ac     # !!!! install with "pip install aero-calc", see https://www.kilohotel.com/python/aerocalc/html/
 from gspy.core.base_component import TComponent
-# import gspy.core.sys_global as fg
+import gspy.core.utils as fu
 import gspy.core.constants as c
 from gspy.core.flow_state import TFlowState
 
@@ -193,6 +193,9 @@ class TAmbient(TComponent):
         a_s = self.fs_ambient.gas_q.sound_speed
         self.V = self.Macha * a_s
 
+        # make V available in the TFlowState for convenience
+        self.fs_ambient.velocity = self.V
+
         # 4) total conditions using humid-air gamma
         self.Tta = self.Tsa * (1.0 + 0.5 * (gamma - 1.0) * self.Macha**2)
         self.Pta = self.Psa * (self.Tta / self.Tsa)**(gamma / (gamma - 1.0))
@@ -208,7 +211,7 @@ class TAmbient(TComponent):
         return     
 
     def Run(self, Mode, PointTime):
-        Q_ambient = self.CalculateHeatTransfer(self.fs_ambient, 'ambient')
+        Q_ambient = self.CalculateHeatTransfer(self.fs_ambient, fu.HeatTransferLocation.AMBIENT)
 
         # if Mode == 'DP':  # alway reset de DP conditions
         #     self.Altitude = self.Altitude_des

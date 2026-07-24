@@ -38,13 +38,29 @@ class THeatsink(TComponent):
         self.T = T_first_guess
 
     def PreRun(self, Mode, PointTime):
-        self.Q_balance = 0
+        if Mode == 'DP':
+            self.Q_balance = 0
+        elif Mode == 'OD':
+            self.T = self.system.states[self.istate_T] * self.T_des
 
     def Run(self, Mode, PointTime):
+        if Mode == 'DP':
+            # define state and error for OD 
+            self.system.states = np.append(self.system.states, 1)
+            self.istate_T = self.system.states.size-1
+            # error for equation fs_in.wc = wcmap
+            self.system.errors = np.append(self.system.errors, 0)
+            self.ierror_Q = self.system.errors.size-1
         if self.heatpaths:
-            Qhs_out = self.CalculateHeatTransfer(None, 'heatsink')
+            Qhs_out = self.CalculateHeatTransfer(None, fu.HeatTransferLocation.HEATSINK)
             self.Q_balance += Qhs_out
         return self.T
+    
+    def PostRun(self, Mode, PointTime):
+        if Mode == 'DP':
+            self.T_des = self.T            
+        if Mode == 'OD':
+            self.system.errors[self.ierror_Q] = self.Q_balance/self.Q_norm_factor
     
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)

@@ -17,18 +17,22 @@ import numpy as np
 import cantera as ct
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from gspy.core.system import TSystemModel
 from gspy.core.base_component import TComponent
 from gspy.core.ambient import TAmbient
 from gspy.core.gaspath import TGaspath
 from gspy.core.heatsink import THeatsink
-import gspy.core.utils as fu
+from gspy.core.utils import HeatTransferLocation
 import gspy.core.constants as c
 import sympy as sp
 from gspy.core.flow_state import TFlowState
 
+#  'sentinel' for validating consistent input
+_NOT_SET = object()
+
 @dataclass
 class THeatTransferState:
-    typename: str = ""
+    ht_loc: HeatTransferLocation = None
     a: float = 0.0
 
     mu: float = 0.0
@@ -55,91 +59,248 @@ class THeatpath(ABC):
 
     def __init__(self, 
                 *,
-                system,         # owning TSystemModel 
-                component : TComponent = None,      # owning component is a TComponent (e.g. TGaspath, THeatsink, TAmbient) exchanging heat with the heatsink object
-                                                    # component later assigned by
-                name,                               # unique name of the heat path
-                heatsink : THeatsink,               # heat sink component the heat path is connected to  
-                a_ht,           # heat transfer area (between flow and wall)
-                a_flow,         # flow cross area (to calculate convection properties from mass flow)
-                d_re,           # characteristic length for Reynolds nr
-                k_gas,          # conductivity of the gas
-                Nu,             # Nusselt expression
-                d_mat,          # material/wall thickness for conduction
-                k_mat,          # wall material conductivity
-                eps_rad = None, # radiation emissivity (if None, then no radiation heat transfer)
-                h_user = None,  # manual user specified heat transfer coefficient h: 
-                                # - optional for gaspath components, if not None, 
-                                #   then overruling all above parameters (a_ht, a_flow, d_re, k_gas, Nu, d_mat, k_mat, eps_rad)                q_user,         # manual user specified total heat flux Q 
-                Q_user = None,  # if not None, overriding all other parameters
-                in_out_split_fraction = None):  # factor for splitting heat transfer over start and end of compression, combustion etc.
-                                                # 1 = all Q from gas path component entry
-                                                # 0 = all Q from gas path component exit
-                                                # 0.5 (default is half / half)
-                                                # 0.3 0.3 from entry, 0.7 from exit
-        # if not isinstance(heatsink, TComponent):
-        #     raise TypeError(
-        #         f"heatsink or ambient must be a TComponent, got {type(heatsink).__name__}"
-        #     )       
-        # if isinstance(owner, TGaspath):
-        #     if not isinstance(heatsink, THeatsink): 
-        #         raise TypeError(
-        #             f"Gaspath component heat path must connect with THeatsink, got {type(heatsink).__name__}"
-        #         )       
-        # if isinstance(owner, THeatsink):
-        #     if not isinstance(heatsink, TAmbient): 
-        #         raise TypeError(
-        #             f"Heatsink component heat path must connect with TAmbient, got {type(heatsink).__name__}"
-        #         )      
+                system: TSystemModel,                   # owning TSystemModel 
+                component : TComponent | None = None,   # owning component is a TComponent (e.g. TGaspath, THeatsink, TAmbient) exchanging heat with the heatsink object
+                                                        # component later assigned by
+                name: str,                              # unique name of the heat path
+            heatsink : THeatsink,                       # heat sink component the heat path is connected to  
+                a_ht=_NOT_SET,          # heat transfer area (between flow and wall)
+                a_flow=_NOT_SET,        # flow cross area (to calculate convection properties from mass flow)
+                d_re=_NOT_SET,          # characteristic length for Reynolds nr
+                k_gas=_NOT_SET,         # conductivity of the gas
+                Nu=_NOT_SET,            # Nusselt expression
+                d_mat=_NOT_SET,         # material/wall thickness for conduction
+                k_mat=_NOT_SET,         # wall material conductivity
+                eps_rad:float = 0.0,    # radiation emissivity (if None, then no radiation heat transfer)
+                u_user = _NOT_SET,      # manual user specified overall heat transfer coefficient u: 
+                                        # - optional for gaspath components, if not None, 
+                                        #   then overruling all above parameters (a_ht, a_flow, d_re, k_gas, Nu, d_mat, k_mat, eps_rad)                q_user,         # manual user specified total heat flux Q 
+                Q_user=_NOT_SET,        # if not None, overriding all other parameters
+                in_out_split_fraction=None) -> None: 
+                                        # factor for splitting heat transfer over start and end of compression, combustion etc.
+                                        # 1 = all Q from gas path component entry
+                                        # 0 = all Q from gas path component exit
+                                        # 0.5 (default is half / half)
+                                        # 0.3 0.3 from entry, 0.7 from exit
              
         self.system = system
         self.component = component
         self.name = name
-
         self.with_heatsink = heatsink
-        self.a_ht = a_ht
-        self.a_flow = a_flow    
-        self.d_re = d_re   
-        self.k_gas = k_gas   
-        self.Nu = Nu   
-        self.d_mat = d_mat   
-        self.k_mat = k_mat   
-        self.eps_rad = eps_rad   
 
-        self.h_user = h_user
-        self.Q_user = Q_user   
+        if (a_ht is not _NOT_SET) and (a_ht <= 0.0):
+            raise ValueError(
+                f"Heat path {name!r}: a_ht must be greater than zero."
+            )
 
-        self.Re, self.Pr, self.Ra = sp.symbols("Re Pr Ra")
+        if not 0.0 <= eps_rad <= 1.0:
+            raise ValueError(
+                f"Heat path {name!r}: eps_rad must be between 0 and 1."
+            )
+        
+        self._validate_heat_transfer_inputs(
+            a_ht=a_ht,
+            a_flow=a_flow,
+            d_re=d_re,
+            k_gas=k_gas,
+            Nu=Nu,
+            d_mat=d_mat,
+            k_mat=k_mat,
+            u_user=u_user,
+            Q_user=Q_user,
+            in_out_split_fraction=in_out_split_fraction
+        )
 
-        self.allowed_symbols = {
-            "Re": self.Re,
-            "Pr": self.Pr,
-            "Ra": self.Ra,
-        }
-
-        self.Nu_expr, self.Nu_func = self.compile_nusselt_correlation(self.Nu)
-            # example for Nu parameter: "Nu = 0.023 * Re**0.8 * Pr**0.4"
-            # now self.Nu_func can be used to calculate Nu like
-            # self.Nu_func(4, 5)
-
+        self.a_ht = None if a_ht is _NOT_SET else a_ht
+        self.a_flow = None if a_flow is _NOT_SET else a_flow
+        self.d_re = None if d_re is _NOT_SET else d_re
+        self.k_gas = None if k_gas is _NOT_SET else k_gas
+        self.Nu = None if Nu is _NOT_SET else Nu
+        self.d_mat = None if d_mat is _NOT_SET else d_mat
+        self.k_mat = None if k_mat is _NOT_SET else k_mat
+        self.u_user = None if u_user is _NOT_SET else float(u_user)
+        self.Q_user = None if Q_user is _NOT_SET else float(Q_user)
         self.in_out_split_fraction = in_out_split_fraction
 
+        self.eps_rad = float(eps_rad)
+
+        if self.Nu is not None:
+            self.Re, self.Pr, self.Ra = sp.symbols("Re Pr Ra")
+
+            self.allowed_symbols = {
+                "Re": self.Re,
+                "Pr": self.Pr,
+                "Ra": self.Ra,
+            }
+
+            self.Nu_expr, self.Nu_func = self.compile_nusselt_correlation(self.Nu)
+                # example for Nu parameter: "Nu = 0.023 * Re**0.8 * Pr**0.4"
+                # now self.Nu_func can be used to calculate Nu like
+                # self.Nu_func(4, 5)
+
+    def _validate_heat_transfer_inputs(
+        self,
+        *,
+        a_ht,
+        a_flow,
+        d_re,
+        k_gas,
+        Nu,
+        d_mat,
+        k_mat,
+        u_user,
+        Q_user,
+        in_out_split_fraction,
+    ) -> None:
+
+        calculated_u_parameters = {
+            "a_flow": a_flow,
+            "d_re": d_re,
+            "k_gas": k_gas,
+            "Nu": Nu,
+            "d_mat": d_mat,
+            "k_mat": k_mat,
+        }
+
+        #  for Q_user, a_ht also superfluous
+        calculated_Q_parameters = {
+            "a_ht": a_ht,
+            **calculated_u_parameters,
+        }
+
+        # Q_user overrides all other heat-transfer calculations.
+        if Q_user is not _NOT_SET:
+            conflicting = [
+                name
+                for name, value in {
+                    **calculated_Q_parameters,
+                    "u_user": u_user,
+                }.items()
+                if value is not _NOT_SET
+            ]
+
+            if conflicting:
+                raise ValueError(
+                    f"Heat path {self.name!r}: Q_user overrides the complete "
+                    "heat-transfer calculation. Do not also provide: "
+                    f"{', '.join(conflicting)}."
+                )
+
+            if not isinstance(Q_user, (int, float)):
+                raise TypeError(
+                    f"Heat path {self.name!r}: Q_user must be numeric."
+                )
+
+        # u_user overrides calculated convection and conduction.
+        elif u_user is not _NOT_SET:
+            conflicting = [
+                name
+                for name, value in calculated_u_parameters.items()
+                if value is not _NOT_SET
+            ]
+
+            if conflicting:
+                raise ValueError(
+                    f"Heat path {self.name!r}: u_user overrides the calculated "
+                    "convection and conduction model. Do not also provide: "
+                    f"{', '.join(conflicting)}."
+                )
+
+            if not isinstance(u_user, (int, float)):
+                raise TypeError(
+                    f"Heat path {self.name!r}: u_user must be numeric."
+                )
+
+            if u_user < 0.0:
+                raise ValueError(
+                    f"Heat path {self.name!r}: u_user cannot be negative."
+                )
+
+        # Validate the split value itself, if the user supplied it.
+        # Whether it is allowed is checked after component connection.
+        if in_out_split_fraction is not None:
+            if not isinstance(in_out_split_fraction, (int, float)):
+                raise TypeError(
+                    f"Heat path {self.name!r}: in_out_split_fraction "
+                    "must be numeric."
+                )
+
+            if not 0.0 <= in_out_split_fraction <= 1.0:
+                raise ValueError(
+                    f"Heat path {self.name!r}: in_out_split_fraction "
+                    "must be between 0 and 1."
+                )
+
+    # def _validate_required_inputs_for_component(self) -> None:
+    #     # A prescribed total Q or overall U needs no calculated U inputs.
+    #     if self.Q_user is not None or self.u_user is not None:
+    #         return
+
+    #     if isinstance(self.component, TGaspath):
+    #         required = {
+    #             "a_flow": self.a_flow,
+    #             "d_re": self.d_re,
+    #             "k_gas": self.k_gas,
+    #             "Nu": self.Nu,
+    #             "d_mat": self.d_mat,
+    #             "k_mat": self.k_mat,
+    #             "in_out_split_fraction": self.in_out_split_fraction
+    #         }
+
+    #     elif isinstance(self.component, THeatsink):
+    #         required = {
+    #             "d_mat": self.d_mat,
+    #             "k_mat": self.k_mat,
+    #         }
+
+    #     elif isinstance(self.component, TAmbient):
+    #         required = {
+    #             "a_flow": self.a_flow,
+    #             "d_re": self.d_re,
+    #             "k_gas": self.k_gas,
+    #             "Nu": self.Nu,
+    #             "d_mat": self.d_mat,
+    #             "k_mat": self.k_mat,
+    #         }
+
+    #     else:
+    #         return
+
+    #     missing = [
+    #         name
+    #         for name, value in required.items()
+    #         if value is None
+    #     ]
+
+    #     if missing:
+    #         raise ValueError(
+    #             f"Heat path {self.name!r}, connected to "
+    #             f"{self.component.name!r}, requires: {', '.join(missing)}."
+    #         )
+        
     def init_heattransferstates(self, component):
+        self.component = component
         if isinstance(component, TGaspath):
+            if self.in_out_split_fraction is None:
+                raise ValueError(
+                    f"Heat path {self.name!r}: in_out_split_fraction not specified")
             self.ht = THeatPathStates(
-                inlet=THeatTransferState(typename = "inlet"),
-                outlet=THeatTransferState(typename = "outlet"),
+                inlet=THeatTransferState(ht_loc = HeatTransferLocation.INLET),
+                outlet=THeatTransferState(ht_loc = HeatTransferLocation.OUTLET),
             )
             # fixed split of heat transfer between inlet and outlet of connected (gaspathc) component
             self.ht.inlet.a = self.a_ht * self.in_out_split_fraction
             self.ht.outlet.a = self.a_ht * (1 - self.in_out_split_fraction)
         elif isinstance(component, TAmbient):
+            if (component.fs_ambient.velocity<0.1) and (self.u_user is None) and (self.Q_user is None):
+                raise ValueError(
+                    f"Heat path {self.name!r} to Ambient must specify Q_user or u_user if ambient velocity = 0\n(No natural convection model implemented yet)")                
             self.in_out_split_fraction = 1
-            self.ht = THeatTransferState(typename = "ambient")
+            self.ht = THeatTransferState(ht_loc = HeatTransferLocation.AMBIENT)
             self.ht.a = self.a_ht
         elif isinstance(component, THeatsink):
             self.in_out_split_fraction = 1
-            self.ht = THeatTransferState(typename = "heatsink")
+            self.ht = THeatTransferState(ht_loc = HeatTransferLocation.HEATSINK)
             self.ht.a = self.a_ht
             self.hs_comp = component
         else:
@@ -162,40 +323,43 @@ class THeatpath(ABC):
         f = sp.lambdify((self.Re, self.Pr), expr, "math")
         return expr, f
 
-    def calc_Q(self, fs_hx, gaspath_position):
-        if gaspath_position == 'inlet':
+    def calc_Q(self, fs_hx, hx_location: HeatTransferLocation):
+        if hx_location == HeatTransferLocation.INLET:
             ht_state = self.ht.inlet
             T_self_hx = fs_hx.T
-        elif gaspath_position == 'outlet':
+        elif hx_location == HeatTransferLocation.OUTLET:
             ht_state = self.ht.outlet
             T_self_hx = fs_hx.T
-        elif gaspath_position == 'ambient':
+        elif hx_location == HeatTransferLocation.AMBIENT:
             ht_state = self.ht
             T_self_hx = fs_hx.T
-        elif gaspath_position == 'heatsink':
+        elif hx_location == HeatTransferLocation.HEATSINK:
             ht_state = self.ht
             T_self_hx = self.hs_comp.T
         else:
-            raise ValueError("Invalid gaspath_position in HeatPath calc_C") 
+            raise ValueError("Invalid HeatTransferLocation in HeatPath calc_C") 
 
         if self.Q_user:
             # total Q for hx to component given: must split in case of inlet / outlet here:
-            if gaspath_position == 'inlet':
+            if hx_location == HeatTransferLocation.INLET:
                 ht_state.Q = self.Q_user * self.in_out_split_fraction
-            elif gaspath_position == 'outlet':
+            elif hx_location == HeatTransferLocation.OUTLET:
                 ht_state.Q = self.Q_user * (1 - self.in_out_split_fraction)
             else:     
                 ht_state.Q = self.Q_user
         else:
-            if self.h_user:
-                # user given h_user overriding the rest....
-                ht_state.Q = self.h_user * ht_state.a * (self.with_heatsink.T - T_self_hx)
-                ht_state.h_total = self.h_user                
+            if self.u_user:
+                # user given u_user overriding the rest....
+                ht_state.Q = self.u_user * ht_state.a * (self.with_heatsink.T - T_self_hx)
+                ht_state.h_total = self.u_user                
             else:
                 # calculate the heat transfer from the gas to the wall (convection) and through the wall (conduction)
                 ht_state.mu = fs_hx.gas_q.viscosity
                 ht_state.Rho = fs_hx.gas_q.density
-                ht_state.c = fs_hx.gas_q.mass/self.a_flow/ht_state.Rho
+                if hx_location == HeatTransferLocation.AMBIENT:
+                    ht_state.c = ht_state.c = fs_hx.velocity
+                else:        
+                    ht_state.c = fs_hx.gas_q.mass/self.a_flow/ht_state.Rho
                 ht_state.Re = ht_state.Rho * ht_state.c * self.d_re / ht_state.mu
                 ht_state.Pr = ht_state.mu * fs_hx.gas_q.cp / fs_hx.gas_q.thermal_conductivity 
                 ht_state.Nu_value = self.Nu_func(ht_state.Re, ht_state.Pr)
@@ -246,14 +410,15 @@ class THeatpath(ABC):
                 self.Print_Inlet_or_Outlet_hx_performance(ht = self.ht)
 
     def Get_Inlet_or_Outlet_Output(self, ht, out):
+        loc_value = ht.ht_loc.value
         if self.system.debug_output:
-            out[f"a_{ht.typename} {self.name}"] = ht.a
-            out[f"Nu_{ht.typename} {self.name}"] = ht.Nu_value
-            out[f"hs_conv_{ht.typename} {self.name}"] = ht.h_conv
-            out[f"hs_cond_{ht.typename} {self.name}"] = ht.h_cond
-            out[f"T_wall_{ht.typename} {self.name}"] = ht.T_wall
-            out[f"Q_rad_{ht.typename} {self.name}"] = ht.Q_rad
-        out[f"Q_{ht.typename} {self.name}"] = ht.Q
+            out[f"a_{loc_value} {self.name}"] = ht.a
+            out[f"Nu_{loc_value}"] = ht.Nu_value
+            out[f"hs_conv_{loc_value} {self.name}"] = ht.h_conv
+            out[f"hs_cond_{loc_value} {self.name}"] = ht.h_cond
+            out[f"T_wall_{loc_value} {self.name}"] = ht.T_wall
+            out[f"Q_rad_{loc_value} {self.name}"] = ht.Q_rad
+        out[f"Q_{loc_value} {self.name}"] = ht.Q
 
     def get_outputs(self):
         out = {}
@@ -277,8 +442,8 @@ class THeatpath(ABC):
                 out[f"k_mat_{self.name}"] = self.k_mat
             if self.eps_rad is not None:
                 out[f"eps_rad_{self.name}"] = self.eps_rad
-            if self.h_user is not None:
-                out[f"h_user_{self.name}"] = self.h_user
+            if self.u_user is not None:
+                out[f"u_user_{self.name}"] = self.u_user
             if self.Q_user is not None:
                 out[f"Q_user_{self.name}"] = self.Q_user
 

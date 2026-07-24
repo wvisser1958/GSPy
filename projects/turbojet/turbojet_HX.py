@@ -82,7 +82,7 @@ def main():
                              mass = 1,               # mass and cp not relevant here (steady state)
                              cp = 1,
                              T_first_guess = 1200,
-                             Q_norm_factor = 1000)    
+                             Q_norm_factor = 1000000)    
 
     heatpath_c = THeatpath(system=turbojet,                  
                            name='Heatpath_c', 
@@ -95,8 +95,6 @@ def main():
                            d_mat = 0.002,                   # wall material thickness
                            k_mat = 17.5,                    # wall material conductivity
                            eps_rad = 0,                     # no radiation heat transfer
-                           h_user = None,                   # user specified heat transfer coefficient overriding the above
-                           Q_user = None,                   # no user specified Q
                            in_out_split_fraction = 0.5      # location factor
                            )
 
@@ -111,8 +109,6 @@ def main():
                            d_mat = 0.002,                   # wall material thickness
                            k_mat = 17.5,                    # wall material conductivity
                            eps_rad = 0,                     # no radiation heat transfer
-                           h_user = None,                   # user specified heat transfer coefficient overriding the above
-                           Q_user = None,                   # no user specified Q overriding the above
                            in_out_split_fraction = 0.5            # location factor
                            )
 
@@ -136,16 +132,7 @@ def main():
                            name='Heatpath_ct_ba',               
                            heatsink = heatsink_c_t,         # heat sink path is connected to
                            a_ht = 10.0,                     # heat transfer area m2
-                           a_flow = 0.1,                    # flow cross area m2
-                           d_re = 0.1,                      # D for Reynolds number
-                           k_gas = 0.067,                   # gas conductivity
-                           Nu = '0.023*Re^(4/5)*Pr^(1/3)',  # Nusselt expression
-                           d_mat = 0.002,                   # wall material thickness
-                           k_mat = 17.5,                    # wall material conductivity
-                           eps_rad = 0,                     # no radiation heat transfer
-                           h_user = 100,                   # user specified heat transfer coefficient overriding the above
-                           Q_user = None,                   # no user specified Q overriding the above
-                           in_out_split_fraction = 0.5            # location factor
+                           u_user = 100,                   # user specified heat transfer coefficient overriding the above
                            )
 
     heatsink_b_a = THeatsink(system=turbojet, 
@@ -153,7 +140,7 @@ def main():
                              mass = 1,               # mass not and cp relevant here (steady state)
                              cp = 1,
                              T_first_guess = 1000,
-                             Q_norm_factor = 1000,
+                             Q_norm_factor = 1000000,
                              heatpaths = [heatpath_hs_ct_ba]
                              )   
 
@@ -168,8 +155,6 @@ def main():
                            d_mat = 0.002,                   # wall material thickness
                            k_mat = 17.5,                    # wall material conductivity
                            eps_rad = 0,                     # no radiation heat transfer
-                           h_user = None,                   # user specified heat transfer coefficient overriding the above
-                           Q_user = None,                   # no user specified Q overriding the above
                            in_out_split_fraction = 0.5      # location factor
                            )
     
@@ -254,8 +239,6 @@ def main():
                            d_mat = 0.002,                   # wall material thickness
                            k_mat = 17.5,                    # wall material conductivity
                            eps_rad = 0,                     # no radiation heat transfer
-                           h_user = None,                   # user specified heat transfer coefficient overriding the above
-                           Q_user = None,                   # no user specified Q overriding the above
                            in_out_split_fraction = 0.5            # location factor
                            )
 
@@ -283,34 +266,15 @@ def main():
                            name='Heatpath_amb_ct', 
                            component = turbojet.ambient,
                            heatsink = heatsink_c_t,     
-                           a_ht = 10.0,                      # heat transfer area m2
-                           a_flow = 0.1,                    # flow cross area m2
-                           d_re = 0.1,                      # D for Reynolds number
-                           k_gas = 0.067,                   # gas conductivity
-                           Nu = '0.023*Re^(4/5)*Pr^(1/3)',  # Nusselt expression
-                           d_mat = 0.002,                   # wall material thickness
-                           k_mat = 17.5,                    # wall material conductivity
-                           eps_rad = 0.5,                     # no radiation heat transfer
-                           h_user = None,                   # user specified heat transfer coefficient overriding the above
-                           Q_user = None,                   # no user specified Q
-                           in_out_split_fraction = 0        # not applicable, use outlet state
+                           Q_user = 10000,                   # user specified heat transfer coefficient overriding the above
                            )
     
     heatpath_ambient_b = THeatpath(system = turbojet,      
                            name='Heatpath_amb_b', 
                            component = turbojet.ambient,
                            heatsink = heatsink_b_a,     
-                           a_ht = 10.0,                      # heat transfer area m2
-                           a_flow = 0.1,                    # flow cross area m2
-                           d_re = 0.1,                      # D for Reynolds number
-                           k_gas = 0.067,                   # gas conductivity
-                           Nu = '0.023*Re^(4/5)*Pr^(1/3)',  # Nusselt expression
-                           d_mat = 0.002,                   # wall material thickness
-                           k_mat = 17.5,                    # wall material conductivity
-                           eps_rad = 0.5,                     # no radiation heat transfer
-                           h_user = None,                   # user specified heat transfer coefficient overriding the above
-                           Q_user = None,                   # no user specified Q
-                           in_out_split_fraction = 0        # not applicable, use outlet state
+                           a_ht = 10.0,                     # heat transfer area m2
+                           u_user = 100,                   # user specified heat transfer coefficient overriding the above
                            )
 
     # now must also add and initialize the heatpaths to system.ambient
@@ -340,7 +304,7 @@ def main():
     turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
     turbojet.Run_DP_simulation()
 
-    run_OD = False
+    run_OD = True
 
     if run_OD:
         # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints

@@ -293,6 +293,10 @@ class TSystemModel:
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
     def Do_Run(self, mode, point_time, states_par):
+        if mode == 'DP':
+            #  reset OD states and error, DP mode will redefine
+            self.reset_states_and_errors()
+
         # global system_model, states, errors, Ambient, Control
         # states_par may be None (e.g. in DP mode) 
         if states_par is not None:
@@ -344,8 +348,6 @@ class TSystemModel:
         self.descr = descr
 
         try:
-            self.reset_states_and_errors()
-
             # check for Heat sinks: these must add DP equations : 
             # T must be found for which heat flux residual of balance Q_balance = 0
             for comp in self.component_run_list:

@@ -120,37 +120,37 @@ class TGaspath(TComponent):
 
         # if heathpaths, add Q
         if self.heatpaths:
-            Qhs_in = self.CalculateHeatTransfer(self.fs_in, 'inlet')
+            Qhs_in = self.CalculateHeatTransfer(self.fs_in, fu.HeatTransferLocation.INLET)
             self.fs_in_q.HP = (
                 self.fs_in_q.H_total + Qhs_in,
                 self.fs_in_q.P,
             )
 
-    def Add_Q_to_fs(self, fs_from, fs_to, station_nr_to):
-        # Heat transfer with heat sink components
-        if fs_to is None:
-            # create fs_in_to
-            fs_to = TFlowState.create_empty(
-                fs_from.gas,
-                station_nr=station_nr_to,
-            )
-        # copy from fs_from
-        fs_to.copy_from(
-            fs_from,
-            station_nr_to
-        )
-        # if heathpaths, add Q
-        if self.heatpaths:
-            Qhs_in = self.CalculateHeatTransfer(self.fs_in, 'inlet')
-            self.fs_in_q.HP = (
-                self.fs_in_q.H_total + Qhs_in,
-                self.fs_in_q.P,
-            )
+    # def Add_Q_to_fs(self, fs_from, fs_to, station_nr_to):
+    #     # Heat transfer with heat sink components
+    #     if fs_to is None:
+    #         # create fs_in_to
+    #         fs_to = TFlowState.create_empty(
+    #             fs_from.gas,
+    #             station_nr=station_nr_to,
+    #         )
+    #     # copy from fs_from
+    #     fs_to.copy_from(
+    #         fs_from,
+    #         station_nr_to
+    #     )
+    #     # if heathpaths, add Q
+    #     if self.heatpaths:
+    #         Qhs_in = self.CalculateHeatTransfer(self.fs_in, fu.HeatTransferLocation.INLET)
+    #         self.fs_in_q.HP = (
+    #             self.fs_in_q.H_total + Qhs_in,
+    #             self.fs_in_q.P,
+    #         )
 
     def Add_Q_to_fs_out(self):
         # if heathpaths, add Q
         if self.heatpaths:
-            Qhs_out = self.CalculateHeatTransfer(self.fs_out, 'outlet')
+            Qhs_out = self.CalculateHeatTransfer(self.fs_out, fu.HeatTransferLocation.OUTLET)
             self.fs_out.HP = (
                 self.fs_out.H_total + Qhs_out,
                 self.fs_out.P
