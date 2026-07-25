@@ -370,8 +370,6 @@ class TSystemModel:
                     def targetresiduals(dp_variables):
                         for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
                             setattr(varobj, varattr, dp_variables[i] * var_values_ref[i])
-                            test = getattr(varobj, varattr)
-                        # self.Do_Run('DP', 0, self.states)
                         self.Do_Run('DP', 0, None)
 
                         residuals = [0.0] * len(targets)
@@ -411,18 +409,21 @@ class TSystemModel:
                     self.Do_Output(0, self.exception_error)
                     print(f"DP target iteration exception error: {e}")
 
+                # report target equations iteration result
+                # print(f"DP target iteration succesful. Results:")
+                # for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
+                #     print(f"Target eq. no {i}: {targetobj.name}.{targetattr} = {targetvalue} for {varobj.name}.{varattr} = {getattr(varobj, varattr)}")
+                if targets is not None:
+                    self.vprint(f"DP simulation target equations solution:")
+                    for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
+                        self.vprint(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
+
             self.targets = targets # save target information for output
 
             self.Do_Output(0, self.no_error)      # 0 to indicated all Ok if we get to this line of code after Do_Run
         except Exception as e:
             self.Do_Output(0, self.exception_error)
             print(f"DP simulation: exception error: {e}")
-
-    def print_DP_equation_solution(self):
-        if self.targets is not None:
-            self.vprint(f"DP simulation equations solution:")
-            for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(self.targets):
-                self.vprint(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
 
     # 2.1
     def get_value_at_point_time(self, a_point_time):

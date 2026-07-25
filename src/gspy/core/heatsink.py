@@ -38,9 +38,8 @@ class THeatsink(TComponent):
         self.T = T_first_guess
 
     def PreRun(self, Mode, PointTime):
-        if Mode == 'DP':
-            self.Q_balance = 0
-        elif Mode == 'OD':
+        self.Q_balance = 0
+        if Mode == 'OD':
             self.T = self.system.states[self.istate_T] * self.T_des
 
     def Run(self, Mode, PointTime):

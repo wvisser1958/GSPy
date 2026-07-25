@@ -81,13 +81,13 @@ def main():
                              name='Heatsink_c_t', 
                              mass = 1,               # mass and cp not relevant here (steady state)
                              cp = 1,
-                             T_first_guess = 1200,
-                             Q_norm_factor = 1000000)    
+                             T_first_guess = 900,
+                             Q_norm_factor = 100000)    
 
     heatpath_c = THeatpath(system=turbojet,                  
                            name='Heatpath_c', 
                            heatsink = heatsink_c_t,          # heat sink path is connected to
-                           a_ht = 0.2,                      # heat transfer area m2
+                           a_ht = 0.1,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
                            d_re = 0.1,                      # D for Reynolds number
                            k_gas = 0.067,                   # gas conductivity
@@ -101,7 +101,7 @@ def main():
     heatpath_t = THeatpath(system=turbojet,                  
                            name='Heatpath_t',               
                            heatsink = heatsink_c_t,          # heat sink path is connected to
-                           a_ht = 10.2,                      # heat transfer area m2
+                           a_ht = 0.1,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
                            d_re = 0.1,                      # D for Reynolds number
                            k_gas = 0.067,                   # gas conductivity
@@ -125,29 +125,30 @@ def main():
                               PRdes=6.92,                   # design pressure ratio
                               SpeedOption='GG',             # speed option
                               Bleeds=None,                  # optional list of bleeds
-                              heatpaths = [heatpath_c])     # optional list of heat path links with heatsinks
+                              heatpaths = [heatpath_c]      # optional list of heat path links with heatsinks
+    )
 
     #  heat path between heatsinks _c_t and _b_a
     heatpath_hs_ct_ba = THeatpath(system=turbojet,                  
                            name='Heatpath_ct_ba',               
                            heatsink = heatsink_c_t,         # heat sink path is connected to
-                           a_ht = 10.0,                     # heat transfer area m2
-                           u_user = 100,                   # user specified heat transfer coefficient overriding the above
+                           a_ht = 0.1,                     # heat transfer area m2
+                           u_user = 10,                   # user specified heat transfer coefficient overriding the above
                            )
 
     heatsink_b_a = THeatsink(system=turbojet, 
                              name='Heatsink_b_a', 
                              mass = 1,               # mass not and cp relevant here (steady state)
                              cp = 1,
-                             T_first_guess = 1000,
-                             Q_norm_factor = 1000000,
+                             T_first_guess = 700,
+                             Q_norm_factor = 100000,
                              heatpaths = [heatpath_hs_ct_ba]
                              )   
 
     heatpath_b = THeatpath(system=turbojet,                  
                            name='Heatpath_b',               
                            heatsink = heatsink_b_a,          # heat sink path is connected to
-                           a_ht = 10.0,                      # heat transfer area m2
+                           a_ht = 10,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
                            d_re = 0.1,                      # D for Reynolds number
                            k_gas = 0.067,                   # gas conductivity
@@ -224,14 +225,15 @@ def main():
                            TurbineType='GG',            # turbine type 'GG' = gas generator delivering all power required by the shaft
                                                         # 'PT' = free power turbine or turbine driving power output shaft
                            CoolingFlows=None,            # optional cooling flows object list
-                           heatpaths = [heatpath_t])
+                           heatpaths = [heatpath_t]
+                           )
                         # option for working with polytropic efficiency: uncomment next line:
                         # turbine1.Polytropic_Eta = 1
 
     heatpath_d_a = THeatpath(system=turbojet,                  
                            name='Heatpath_d_a',               
                            heatsink = heatsink_b_a,          # heat sink path is connected to
-                           a_ht = 10.0,                      # heat transfer area m2
+                           a_ht = 0.1,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
                            d_re = 0.1,                      # D for Reynolds number
                            k_gas = 0.067,                   # gas conductivity
@@ -266,19 +268,19 @@ def main():
                            name='Heatpath_amb_ct', 
                            component = turbojet.ambient,
                            heatsink = heatsink_c_t,     
-                           Q_user = 10000,                   # user specified heat transfer coefficient overriding the above
+                           Q_user = 1000,                   # user specified heat transfer coefficient overriding the above
                            )
     
     heatpath_ambient_b = THeatpath(system = turbojet,      
                            name='Heatpath_amb_b', 
                            component = turbojet.ambient,
                            heatsink = heatsink_b_a,     
-                           a_ht = 10.0,                     # heat transfer area m2
-                           u_user = 100,                   # user specified heat transfer coefficient overriding the above
+                           a_ht = 0.1,                     # heat transfer area m2
+                           u_user = 1000,                   # user specified heat transfer coefficient overriding the above
                            )
 
     # now must also add and initialize the heatpaths to system.ambient
-    # turbojet.AddAmbientHeatPaths([heatpath_ambient])
+    # turbojet.ambient.heatpaths = [heatpath_ambient_b]
     turbojet.ambient.heatpaths = [heatpath_ambient_c_t, heatpath_ambient_b]
     turbojet.ambient.init_heatpaths()
 
