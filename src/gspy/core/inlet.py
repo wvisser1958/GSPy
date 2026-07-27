@@ -35,7 +35,7 @@ class TInlet(TGaspath):
             # 2.1 separate TGasCondition for fs_in (do not share with ambient gaspath_condition)
             # old Get the ambient conditions for the inlet fs_in conditions
             # old self.owner.gaspath_conditions[self.station_in] = self.owner.gaspath_conditions[self.owner.ambient.station_nr]
-            self.fs_in = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
+            self.fs_in = TFlowState.create_empty(self.system.gas, station_nr=self.station_in, i_H2O=self.system.i_H2O)
             self.system.gaspath_conditions[self.station_in] = self.fs_in
 
         self.fs_in.copy_from(self.system.gaspath_conditions[self.system.ambient.station_nr], self.system.ambient.station_nr)

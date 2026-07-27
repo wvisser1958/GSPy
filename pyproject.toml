@@ -45,3 +45,8 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["gspy*"]
+
+[dependency-groups]
+dev = [
+    "snakeviz>=2.2.2",
+]

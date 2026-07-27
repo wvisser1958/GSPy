@@ -48,7 +48,12 @@ class TAmbient(TComponent):
         
         # GC
         # self.Gas_Ambient = ct.Quantity(self.owner.gas)
-        self.fs_ambient = TFlowState.from_RH(self.system.gas, 1, stationnr, 288.15, 101325, RH, self.system.air_X)
+        self.fs_ambient = TFlowState.from_RH(self.system.gas, 1, stationnr,
+                                            i_H2O=self.system.i_H2O,
+                                            T=288.15, 
+                                            P=101325, 
+                                            RH=RH, 
+                                            dry_X=self.system.air_X)
 
         self.system.gaspath_conditions[self.station_nr] = self.fs_ambient
 

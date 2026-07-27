@@ -16,18 +16,39 @@
 from abc import ABC, abstractmethod
 from gspy.core.map import TMap
 from typing import Optional
+import warnings
 
 class TComponent(ABC):
     def __init__(self, 
-                 *,
-                 system, 
-                 name, 
-                 map_filename = None, 
-                 control_component = None, 
-                 heatpaths = None,
-                 **kwargs):    # Constructor of the class
+                *,
+                system = None, 
+                #  owner for backward compatibility, but now deprecated
+                owner = None,
+
+                name, 
+                map_filename = None, 
+                control_component = None, 
+                heatpaths = None,
+                **kwargs):    # Constructor of the class
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {list(kwargs)}")
+
+        # for backward compatibility
+        if owner is not None:
+                warnings.warn(
+                    "'owner' is deprecated and will be removed in a future version. "
+                    "Please use 'system' instead.",
+                    FutureWarning,
+                    stacklevel=2,
+                )
+        if system is None:
+            system = owner
+
+        if system is None:
+            raise TypeError(
+                "Either 'system' or the deprecated 'owner' must be supplied."
+            )
+
         self.system = system
         self.name = name
         self.map_filename = map_filename
@@ -46,18 +67,33 @@ class TComponent(ABC):
                 # heatpath.owner = self
                 heatpath.init_heattransferstates(self)
 
-    # # backward compatibility
-    # @property
-    # def owner(self):
-    #     return self.system
+    # backward compatibility
+    @property
+    def owner(self):
+        warnings.warn(
+            "'owner' is deprecated; use 'system' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.system
 
-    # @owner.setter
-    # def owner(self, value):
-    #     self.system = value
+    @owner.setter
+    def owner(self, value):
+        warnings.warn(
+            "'owner' is deprecated; use 'system' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.system = value
 
     # 2.1
     @property
     def id(self):
+        warnings.warn(
+            "'id' is deprecated; use 'name' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         return f"_{self.name}"
 
     # 1.6

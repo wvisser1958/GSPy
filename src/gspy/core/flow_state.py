@@ -32,6 +32,11 @@ class TFlowState:
                  gas: ct.Solution,
                  gas_mass: float,
                  station_nr: str,
+
+                # faster 2.11
+                 *,
+                 i_H2O: int,
+
                  m_total_water: float | None = None,
                  m_liq: float = 0.0,
 
@@ -60,6 +65,8 @@ class TFlowState:
         # self.force_gas_only = force_gas_only
         self.enable_liquid_water = enable_liquid_water
         self.debug_flash = debug_flash
+        # faster 2.11
+        self.i_H2O = i_H2O
 
         self.gas_q = ct.Quantity(gas, mass=gas_mass)
 
@@ -341,10 +348,13 @@ class TFlowState:
                 m_gas_new = m_gas_old + m_liq_old
 
                 Y_old = self.gas_q.Y.copy()
-                i_h2o = self.gas_q.species_index("H2O")
+                # faster 2.11
+                # i_h2o = self.gas_q.species_index("H2O")
 
                 Y_new = Y_old * (m_gas_old / m_gas_new)
-                Y_new[i_h2o] += m_liq_old / m_gas_new
+                # faster 2.11
+                # Y_new[i_h2o] += m_liq_old / m_gas_new
+                Y_new[self.i_H2O] += m_liq_old / m_gas_new
 
                 T = self.T
                 P = self.P
@@ -377,12 +387,15 @@ class TFlowState:
     # constructors
     # ------------------------------------------------------------------
     @classmethod
-    def create_empty(cls, gas, station_nr: str):
+    def create_empty(cls, gas, station_nr: str, i_H2O: int):
         # gas = ct.Solution(mechanism)
-        return cls(gas=gas, gas_mass=1.0, station_nr=station_nr)
+        return cls(gas=gas, gas_mass=1.0, station_nr=station_nr, i_H2O = i_H2O)
 
     @classmethod
-    def from_RH(cls, gas: ct.Solution, gas_mass: float, station_nr: str, T: float, P: float,
+    def from_RH(cls, gas: ct.Solution, gas_mass: float, station_nr: str, 
+                *,
+                i_H2O: int,
+                T: float, P: float,
                 RH: float, dry_X: dict,
                 # enable_liquid_model: bool = def_enable_liquid_model,
                 # force_gas_only: bool = def_force_gas_only,
@@ -392,6 +405,7 @@ class TFlowState:
             gas=gas,
             gas_mass=gas_mass,
             station_nr=station_nr,
+            i_H2O=i_H2O,
             m_liq=0.0,
             # enable_liquid_model=enable_liquid_model,
             # force_gas_only=force_gas_only,
@@ -409,7 +423,10 @@ class TFlowState:
         return obj
 
     @classmethod
-    def from_vol_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str, T: float, P: float,
+    def from_vol_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str, 
+                     *,
+                     i_H2O: int,
+                     T: float, P: float,
                      H2O_vol_pct: float, dry_X: dict,
                      enable_liquid_water: bool = False,
                      debug_flash: bool = def_debug_flash):
@@ -417,6 +434,7 @@ class TFlowState:
             gas=gas,
             gas_mass=gas_mass,
             station_nr=station_nr,
+            i_H2O=i_H2O,
             m_liq=0.0,
             # enable_liquid_model=enable_liquid_model,
             # force_gas_only=force_gas_only,
@@ -434,7 +452,10 @@ class TFlowState:
         return obj
 
     @classmethod
-    def from_mass_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str, T: float, P: float,
+    def from_mass_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str, 
+                      *,
+                      i_H2O: int,  
+                      T: float, P: float,
                       H2O_mass_pct: float, dry_Y: dict,
                       enable_liquid_water: bool = False,
                       debug_flash: bool = def_debug_flash):
@@ -442,6 +463,7 @@ class TFlowState:
             gas=gas,
             gas_mass=gas_mass,
             station_nr=station_nr,
+            i_H2O=i_H2O,
             m_liq=0.0,
             enable_liquid_water=enable_liquid_water,
             debug_flash=debug_flash,
@@ -461,6 +483,7 @@ class TFlowState:
         self.gas_q.mass = other.gas_q.mass
         self.station_nr = new_station_nr if str(new_station_nr) is not None else str(other.station_nr)
 
+        self.i_H2O=other.i_H2O,
         self.m_dry = other.m_dry
         self.m_total_water = other.m_total_water
         # self.enable_liquid_model = other.enable_liquid_model
@@ -841,12 +864,14 @@ class TFlowState:
         if not self._has_water():
             self.gas_q.TP = T, P
             self.m_total_water = 0.0
-            return self._quick_state_dict()
+# no need, slows down            return self._quick_state_dict()
+            return
 
         if not self._use_liquid_model():
             self.gas_q.TP = T, P
             self.disable_liquid_model(collapse=True)
-            return self._quick_state_dict()
+# no need, slows down            return self._quick_state_dict()
+            return
 
         dry_basis_X = self._current_dry_basis_X()
         st = self._state_at_TP_with_split(
@@ -871,12 +896,14 @@ class TFlowState:
         if not self._has_water():
             self.gas_q.HP = H_target / self.W_gas, P_target
             self.m_total_water = 0.0
-            return self._quick_state_dict()
+# no need, slows down            return self._quick_state_dict()
+            return
 
         if not self._use_liquid_model():
             self.gas_q.HP = H_target / self.W_gas, P_target
             self.disable_liquid_model(collapse=True)
-            return self._quick_state_dict()
+# no need, slows down            return self._quick_state_dict()
+            return
 
         if T_low is None:
             T_low = max(self.T, self.T_WATER_TRIPLE + 1.0)
@@ -907,12 +934,14 @@ class TFlowState:
         if not self._has_water():
             self.gas_q.SP = S_target / self.W_gas, P_target
             self.m_total_water = 0.0
-            return self._quick_state_dict()
+# no need, slows down            return self._quick_state_dict()
+            return
 
         if not self._use_liquid_model():
             self.gas_q.SP = S_target / self.W_gas, P_target
             self.disable_liquid_model(collapse=True)
-            return self._quick_state_dict()
+# no need, slows down            return self._quick_state_dict()
+            return
 
         if T_low is None:
             T_low = max(self.T, self.T_WATER_TRIPLE + 1.0)

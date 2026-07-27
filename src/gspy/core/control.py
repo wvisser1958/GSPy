@@ -20,7 +20,9 @@ class TControl(TComponent):
     def __init__(self, 
                  *,
                  DP_input_value,
-                 OD_start_value, OD_end_value, OD_point_step_value,
+                 OD_start_value, 
+                 OD_end_value = None, 
+                 OD_point_step_value = None,
                  OD_controlled_parameter_name=None,
                  point_time_value_array = None, 
                  **kwargs):
@@ -109,10 +111,13 @@ class TControl(TComponent):
             # default is using self.OD_start_value, self.OD_end_value, self.OD_point_step_value
             # to make a constant step size series of inputs
             point_times = start_point_time + np.arange(point_count)
-            values = self.OD_start_value + np.arange(point_count) * self.OD_point_step_value
+            if self.OD_point_step_value is None:
+                values = self.OD_start_value
+            else:
+                values = self.OD_start_value + np.arange(point_count) * self.OD_point_step_value
 
             # self.OD_input_points = np.arange(0, point_count, 1)
-            self.OD_input_points = self.OD_input_points = np.column_stack((point_times, values))
+            self.OD_input_points = np.column_stack((point_times, values))
             # return np.arange(0, point_count, 1)
             return self.OD_input_points
 

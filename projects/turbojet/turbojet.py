@@ -37,7 +37,7 @@ def main():
     # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # FuelControl for open loop direct control of fuel flow
     # fuelcontrol = TControl(turbojet, 'Fcontrol', '', 1.1, 1.1, 0.08, -0.01, None)
-    fuelcontrol = TControl(owner = turbojet,            # owning system model object
+    fuelcontrol = TControl(system = turbojet,            # owning system model object
                            name='Fcontrol',             # component name
                            DP_input_value=0.38,         # design point (DP) input
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
@@ -67,7 +67,7 @@ def main():
                            )
 
     # Generic gas turbine components
-    inlet1   = TInlet(owner = turbojet,     # owning system model object
+    inlet1   = TInlet(system = turbojet,     # owning system model object
                     name = 'Inlet1',        # component name
                     station_in  = 1,        # station nr in
                     station_out = 2,        # station nr out (station strings are also allowed, e.g. '010' and '020')
@@ -196,17 +196,20 @@ def main():
     turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
     turbojet.Run_DP_simulation()
 
-    # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
-    turbojet.mode = 'OD'
-    turbojet.input_points = fuelcontrol.get_OD_input_points()
-    print("\nOff-design (OD) results")
-    print("=======================")
-    # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
-    # conditions is desired
-    turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
-    # Run OD simulation
-    # turbojet.VERBOSE = False # suppress OD output to terminal
-    turbojet.Run_OD_simulation()
+    run_OD = True
+
+    if run_OD:
+        # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
+        turbojet.mode = 'OD'
+        turbojet.input_points = fuelcontrol.get_OD_input_points()
+        print("\nOff-design (OD) results")
+        print("=======================")
+        # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
+        # conditions is desired
+        turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
+        # Run OD simulation
+        # turbojet.VERBOSE = False # suppress OD output to terminal
+        turbojet.Run_OD_simulation()
 
     # export OutputTable to CSV
     turbojet.OutputToCSV()

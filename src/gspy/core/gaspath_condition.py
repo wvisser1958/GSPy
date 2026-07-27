@@ -254,9 +254,9 @@ class TFlowState:
     # constructors
     # ------------------------------------------------------------------
     @classmethod
-    def create_empty(cls, gas, station_nr: str):
+    def create_empty(cls, gas, station_nr: str, i_H2O: int):
         # gas = ct.Solution(mechanism)
-        return cls(gas=gas, gas_mass=1.0, station_nr=station_nr)
+        return cls(gas=gas, gas_mass=1.0, station_nr=station_nr, i_H2O = i_H2O)
 
     @classmethod
     def from_RH(cls, gas: ct.Solution, gas_mass: float, station_nr: str, T: float, P: float,

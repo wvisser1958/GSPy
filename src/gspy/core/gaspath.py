@@ -66,8 +66,8 @@ class TGaspath(TComponent):
             # GC: 
             # self.fs_inDes = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass)
             # self.fs_out = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass)
-            self.fs_in_des = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
-            self.fs_out = TFlowState.create_empty(self.system.gas, station_nr=self.station_out)
+            self.fs_in_des = TFlowState.create_empty(self.system.gas, station_nr=self.station_in, i_H2O = self.system.i_H2O)
+            self.fs_out = TFlowState.create_empty(self.system.gas, station_nr=self.station_out, i_H2O = self.system.i_H2O)
 
             self.fs_in_des.copy_from(self.fs_in, self.station_in)
             self.fs_out.copy_from(self.fs_in, self.station_out)
@@ -99,6 +99,7 @@ class TGaspath(TComponent):
             self.fs_in_q = TFlowState.create_empty(
                 self.fs_in.gas,
                 station_nr=self.fs_in.station_nr,
+                i_H2O=self.system.i_H2O
             )
         # copy from fs_in
         self.fs_in_q.copy_from(
@@ -111,6 +112,7 @@ class TGaspath(TComponent):
                 self.fs_in_des_q = TFlowState.create_empty(
                     self.fs_in.gas,
                     station_nr=self.fs_in.station_nr,
+                    i_H2O = self.system.i_H2O
                 )
             # copy from fs_in
             self.fs_in_des_q.copy_from(
@@ -125,27 +127,6 @@ class TGaspath(TComponent):
                 self.fs_in_q.H_total + Qhs_in,
                 self.fs_in_q.P,
             )
-
-    # def Add_Q_to_fs(self, fs_from, fs_to, station_nr_to):
-    #     # Heat transfer with heat sink components
-    #     if fs_to is None:
-    #         # create fs_in_to
-    #         fs_to = TFlowState.create_empty(
-    #             fs_from.gas,
-    #             station_nr=station_nr_to,
-    #         )
-    #     # copy from fs_from
-    #     fs_to.copy_from(
-    #         fs_from,
-    #         station_nr_to
-    #     )
-    #     # if heathpaths, add Q
-    #     if self.heatpaths:
-    #         Qhs_in = self.CalculateHeatTransfer(self.fs_in, fu.HeatTransferLocation.INLET)
-    #         self.fs_in_q.HP = (
-    #             self.fs_in_q.H_total + Qhs_in,
-    #             self.fs_in_q.P,
-    #         )
 
     def Add_Q_to_fs_out(self):
         # if heathpaths, add Q
