@@ -138,10 +138,10 @@ class TFlowState:
     @property
     def X(self):
         return dict(zip(self.gas_q.species_names, self.gas_q.X))
-
+        
     @property
     def Y(self):
-        return dict(zip(self.gas_q.species_names, self.gas_q.Y))
+        return dict(zip(self.gas_q.species_names, self.gas_q.Y))        
 
     @property
     def W_gas(self):
@@ -483,7 +483,7 @@ class TFlowState:
         self.gas_q.mass = other.gas_q.mass
         self.station_nr = new_station_nr if str(new_station_nr) is not None else str(other.station_nr)
 
-        self.i_H2O=other.i_H2O,
+        self.i_H2O=other.i_H2O
         self.m_dry = other.m_dry
         self.m_total_water = other.m_total_water
         # self.enable_liquid_model = other.enable_liquid_model
@@ -1277,7 +1277,8 @@ class TFlowState:
     # pure thermodynamic helpers
     # ------------------------------------------------------------------
     def _gas_h2o_mass_fraction(self):
-        return self.Y.get("H2O", 0.0)
+        # return self.Y.get("H2O", 0.0)
+        return float(self.gas_q.phase.Y[self.i_H2O])
 
     def _normalize_without_h2o(self, comp: dict):
         out = {k: v for k, v in comp.items() if k != "H2O"}
@@ -2311,59 +2312,53 @@ class TFlowState:
         PW = self.H_total - out.H_total
         return out, PW
 
-    # try the fastest first.
-    # For your case, a good practical order is auto → vcs → gibbs.
-    # Do not assume the fastest successful one is always the best-conditioned one.
-    # Log solver usage so you can see where robustness problems are coming from.
+    def equilibrate_quantity(self) -> None:
+        # Equilibrate the combustor mixture at constant enthalpy and pressure.
+        # The underlying Cantera Solution is equilibrated first. Since changes
+        # made directly to gas_q.phase are not automatically reflected in the
+        # Quantity state, the equilibrated T, P, and Y are explicitly copied
+        # back into gas_q
 
-    @staticmethod
-    def robust_equilibrate(gas,
-                        mode="HP",
-                        max_iter=2000):
+        gas_q = self.gas_q
+        phase = gas_q.phase
 
-        methods = [
-            ("auto",  dict()),
-            ("vcs",   dict(solver="vcs", max_iter=max_iter)),
-            ("gibbs", dict(
-                solver="gibbs",
-                max_iter=max_iter,
-                estimate_equil=-1,
-            )),
-        ]
+        phase.equilibrate("HP", solver="auto", max_iter=2000)
 
-        last_err = None
+        gas_q.TPY = phase.T, phase.P, phase.Y
 
-        for name, kwargs in methods:
-            try:
-                gas.equilibrate(mode, **kwargs)
-                return name
-            except Exception as err:
-                last_err = err
+    def equilibrate_combustor_mixture(
+        self,
+        collapse_liquid: bool = True,
+    ) -> None:
+        """
+            Parameters
+        ----------
+        collapse_liquid : bool, default=True
+            True:
+                Convert any separately tracked liquid water into gas-phase H2O
+                after equilibrium and disable liquid-water tracking.
 
-        raise RuntimeError(
-            f"All {mode} equilibrium solvers failed. "
-            f"Last error: {last_err}"
-        )
+            False:
+                Retain liquid-water tracking and repartition vapor/liquid water
+                at the equilibrated state.
+        """
 
-    def equilibrate_combustor_mixture(self, max_iter=2000, collapse_liquid=True):
         liq_old = self.m_liq
+
+        self.equilibrate_quantity()
+
         m_gas = self.gas_q.mass
+        y_h2o = self.gas_q.Y[self.i_H2O]
 
-        phase = self.gas_q.phase
-        solver_used = self.robust_equilibrate(phase, max_iter=max_iter)
-
-        self.gas_q = ct.Quantity(phase, mass=m_gas)
-        self.m_dry = self.W_gas * (1.0 - self._gas_h2o_mass_fraction())
-        self.m_total_water = self.m_vap + liq_old
+        self.m_dry = m_gas * (1.0 - y_h2o)
+        self.m_total_water = m_gas * y_h2o + liq_old
 
         if collapse_liquid:
             self.disable_liquid_model(collapse=True)
-        elif self._use_liquid_model():
-            self.repartition_at_TP(self.Ts, self.Ps)
+        elif self.enable_liquid_water:
+            self.repartition_at_TP(self.T, self.P)
 
         self._set_static_equal_total()
-
-        return solver_used
 
     # ------------------------------------------------------------------
     # reporting

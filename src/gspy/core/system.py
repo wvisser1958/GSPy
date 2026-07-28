@@ -86,6 +86,8 @@ class TSystemModel:
         self.vprint(f"Using Cantera YAML file {use_yaml}")
         self.gas = ct.Solution(str(use_yaml))
 
+        self.high_gas_fidelity = False
+
         #  moved from constants
         # Mole fractions from the Air_composition table
         self.air_X = self._normalize({
@@ -128,11 +130,11 @@ class TSystemModel:
         # air_N2_fraction_mass = N2_tuple[1]
 
         # for fast lookup of gas species indices/factions etc. in the gas object, fastest in hot loops.
-        self.i_O2  = self.gas.species_index("O2")
-        self.i_CO2 = self.gas.species_index("CO2")
-        self.i_H2O = self.gas.species_index("H2O")
-        self.i_AR  = self.gas.species_index("AR")
-        self.i_N2  = self.gas.species_index("N2")
+        self.i_O2  = int(self.gas.species_index("O2"))
+        self.i_CO2 = int(self.gas.species_index("CO2"))
+        self.i_H2O = int(self.gas.species_index("H2O"))
+        self.i_AR  = int(self.gas.species_index("AR"))
+        self.i_N2  = int(self.gas.species_index("N2"))
 
         # e.g. self.species_index["NO"] is convenient for diagnostics, emissions, output requests, etc.
         # use like idx = self.owner.species_index["O2"]   or Y[self.owner.species_index["O2"]]
@@ -393,7 +395,7 @@ class TSystemModel:
                         options={
                                 'maxiter': 100,
                                 'fatol': self.error_tolerance,     # absolute residual target
-                                'xatol': 1e-12,                     # avoid premature "small step" success
+                                # 'xatol': 1e-12,                     # avoid premature "small step" success
                                 }
                         # options={
                         #     "maxiter": 100,
@@ -459,29 +461,38 @@ class TSystemModel:
                 # fsys.Do_Output(Mode, inputpoints[ipoint])
                 rmax = 0
                 try:
-                    solution = root(residuals,
-                                    self.states,
-                                    method = 'krylov',
-                                    # tol=self.error_tolerance,
-                                    # options={'maxiter': maxiter})
-                                        options={
-                                                'maxiter': maxiter,
-                                                'fatol': self.error_tolerance,     # absolute residual target
-                                                'xatol': 1e-12,                     # avoid premature "small step" success
-                                                'jac_options' :{
-                                                    'rdiff': 1e-4,   # larger relative perturbation step
-                                                }
-                                                }
-                                    )
-                                    # options={'maxiter': maxiter, 'xtol': 0.01})
-                                    # options={'maxiter': maxiter, 'line_search': 'wolfe'})
-                    # 2.0
-                    r = residuals(solution.x)
-                    rmax = np.max(np.abs(r))
-                    if rmax > self.error_tolerance:
-                        raise RuntimeError(f"{self.get_error_text(self.false_convergence_error)}: residual {rmax}")
+                    def find_solution(high_gas_fidelity): 
+                        self.high_gas_fidelity = high_gas_fidelity       
+                        solution = root(residuals,
+                                        self.states,
+                                        method = 'krylov',
+                                        # tol=self.error_tolerance,
+                                        # options={'maxiter': maxiter})
+                                            options={
+                                                    'maxiter': maxiter,
+                                                    'fatol': self.error_tolerance,     # absolute residual target
+                                                    #  slowing things down:
+                                                    # 'xatol': 1e-12,                  # avoid premature "small step" success
+                                                    'jac_options' :{
+                                                        'rdiff': 1e-4,   # larger relative perturbation step
+                                                    }
+                                                    }
+                                        )
+                                        # options={'maxiter': maxiter, 'xtol': 0.01})
+                                        # options={'maxiter': maxiter, 'line_search': 'wolfe'})
+                        # 2.0
+                        r = residuals(solution.x)
+                        rmax = np.max(np.abs(r))
+                        if rmax > self.error_tolerance:
+                            raise RuntimeError(f"{self.get_error_text(self.false_convergence_error)}: residual {rmax}, high_gas_fidelity {high_gas_fidelity}")
+                        return solution
 
-                    # if ipoint % self.points_output_interval == 0:
+                    # iterate towards solution without time consuming calculations (e.g. Cantera chemical equilibrium)
+                    solution = find_solution(high_gas_fidelity = False)
+                    if solution.success:
+                        # now iterate to precise high gas fidelity solution
+                        self.states = solution.x
+                        solution = find_solution(high_gas_fidelity = True)
 
                     self.Do_Output(point_time, self.no_error if solution.success else self.convergence_error)
 

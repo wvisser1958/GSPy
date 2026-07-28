@@ -223,7 +223,7 @@ def main():
     turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, H2O_mass_pct=10, enable_liquid_water = True)
     turbojet.Run_DP_simulation(descr = '10%, L=true')
 
-    run_OD = False
+    run_OD = True
 
     if run_OD:
         # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints

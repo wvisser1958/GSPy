@@ -89,11 +89,6 @@ class TComponent(ABC):
     # 2.1
     @property
     def id(self):
-        warnings.warn(
-            "'id' is deprecated; use 'name' instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
         return f"_{self.name}"
 
     # 1.6

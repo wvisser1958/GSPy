@@ -45,7 +45,7 @@ def main():
                            OD_end_value=0.08, 
                            OD_point_step_value=-0.01,   # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
-                           # 0.30, None, None,          # off design (OD) input: single input value
+                        #    OD_start_value = 0.30,       # off design (OD) input: single input value
 
                            OD_controlled_parameter_name=None                     
                             # OD control parameter name: must be an output present in the output table
@@ -98,7 +98,7 @@ def main():
                             station_in=3, 
                             station_out=4,                  # station nr in and out
                             Wfdes=0.38,                     # Design point (DP) fuel flow Wfdes
-                            Texitdes=None,                  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
+                            Texitdes=1235,                  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
                             # example 1235.9,       # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
                             #               - Wfdes is then taken as starting value for iteration
                             # note that using Texit as imput may be less stable in some cases

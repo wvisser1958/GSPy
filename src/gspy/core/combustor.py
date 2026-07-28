@@ -24,8 +24,16 @@ import gspy.core.utils as fu
 class TCombustor(TGaspath):
     def __init__(self, 
                  *,
-                 Wfdes, Texitdes, PRdes, Etades,
-                 Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes, A,
+                 Wfdes, # Design fuel flow, or first guess fuel flow in case Texitdes specified
+                 Texitdes = None, 
+                 PRdes = 1, 
+                 Etades = 1,
+                 Tfueldes = 288.15, 
+                 LHVdes = None, 
+                 HCratiodes = None, 
+                 OCratiodes = None, 
+                 FuelCompositiondes = None, 
+                 A = None, 
                  FARdes = None,
                  **kwargs):
         super().__init__(**kwargs)
@@ -247,7 +255,7 @@ class TCombustor(TGaspath):
                     f"Combustor '{self.name}': Control '{self.control}' cannot be resolved to an object. ({e})"
                 )
 
-        def CalcEndConditions(PointTime):
+        def CalcEndConditions(PointTime, Mode):
             # self.GetLHV()
             if (self.FuelComposition == '') or (self.FuelComposition is None):  # fuel specification based on LHV, HC and OC mole ratio
                 #  2.1 use fs_out instead as the gas prior to mixing with fuel, 
@@ -255,15 +263,18 @@ class TCombustor(TGaspath):
                 # m_liq added to m_vap so that the gas composition is correct for the combustion calculation
                 # Yin = self.fs_in.gas_q.Y
                 # w_gas_in = self.fs_in.gas_q.mass
-                Yin = self.fs_out.gas_q.Y
-                w_gas_in = self.fs_out.gas_q.mass
+                # Yin = self.fs_out.gas_q.Y
+                Yin = self.Y_out_0
+                # w_gas_in = self.fs_out.gas_q.mass
+                w_gas_in = self.W_gas_in_0
 
                 # fuel moles of the virtual fuel based on the specified H/C and O/C ratios (normalized to 1 mole of C)
                 fuel_moles = self.Wf / CHyOzMoleMass
 
                 O2_in_mass  = w_gas_in * Yin[self.system.i_O2]
                 CO2_in_mass = w_gas_in * Yin[self.system.i_CO2]
-                H2O_in_mass = self.fs_out.m_vap
+                # H2O_in_mass = self.fs_out.m_vap
+                H2O_in_mass = w_gas_in * Yin[self.system.i_H2O]
                 AR_in_mass  = w_gas_in * Yin[self.system.i_AR]
                 N2_in_mass  = w_gas_in * Yin[self.system.i_N2]
 
@@ -330,7 +341,7 @@ class TCombustor(TGaspath):
                 self.fs_out.gas_q.TPY = c.T_standard_ref, c.P_standard_ref, Yprod
                 # make sure fuel mass flow added to the inlet gas flow (before working on total H !):
                 # self.fs_out.W_gas = self.fs_in.mass + self.Wf
-                self.fs_out.W = self.fs_out.W + self.Wf
+                self.fs_out.W = w_gas_in + self.Wf
                 # H_prod_ref is the enthalpy of the products at the reference conditions, 
                 # which is used as a baseline for calculating the final enthalpy of the products 
                 # after combustion based on the specified LHV and the enthalpy of the inlet gas 
@@ -351,8 +362,8 @@ class TCombustor(TGaspath):
                 # now set exit gas_out H to h_prod_final, this will calculate gas_out.T
                 self.fs_out.HP = H_prod_final, Pin
 
-                # fu.robust_combustor_equilibrate(self.gas_out); needed in case of dissociation etc.
-                solver_used = self.fs_out.equilibrate_combustor_mixture()
+                if self.system.high_gas_fidelity or (Mode == 'DP'):
+                    self.fs_out.equilibrate_combustor_mixture()
 
             else:                  # fuel specification based on FuelComposition and Tfuel
                 #  1.4 test if fuel exists (DP may be virtual flow, and OD composition specified, so....)
@@ -382,7 +393,7 @@ class TCombustor(TGaspath):
 
                     # 3) Target enthalpy that includes heat loss via Etades
                     # self.gas_out.equilibrate("TP")                   # equilibrium at fixed T (mix temp) & P
-                    solver_used = self.fs_out.equilibrate_combustor_mixture()
+                    self.fs_out.equilibrate_combustor_mixture()
 
                     dh_rxn_T = self.fs_out.enthalpy_mass - h_in     # this reflects reaction enthalpy at the mix T
 
@@ -400,7 +411,9 @@ class TCombustor(TGaspath):
 
                 # 2.0
                 # self.gas_out.equilibrate("HP")
-                fu.robust_combustor_equilibrate(self.fs_out)
+                # fu.robust_combustor_equilibrate(self.fs_out)
+                # self.fs_out.robust_equilibrate(self.fs_out.gas_q.gas)
+                self.fs_out.equilibrate_quantity()
 
             # pressure loss
             if (self.A is None) or (self.A ==0):
@@ -428,6 +441,9 @@ class TCombustor(TGaspath):
         # so disable liquid model for the out gas, otherwise it may cause convergence issues when the water 
         # is close to saturation and the solver tries to add/remove liquid water to equilibrate
         self.fs_out.disable_liquid_model(collapse=True)
+        # save initial fs_out.Y and w_gas for Texit iteration start 
+        self.Y_out_0 = self.fs_out.gas_q.Y
+        self.W_gas_in_0 = self.fs_out.gas_q.mass
 
         if Mode == 'DP':
             if self.Texitdes is not None: # calc Wf from Texit, use Wfdes as Wf first guess
@@ -484,7 +500,7 @@ class TCombustor(TGaspath):
                     # 1.6.0.5
                     # self.Wf=Wfiter[0]
                     self.Wf=float(Wfiter)
-                    return CalcEndConditions(PointTime) - self.Texit
+                    return CalcEndConditions(PointTime, Mode) - self.Texit
                 solution = root_scalar(equation,
 
                                         method = 'secant',
@@ -499,7 +515,7 @@ class TCombustor(TGaspath):
                 else:
                     print(f"Wf for Combustor DP Texit value of {self.Texit:.0f} not found")
             else:
-                CalcEndConditions(PointTime) # just calculate using self.Wf (= self.Wfdes)
+                CalcEndConditions(PointTime, Mode) # just calculate using self.Wf (= self.Wfdes)
 
         else: # OD off-design
             # if (self.control is not None) and (self.control.OD_controlled_parameter_name is ) : 
@@ -511,7 +527,7 @@ class TCombustor(TGaspath):
             #     Texit_iter = CalcEndConditions(PointTime)
             #     self.owner.errors[self.ierror_Texit] = (Texit_iter - self.Texit)/self.Texitdes
             # else:
-            CalcEndConditions(PointTime) # just calculate using self Wf
+            CalcEndConditions(PointTime, Mode) # just calculate using self Wf
 
         #  add fuel to system level total fuel flow
         self.system.WF = self.system.WF + self.Wf
