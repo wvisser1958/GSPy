@@ -26,7 +26,7 @@ class TCompressor(TTurboComponent):
                  *,
                 PRdes,
                  SpeedOption,
-                 Bleeds,
+                 Bleeds=None,
                  **kwargs):    # Constructor of the class
         super().__init__(**kwargs)
         # only call SetDPparameters in instantiable classes in init creator

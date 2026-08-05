@@ -559,6 +559,12 @@ class TSystemModel:
         #     out["SFCshaft"] = self.WF / self.PW * 1000 # kg/s/kW
         return out
 
+    def print_DP_equation_solution(self):
+        if self.targets != None:
+            self.vprint(f"DP simulation equations solution:")
+            for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(self.targets):
+                self.vprint(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
+
     def Do_Output(self, point_time, error_code):
         # output to terminal
         if self.VERBOSE:

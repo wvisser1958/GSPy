@@ -66,7 +66,6 @@ def main():
                             # note that for a gas turbine, this method may well become instable at lower power setting due to multiple solutions at same T5
                            )
 
-    # Generic gas turbine components
     inlet1   = TInlet(system = turbojet,     # owning system model object
                     name = 'Inlet1',        # component name
                     station_in  = 1,        # station nr in
@@ -98,7 +97,7 @@ def main():
                             station_in=3, 
                             station_out=4,                  # station nr in and out
                             Wfdes=0.38,                     # Design point (DP) fuel flow Wfdes
-                            Texitdes=1235,                  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
+                            Texitdes=None,                  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
                             # example 1235.9,       # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
                             #               - Wfdes is then taken as starting value for iteration
                             # note that using Texit as imput may be less stable in some cases

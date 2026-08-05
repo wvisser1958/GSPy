@@ -25,7 +25,7 @@ class TTurbine(TTurboComponent):
                  *,
                  Etamechdes,
                  TurbineType,
-                 CoolingFlows,
+                 CoolingFlows=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.Etamechdes = Etamechdes # spool mechanical efficiency

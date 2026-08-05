@@ -16,48 +16,58 @@
 import numpy as np
 import cantera as ct
 import gspy.core.utils as fu
+from gspy.core.flow_state import TFlowState
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.compressormap import TCompressorMap
 
+
 class TFan(TTurboComponent):
-    def __init__(self, owner, name, MapFileName_core, station_in, station_out_core, station_out_duct, shaft_id,
-                 Ndes_core, Etades_core,
-                # in TFan, Etades paramater = Etades_core
-                #          MapFileName = name of core map file
-                 BPRdes,
-                 Ncmapdes_core, Betamapdes_core, PRdes_core,
-                 MapFileName_duct,
-                 Ncmapdes_duct, Betamapdes_duct, PRdes_duct, Etades_duct,
-                #  v1.6 Cf factor for off-design duct-core cross flow correction
-                # cf < 1 :  cross flow between duct/bypass and core sections (with different maps used for compression calculation)
-                #           for cf = 0 : cross flow between fan exit and splitter, we need to mix some of the core flow with bypass or
-                #           vice versa, so that the flow distribution is corresponding to the off-design bypass ratio
-                #           0 < cf < 1 : the cf factor determines the fraction of the cross flow actually compressed by the map
-                #           of 'the other side' (1-cf) * cross flow
-                # cf = 1 :  no cross flow between duct/bypass and core sections (with different maps used for compression calculation)
-                #           the flow distribution to core and duct/bypass maps remains corresponding to design BPR (BPRdes)
-                # default value for cf = 1 : most stable, assuming the duct-core dividing stream line remains the same as with BPRdes
-                cf = 1):
+    def __init__(self, 
+                    *,     
+                    map_filename_core, 
+                    map_filename_duct, 
+                    station_out_core, station_out_duct, 
+                    BPRdes,                    
+                    PRdes_core, Etades_core, Ncmapdes_core, Betamapdes_core, 
+                    PRdes_duct, Etades_duct, Ncmapdes_duct, Betamapdes_duct, 
+                    #  v1.6 Cf factor for off-design duct-core cross flow correction
+                    # cf < 1 :  cross flow between duct/bypass and core sections (with different maps used for compression calculation)
+                    #           for cf = 0 : cross flow between fan exit and splitter, we need to mix some of the core flow with bypass or
+                    #           vice versa, so that the flow distribution is corresponding to the off-design bypass ratio
+                    #           0 < cf < 1 : the cf factor determines the fraction of the cross flow actually compressed by the map
+                    #           of 'the other side' (1-cf) * cross flow
+                    # cf = 1 :  no cross flow between duct/bypass and core sections (with different maps used for compression calculation)
+                    #           the flow distribution to core and duct/bypass maps remains corresponding to design BPR (BPRdes)
+                    # default value for cf = 1 : most stable, assuming the duct-core dividing stream line remains the same as with BPRdes
+                    cf = 1,
+                    **kwargs):
 
         # TTurboComponent parent class creator    no control link
         # 1.6 WV at this stage no variable geometry in this fan model, so VGparvaluedes = None and only a single map file for core and one for duct
-        super().__init__(owner, name, MapFileName_core, '', station_in, station_out_core, shaft_id, Ndes_core, Etades_core, Ncmapdes_core, Betamapdes_core)
-
+        super().__init__( # map_filename, leave map_filename = None, because we have 2 maps now, one for core and one for duct
+                         station_out = station_out_core, 
+                         Etades = Etades_core, 
+                         Ncmapdes = Ncmapdes_core, 
+                         Betamapdes = Betamapdes_core,
+                         **kwargs)
         self.station_out_duct = station_out_duct
 
         self.BPRdes = BPRdes
 
         # core side map
-        self.map_core = TCompressorMap(self, name + '_map_core', MapFileName_core, "Wc_core_"+self.name, "PR_core_"+self.name, shaft_id, Ncmapdes_core, Betamapdes_core)
+        self.map_core = TCompressorMap(self, self.name + '_map_core', 
+                                       map_filename_core, "Wc_core_"+self.name, "PR_core_"+self.name, self.shaft_id, 
+                                       Ncmapdes_core, Betamapdes_core)
         self.PRdes_core = PRdes_core
-
         #  1.5 set self.Etades to None, use Etadec_core instead to avoid duplicate in output
         #      checking if self.Etades non None in TTurboComponent
         self.Etades_core = self.Etades
         self.Etades = None
 
         # duct side map
-        self.map_duct = TCompressorMap(self, name + '_map_duct', MapFileName_duct, "Wc_duct_"+self.name, "PR_duct_"+self.name, shaft_id, Ncmapdes_duct, Betamapdes_duct)
+        self.map_duct = TCompressorMap(self, self.name + '_map_duct', 
+                                       map_filename_duct, "Wc_duct_"+self.name, "PR_duct_"+self.name, self.shaft_id, 
+                                       Ncmapdes_duct, Betamapdes_duct)
         self.PRdes_duct = PRdes_duct
         self.Etades_duct = Etades_duct
 
@@ -75,10 +85,16 @@ class TFan(TTurboComponent):
 
         if Mode == 'DP':
             self.BPR = self.BPRdes
-            # create gas_out_duct ct.Quantity here
-            self.gas_out_duct = ct.Quantity(self.fs_in.phase, mass = 1)
-            #  1.5
-            self.OD_crossFlow = ct.Quantity(self.fs_in.phase, mass = 1)
+
+            # # create fs_out_duct ct.Quantity here
+            # self.fs_out_duct = ct.Quantity(self.fs_in.phase, mass = 1)
+            # #  1.5
+            # self.OD_crossFlow = ct.Quantity(self.fs_in.phase, mass = 1)
+
+            self.fs_out_duct = TFlowState.create_empty(self.system.gas, station_nr=self.station_out_duct)
+            self.fs_out_duct.copy_from(self.fs_in, self.station_in)
+            self.fs_crossflow = TFlowState.create_empty(self.system.gas, station_nr=self.station_out)
+            self.fs_crossflow.copy_from(self.fs_in, self.station_in)
         else:
             self.BPR = self.system.states[self.istate_BPR] * self.BPRdes
 
@@ -103,23 +119,23 @@ class TFan(TTurboComponent):
         self.W_duct_in = self.W_duct_BPRdes + self.cf * self.crossflow
 
         #  set exit flows
-        self.gas_out.mass       = self.W_core_in
-        self.gas_out_duct.mass  = self.W_duct_in
+        self.fs_out.mass       = self.W_core_in
+        self.fs_out_duct.mass  = self.W_duct_in
 
         if Mode == 'DP':
             # correct mass flow
             self.Wdes_core_in = self.W_core_in
             self.Wcdes_core_in = self.Wdes_core_in * fu.GetFlowCorrectionFactor(self.fs_in)
             self.map_core.ReadMapAndGetScaling(self.Ncdes, self.Wcdes_core_in, self.PRdes_core, self.Etades_core)
-            self.PW_core = fu.Compression(self.fs_in, self.gas_out, self.PRdes_core, self.Etades_core, 
+            self.PW_core = fu.Compression(self.fs_in, self.fs_out, self.PRdes_core, self.Etades_core, 
                                           self.Polytropic_DP_eta)
 
             # # add fan duct side compression
-            # self.Wdes_duct = self.gas_in.mass - self.gas_out.mass
+            # self.Wdes_duct = self.gas_in.mass - self.fs_out.mass
             self.Wdes_duct_in = self.W_duct_in
             self.Wcdes_duct_in = self.W_duct_in * fu.GetFlowCorrectionFactor(self.fs_in)
             self.map_duct.ReadMapAndGetScaling(self.Ncdes, self.Wcdes_duct_in, self.PRdes_duct, self.Etades_duct)
-            self.PW_duct = fu.Compression(self.fs_in, self.gas_out_duct, self.PRdes_duct, self.Etades_duct, self.Polytropic_DP_eta)
+            self.PW_duct = fu.Compression(self.fs_in, self.fs_out_duct, self.PRdes_duct, self.Etades_duct, self.Polytropic_DP_eta)
 
             self.PW = self.PW_core + self.PW_duct
             self.shaft.PW_sum = self.shaft.PW_sum - self.PW
@@ -160,20 +176,20 @@ class TFan(TTurboComponent):
             self.Wc_core, self.PR_core, self.Eta_core = self.map_core.GetScaledMapPerformance(self.Nc, self.system.states[self.istate_beta_core])
             self.Wc_duct, self.PR_duct, self.Eta_duct = self.map_duct.GetScaledMapPerformance(self.Nc, self.system.states[self.istate_beta_duct])
 
-            self.PW_core = fu.Compression(self.fs_in, self.gas_out, self.PR_core, self.Eta_core, 0)
-            self.PW_duct = fu.Compression(self.fs_in, self.gas_out_duct, self.PR_duct, self.Eta_duct, 0)
+            self.PW_core = fu.Compression(self.fs_in, self.fs_out, self.PR_core, self.Eta_core, 0)
+            self.PW_duct = fu.Compression(self.fs_in, self.fs_out_duct, self.PR_duct, self.Eta_duct, 0)
 
             self.PW = self.PW_core + self.PW_duct
 
             self.shaft.PW_sum = self.shaft.PW_sum - self.PW
 
             self.W_core = self.Wc_core / fu.GetFlowCorrectionFactor(self.fs_in)
-            self.system.errors[self.ierror_wc_core ] = (self.W_core - self.W_core_in) / self.Wdes
+            self.system.errors[self.ierror_wc_core ] = (self.W_core - self.W_core_in) / self.fs_in_des.W
             self.W_duct = self.Wc_duct / fu.GetFlowCorrectionFactor(self.fs_in)
-            self.system.errors[self.ierror_wc_duct ] = (self.W_duct - self.W_duct_in) / self.Wdes
+            self.system.errors[self.ierror_wc_duct ] = (self.W_duct - self.W_duct_in) / self.fs_in_des.W
 
-            # self.gas_out.mass = self.W_core  # self.gas_out = core flow = gas_out_core
-            # self.gas_out_duct.mass = self.W_duct
+            # self.fs_out.mass = self.W_core  # self.fs_out = core flow = fs_out_core
+            # self.fs_out_duct.mass = self.W_duct
 
             # 1.5   now correct the out flow W, and P and H with the
             #       crossover flow dw_to_duct, between fan exit and splitter,
@@ -193,27 +209,27 @@ class TFan(TTurboComponent):
 
             if crossflow_to_add > 0:  # i.e. BPR > BPRdes
                 # adjust duct flow properties with some of the core flow (flowing into the duct)
-                self.gas_out.mass = self.gas_out.mass - crossflow_to_add
-                self.OD_crossFlow.mass = crossflow_to_add
-                self.OD_crossFlow.HP = fu.scalar(self.gas_out.enthalpy_mass), self.gas_out.P
-                self.gas_out_duct = self.gas_out_duct + self.OD_crossFlow
+                self.fs_out.mass = self.fs_out.mass - crossflow_to_add
+                self.fs_crossflow.mass = crossflow_to_add
+                self.fs_crossflow.HP = fu.scalar(self.fs_out.enthalpy_mass), self.fs_out.P
+                self.fs_out_duct.gas_q = self.fs_out_duct.gas_q + self.fs_crossflow.gas_q
                 # 1.6.0.7 obsolete
-                # self.gas_out_duct.equilibrate("HP")
+                # self.fs_out_duct.equilibrate("HP")
             else:
                 # adjust core flow properties with some of the duct flow (flowing into the core)
-                self.gas_out_duct.mass = self.gas_out_duct.mass + crossflow_to_add
-                self.OD_crossFlow.mass = - crossflow_to_add
-                self.OD_crossFlow.HP = fu.scalar(self.gas_out_duct.enthalpy_mass), self.gas_out_duct.P
-                self.gas_out = self.gas_out + self.OD_crossFlow
+                self.fs_out_duct.mass = self.fs_out_duct.mass + crossflow_to_add
+                self.fs_crossflow.mass = - crossflow_to_add
+                self.fs_crossflow.HP = fu.scalar(self.fs_out_duct.enthalpy_mass), self.fs_out_duct.P
+                self.fs_out.gas_q = self.fs_out.gas_q + self.fs_crossflow.gas_q
                 # 1.6.0.7 obsolete
-                # self.gas_out.equilibrate("HP")
+                # self.fs_out.equilibrate("HP")
 
         # calculate parameters for output
         self.Wc = fu.scalar(self.fs_in.mass) * fu.GetFlowCorrectionFactor(self.fs_in)
 
-        # assigne gas_out_duct to gaspath_conditions dictionary, for the core flow already done in TGaspath parent class
-        self.system.gaspath_conditions[self.station_out_duct] = self.gas_out_duct
-        return self.gas_out, self.gas_out_duct
+        # assigne fs_out_duct to gaspath_conditions dictionary, for the core flow already done in TGaspath parent class
+        self.system.gaspath_conditions[self.station_out_duct] = self.fs_out_duct
+        return self.fs_out, self.fs_out_duct
 
     def PrintPerformance(self, mode, PointTime):
         super().PrintPerformance(mode, PointTime)

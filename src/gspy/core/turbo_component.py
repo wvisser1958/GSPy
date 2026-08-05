@@ -93,13 +93,15 @@ class TTurboComponent(TGaspath):
                 raise TypeError(
                     "VGparvaluedes does not match any of the VGpasvalue's in the MapFileNames list")
 
+        elif self.map_filename == '':
+            # no map file name specified, e.g. for fan with 2 separate maps (core and duct)
+            pass
         # single map from single map file path
         elif isinstance(self.map_filename, (str, Path)):
             # MapFileName_or_dict is just a single map file name/path
             # Normalize to Path internally (best practice)
             self.MapFileName = Path(self.map_filename)
             self.map = self.CreateMap(self.MapFileName, shaft_id, Ncmapdes, Betamapdes)
-
         else:
             raise TypeError(
                 "MapFileNames must be a str, pathlib.Path, or a tuple with 0) VGparvaluedesign, and 1) list of (VGparvalue, MapFileName)"

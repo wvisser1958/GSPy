@@ -35,7 +35,7 @@ class TFlowState:
 
                 # faster 2.11
                  *,
-                 i_H2O: int,
+                #  i_H2O: int,
 
                  m_total_water: float | None = None,
                  m_liq: float = 0.0,
@@ -65,10 +65,12 @@ class TFlowState:
         # self.force_gas_only = force_gas_only
         self.enable_liquid_water = enable_liquid_water
         self.debug_flash = debug_flash
-        # faster 2.11
-        self.i_H2O = i_H2O
 
         self.gas_q = ct.Quantity(gas, mass=gas_mass)
+
+        # faster 2.11
+        #        self.i_H2O = i_H2O
+        self.i_H2O = int(self.gas_q.phase.species_index("H2O"))
 
         self.velocity = None
 
@@ -387,14 +389,13 @@ class TFlowState:
     # constructors
     # ------------------------------------------------------------------
     @classmethod
-    def create_empty(cls, gas, station_nr: str, i_H2O: int):
+    def create_empty(cls, gas, station_nr: str):
         # gas = ct.Solution(mechanism)
-        return cls(gas=gas, gas_mass=1.0, station_nr=station_nr, i_H2O = i_H2O)
+        return cls(gas=gas, gas_mass=1.0, station_nr=station_nr)
 
     @classmethod
     def from_RH(cls, gas: ct.Solution, gas_mass: float, station_nr: str, 
                 *,
-                i_H2O: int,
                 T: float, P: float,
                 RH: float, dry_X: dict,
                 # enable_liquid_model: bool = def_enable_liquid_model,
@@ -405,7 +406,7 @@ class TFlowState:
             gas=gas,
             gas_mass=gas_mass,
             station_nr=station_nr,
-            i_H2O=i_H2O,
+            # i_H2O=i_H2O,
             m_liq=0.0,
             # enable_liquid_model=enable_liquid_model,
             # force_gas_only=force_gas_only,
@@ -425,7 +426,7 @@ class TFlowState:
     @classmethod
     def from_vol_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str, 
                      *,
-                     i_H2O: int,
+                     # i_H2O: int,
                      T: float, P: float,
                      H2O_vol_pct: float, dry_X: dict,
                      enable_liquid_water: bool = False,
@@ -434,7 +435,7 @@ class TFlowState:
             gas=gas,
             gas_mass=gas_mass,
             station_nr=station_nr,
-            i_H2O=i_H2O,
+            # i_H2O=i_H2O,
             m_liq=0.0,
             # enable_liquid_model=enable_liquid_model,
             # force_gas_only=force_gas_only,
@@ -454,7 +455,7 @@ class TFlowState:
     @classmethod
     def from_mass_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str, 
                       *,
-                      i_H2O: int,  
+                    #   i_H2O: int,  
                       T: float, P: float,
                       H2O_mass_pct: float, dry_Y: dict,
                       enable_liquid_water: bool = False,
@@ -463,7 +464,7 @@ class TFlowState:
             gas=gas,
             gas_mass=gas_mass,
             station_nr=station_nr,
-            i_H2O=i_H2O,
+            # i_H2O=i_H2O,
             m_liq=0.0,
             enable_liquid_water=enable_liquid_water,
             debug_flash=debug_flash,
@@ -616,6 +617,9 @@ class TFlowState:
     def SP(self, args):
         S, P = args
 
+        if P <= 0.0:
+            raise ValueError(f"SP setter: P must be > 0, got {P} at station {self.station_nr}")
+
         self.update_SP(
             S_target=S,
             P_target=P,
@@ -628,6 +632,9 @@ class TFlowState:
     @SPX.setter
     def SPX(self, args):
         s, P, X = args
+        if P <= 0.0:
+            raise ValueError(f"SP setter: P must be > 0, got {P} at station {self.station_nr}")
+
         self._set_energy_state_with_composition("S", "X", s, P, X)
 
     @property
@@ -637,6 +644,8 @@ class TFlowState:
     @SPY.setter
     def SPY(self, args):
         s, P, Y = args
+        if P <= 0.0:
+            raise ValueError(f"SP setter: P must be > 0, got {P} at station {self.station_nr}")
         self._set_energy_state_with_composition("S", "Y", s, P, Y)
 
     # ------------------------------------------------------------------

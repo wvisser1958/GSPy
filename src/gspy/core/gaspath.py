@@ -66,8 +66,8 @@ class TGaspath(TComponent):
             # GC: 
             # self.fs_inDes = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass)
             # self.fs_out = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass)
-            self.fs_in_des = TFlowState.create_empty(self.system.gas, station_nr=self.station_in, i_H2O = self.system.i_H2O)
-            self.fs_out = TFlowState.create_empty(self.system.gas, station_nr=self.station_out, i_H2O = self.system.i_H2O)
+            self.fs_in_des = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
+            self.fs_out = TFlowState.create_empty(self.system.gas, station_nr=self.station_out)
 
             self.fs_in_des.copy_from(self.fs_in, self.station_in)
             self.fs_out.copy_from(self.fs_in, self.station_out)
@@ -98,8 +98,7 @@ class TGaspath(TComponent):
             # create fs_in_q
             self.fs_in_q = TFlowState.create_empty(
                 self.fs_in.gas,
-                station_nr=self.fs_in.station_nr,
-                i_H2O=self.system.i_H2O
+                station_nr=self.fs_in.station_nr
             )
         # copy from fs_in
         self.fs_in_q.copy_from(
@@ -111,8 +110,7 @@ class TGaspath(TComponent):
                 # create fs_in_q
                 self.fs_in_des_q = TFlowState.create_empty(
                     self.fs_in.gas,
-                    station_nr=self.fs_in.station_nr,
-                    i_H2O = self.system.i_H2O
+                    station_nr=self.fs_in.station_nr
                 )
             # copy from fs_in
             self.fs_in_des_q.copy_from(
