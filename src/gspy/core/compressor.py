@@ -59,17 +59,20 @@ class TCompressor(TTurboComponent):
             if self.SpeedOption != 'CS':
                 # 1.5
                 if self.shaft.istate == None:
-                    self.system.states = np.append(self.system.states, 1)
-                    self.istate_n = self.system.states.size-1
+                    # self.system.states = np.append(self.system.states, 1)
+                    # self.istate_n = self.system.states.size-1
+                    self.istate_n = self.system.add_state(self.name + '_N', 1.0)
                     self.shaft.istate = self.istate_n
                 else:
                     # already assigned (e.g. by fan or compressor upstream in the gas path)
                     self.istate_n = self.shaft.istate
-            self.system.states = np.append(self.system.states, 1)
-            self.istate_beta = self.system.states.size-1
+            # self.system.states = np.append(self.system.states, 1)
+            # self.istate_beta = self.system.states.size-1
+            self.istate_beta = self.system.add_state(self.name + '_beta', 1.0)
             # error for equation fs_in.wc = wcmap
-            self.system.errors = np.append(self.system.errors, 0)
-            self.ierror_wc = self.system.errors.size-1
+            # self.system.errors = np.append(self.system.errors, 0)
+            # self.ierror_wc = self.system.errors.size-1
+            self.ierror_wc = self.system.add_error(self.name + '_wc', 0.0)
             # calculate parameters for output
             self.PR = self.PRdes
         else:

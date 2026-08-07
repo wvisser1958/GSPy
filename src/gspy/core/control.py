@@ -155,10 +155,12 @@ class TControl(TComponent):
         # super().PostRun(Mode, PointTime)
         if self.OD_controlled_parameter_name is not None:
             if Mode == 'DP':
-                self.system.states = np.append(self.system.states, 1)
-                self.istate_control = self.system.states.size-1
-                self.system.errors = np.append(self.system.errors, 0)
-                self.ierror_control = self.system.errors.size-1
+                # self.system.states = np.append(self.system.states, 1)
+                # self.istate_control = self.system.states.size-1
+                self.istate_control = self.system.add_state(self.name, 1.0)
+                # self.system.errors = np.append(self.system.errors, 0)
+                # self.ierror_control = self.system.errors.size-1
+                self.ierror_control = self.system.add_error(self.name, 0.0)
                 #  get control parameter DP value
                 self.DP_control_parameter_value = self.system.output_dict[self.OD_controlled_parameter_name]
             else:

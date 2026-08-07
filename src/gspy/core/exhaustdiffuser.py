@@ -50,8 +50,9 @@ class TExhaustDiffuser(TGaspath):
             # diffuser
             # use GasThroat as exit here
             self.GasThroat.TP = self.fs_in.T, Pout
-            self.system.errors = np.append(self.system.errors, 0)
-            self.ierror_p = self.system.errors.size - 1
+            # self.system.errors = np.append(self.system.errors, 0)
+            # self.ierror_p = self.system.errors.size - 1
+            self.ierror_p = self.system.add_error(self.name + '_Pout', 0.0)
         else:
             # Off-design calculation
             # fsys.errors[self.ierror_p] = self.gas_in.P*self.PR / Pout

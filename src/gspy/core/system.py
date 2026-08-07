@@ -40,11 +40,12 @@ class TSystemModel:
                 verbose: bool = DEFAULT_VERBOSE,
                 sys_enable_liquid_water : bool = False,
                 ambient_output_species = None,
-                ambient_heatpaths = None
+                ambient_heatpaths = None,
+                debug_output: bool = False
                 ):
 
         self.VERBOSE = verbose
-        self.debug_output = False
+        self.debug_output = debug_output
 
         self.initialized = False
         self.model_name = Path(model_file).stem if model_name is None else model_name
@@ -265,16 +266,68 @@ class TSystemModel:
     def reset_states_and_errors(self):
         # global states, errors
         self.states = np.array([], dtype=float)
+        self.state_names = []
         self.errors = np.array([], dtype=float)
+        self.error_names = []
         for shaft in self.shaft_list:
             shaft.istate = None
+
+    def add_state(self, state_name, initial_value):
+        self.states = np.append(self.states, initial_value)
+        self.state_names.append(state_name)
+        return len(self.states) - 1  # Return the index of the newly added state    
+
+    def add_error(self, error_name, initial_value):
+        self.errors = np.append(self.errors, initial_value)
+        self.error_names.append(error_name)
+        return len(self.errors) - 1  # Return the index of the newly added error
 
     def reinit_states_and_errors(self):
         # global states, errors
         for state in self.states:
             state = 1
         for error in self.errors:
-            state = 0
+            error = 0
+
+    # use debug_states property to get states as dictionaries for easier inspection in the Watch window of the debugger
+    @property
+    def debug_states(self):
+        return [
+            f"{n:<20} = {v:9.6g}"
+            for n, v in zip(self.state_names, self.states, strict=True)
+        ]
+
+    # use debug_errors property to get errors as dictionaries for easier inspection in the Watch window of the debugger
+    @property
+    def debug_errors(self):
+        return [
+            f"{n:<20} = {v:9.6g}"
+            for n, v in zip(self.error_names, self.errors, strict=True)
+        ]
+
+    # combined: use debug_errors_states property 
+    # @property
+    # def debug_states_errors(self):
+    #     return [
+    #         f"{ns:<20} = {vs:9.6g}  {ne:<20} = {ve:9.6g}"
+    #         for ns, vs, ne, ve in zip(self.state_names, self.states, self.error_names, self.errors, strict=True)
+    #     ]
+    @property
+    def debug_states_errors(self):
+        return [
+            f"{'State':<20}   {'Value':>9}  {'Error':<20}   {'Residual':>9}",
+            f"{'-'*20}   {'-'*9}  {'-'*20}   {'-'*9}",
+            *[
+                f"{ns:<20} = {vs:9.6g}  {ne:<20} = {ve:9.6g}"
+                for ns, vs, ne, ve in zip(
+                    self.state_names,
+                    self.states,
+                    self.error_names,
+                    self.errors,
+                    strict=True,
+                )
+            ],
+        ]    
 
     def reset_output(self):
         self._output_rows = []

@@ -86,10 +86,11 @@ class TAMcontrol(TComponent):
                 self.powersetting_comp_par = (self.powersetting_comp_par[0], 'Wf')
 
             if self.powersetting_comp_par[1] != 'Wf':
-                self.system.states = np.append(self.system.states, 1)   
-                self.istate_Wf = self.system.states.size - 1
-                self.system.errors = np.append(self.system.errors, 0)
-                self.ierror_powerset = self.system.errors.size - 1
+                # self.system.states = np.append(self.system.states, 1)   
+                # self.istate_Wf = self.system.states.size - 1
+                self.istate_Wf = self.system.add_state(self.name + '_Wf', 1.0)  
+                # self.system.errors = np.append(self.system.errors, 0)
+                self.ierror_powerset = self.system.add_error(self.name + '_powerset', 0.0)
 
             # reset design reference
             self.measpardesvalues = np.array([])  # array to store the design values of the measured parameters, used to normalize the errors
@@ -125,8 +126,10 @@ class TAMcontrol(TComponent):
             for i, hp in enumerate(self.health_parameters, start=0):
                 # set the map modifier factors backto hp.reference_value in case of multiple DP, OD calculations....
                 setattr(hp.component, hp.attribute_name, hp.reference_value)
-                self.system.states = np.append(self.system.states, 1)
-                self.system.errors = np.append(self.system.errors, 0)
+                # self.system.states = np.append(self.system.states, 1)
+                # self.system.errors = np.append(self.system.errors, 0)
+                self.system.add_state(hp.component.name + '_' + hp.attribute_name, 1.0)
+                self.system.add_error(self.name + '_' + hp.component.name + '_' + hp.attribute_name, 0.0)
             for mp in self.measurement_parameters:
                 self.measpardesvalues = np.append(self.measpardesvalues, self.system.output_dict[f"{mp.parameter_name}"])
         else:

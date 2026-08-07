@@ -487,15 +487,6 @@ class TCombustor(TGaspath):
                 Wf0 = self.Wfdes  # if Texit specified, Wfdes is initial guess
                 self.Wf0_OD = None
 
-                # # define a state and error for subsequent OD solving for Wf making Texit match the self.Texit, e.g. set by a controller
-                # # this is more stable than an internal separate loop for OD
-                # # however, for DP, an internal secant solver is used to get the design Wfdes (only one iteration)
-                # self.owner.states = np.append(self.owner.states, 1)
-                # self.istate_Wf = self.owner.states.size-1
-                # # error for equation Texit(Wf) = Text spec
-                # self.owner.errors = np.append(self.owner.errors, 0)
-                # self.ierror_Texit = self.owner.errors.size-1
-
                 def equation(Wfiter):
                     # 1.6.0.5
                     # self.Wf=Wfiter[0]
@@ -518,16 +509,9 @@ class TCombustor(TGaspath):
                 CalcEndConditions(PointTime, Mode) # just calculate using self.Wf (= self.Wfdes)
 
         else: # OD off-design
-            # if (self.control is not None) and (self.control.OD_controlled_parameter_name is ) : 
-            #     # initial OD guess for Wf, e.g. for when the first OD point is far from the DP operating condition
-            #     if self.Wf0_OD is None: # initialize reference value for OD
-            #         # assume Wf OD is proportional to the combustor inlet flow rate, e.g. when operating at high altitude while DP is at sea level
-            #         self.Wf0_OD = self.Wfdes * self.gas_in.mass / self.Wdes
-            #     self.Wf = self.owner.states[self.istate_Wf] * self.Wf0_OD
-            #     Texit_iter = CalcEndConditions(PointTime)
-            #     self.owner.errors[self.ierror_Texit] = (Texit_iter - self.Texit)/self.Texitdes
-            # else:
-            CalcEndConditions(PointTime, Mode) # just calculate using self Wf
+            # if for off-design T4 input is needed: just do it using a TControl for T4
+            # so the old method of version 2.0 is abandoned here
+            CalcEndConditions(PointTime, Mode) # just calculate using self.Wf
 
         #  add fuel to system level total fuel flow
         self.system.WF = self.system.WF + self.Wf

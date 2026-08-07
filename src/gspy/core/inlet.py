@@ -58,8 +58,9 @@ class TInlet(TGaspath):
             self.Wcdes = self.fs_in.W_gas * fu.GetFlowCorrectionFactor(self.fs_in)
             
             self.PR = self.PRdes
-            self.system.states = np.append(self.system.states, 1)
-            self.istate_wc = self.system.states.size-1   # add state for corrected inlet flow wc more stable... state staying closer to 1 at high altitude
+            # self.system.states = np.append(self.system.states, 1)
+            # self.istate_wc = self.system.states.size-1   # add state for corrected inlet flow wc more stable... state staying closer to 1 at high altitude
+            self.istate_wc = self.system.add_state(self.name + '_wc', 1.0)  # add state for corrected inlet flow wc more stable... state staying closer to 1 at high altitude
         else:
             self.Wc = self.system.states[self.istate_wc] * self.Wcdes
             if self.Wc < 0.001*self.Wcdes:

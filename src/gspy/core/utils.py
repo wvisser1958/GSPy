@@ -137,56 +137,56 @@ def exit_T_and_enthalpy_for_pressure_ratio(gas, target_PR, eta_is) :
     return gas.T, gas.enthalpy_mass
 
 # def Compression(gas_in: ct.Quantity, gas_out: ct.Quantity, PR, Eta, Polytropic_Eta = 0):
-def Compression(gas_in: TFlowState, gas_out: TFlowState, PR, Eta, Polytropic_Eta = 0):
-    # v1.4 polytropic efficiency option
-    if Polytropic_Eta == 1:
-        R = ct.gas_constant / gas_in.phase.mean_molecular_weight
-        Sout = gas_in.s + R*log(PR)*(1/Eta-1)
-        Pout = gas_in.P*PR
-        gas_out.SP = Sout, Pout # get gas_out at constant s and higher P
-    else:
-        # Sin = gas_in.s
-        # Pout = gas_in.P*PR
-        # gas_out.SP = Sin, Pout # get gas_out at constant s and higher P
-        # Hisout = gas_out.enthalpy_mass # isentropic exit specific enthalpy
-        # Hout = gas_in.enthalpy_mass + (Hisout - gas_in.enthalpy_mass) / Eta
-        # gas_out.HP = Hout, Pout
-        # # bug fix: for Fan, gas_out<>gas_in: use gas_out as the mass being compressed
-        # # PW = gas_out.H - gas_in.H
-        gas_in.compress_real_eta_isentropic(PR, gas_out, Eta)
-    PW = gas_out.H - gas_out.mass * gas_in.phase.enthalpy_mass
-    return PW
+# def Compression(gas_in: TFlowState, gas_out: TFlowState, PR, Eta, Polytropic_Eta = 0):
+#     # v1.4 polytropic efficiency option
+#     if Polytropic_Eta == 1:
+#         R = ct.gas_constant / gas_in.phase.mean_molecular_weight
+#         Sout = gas_in.s + R*log(PR)*(1/Eta-1)
+#         Pout = gas_in.P*PR
+#         gas_out.SP = Sout, Pout # get gas_out at constant s and higher P
+#     else:
+#         # Sin = gas_in.s
+#         # Pout = gas_in.P*PR
+#         # gas_out.SP = Sin, Pout # get gas_out at constant s and higher P
+#         # Hisout = gas_out.enthalpy_mass # isentropic exit specific enthalpy
+#         # Hout = gas_in.enthalpy_mass + (Hisout - gas_in.enthalpy_mass) / Eta
+#         # gas_out.HP = Hout, Pout
+#         # # bug fix: for Fan, gas_out<>gas_in: use gas_out as the mass being compressed
+#         # # PW = gas_out.H - gas_in.H
+#         gas_in.compress_real_eta_isentropic(PR, gas_out, Eta)
+#     PW = gas_out.H - gas_out.mass * gas_in.phase.enthalpy_mass
+#     return PW
 
-def TurbineExpansion(gas_in: ct.Quantity, gas_out: ct.Quantity, PR, Eta, Wexp, Eta_Polytropic = 0):
-    # GSP code polytropic efficiency
-    #   S:=Incond.S-FR(Composition)*ln(PR)*(Etapol-1);
-    #   // Note that S already has pressure effect (ln(PR) therefore :
-    #   // (Etapol-1 term)
-    #   GetTfromS(S,Pt,Composition,Accy,Tt,ErrorComment);
-    #   S:=FS(Tt,Pt,Composition);
-    #   H:=FH(Tt,Composition);
-    #   Etais:=(Incond.H-H)/(Incond.H-His);
+# def TurbineExpansion(gas_in: ct.Quantity, gas_out: ct.Quantity, PR, Eta, Wexp, Eta_Polytropic = 0):
+#     # GSP code polytropic efficiency
+#     #   S:=Incond.S-FR(Composition)*ln(PR)*(Etapol-1);
+#     #   // Note that S already has pressure effect (ln(PR) therefore :
+#     #   // (Etapol-1 term)
+#     #   GetTfromS(S,Pt,Composition,Accy,Tt,ErrorComment);
+#     #   S:=FS(Tt,Pt,Composition);
+#     #   H:=FH(Tt,Composition);
+#     #   Etais:=(Incond.H-H)/(Incond.H-His);
 
-    # 1.6.0.5 make sure Pout becomes a single value
-    # Pout = gas_in.P / PR
-    Pout = gas_in.P / float(np.asarray(PR).squeeze())
+#     # 1.6.0.5 make sure Pout becomes a single value
+#     # Pout = gas_in.P / PR
+#     Pout = gas_in.P / float(np.asarray(PR).squeeze())
 
-    if Eta_Polytropic:
-        R = ct.gas_constant / gas_in.phase.mean_molecular_weight
-        Sout = gas_in.s - R*log(PR)*(1/Eta-1)
-        gas_out.SP = Sout, Pout
-    else:
-        gas_out.SP = gas_in.entropy_mass, Pout
-        final_enthalpy_is = gas_out.enthalpy_mass
-        # eta_is = (initial_enthalpy - final_enthalpy) / (initial_enthalpy - final_enthalpy_is)
-        final_enthalpy = gas_in.enthalpy_mass - (gas_in.enthalpy_mass - final_enthalpy_is) * Eta
-        gas_out.HP = final_enthalpy, Pout
-        # if Wexp = None then assume mass flow in = mass flow out here (gas_in.mass = gas_out.mass), so:
-    if Wexp == None:
-        PW = gas_in.H - gas_out.H
-    else:
-        PW = Wexp * (gas_in.enthalpy_mass - gas_out.enthalpy_mass)
-    return PW
+#     if Eta_Polytropic:
+#         R = ct.gas_constant / gas_in.phase.mean_molecular_weight
+#         Sout = gas_in.s - R*log(PR)*(1/Eta-1)
+#         gas_out.SP = Sout, Pout
+#     else:
+#         gas_out.SP = gas_in.entropy_mass, Pout
+#         final_enthalpy_is = gas_out.enthalpy_mass
+#         # eta_is = (initial_enthalpy - final_enthalpy) / (initial_enthalpy - final_enthalpy_is)
+#         final_enthalpy = gas_in.enthalpy_mass - (gas_in.enthalpy_mass - final_enthalpy_is) * Eta
+#         gas_out.HP = final_enthalpy, Pout
+#         # if Wexp = None then assume mass flow in = mass flow out here (gas_in.mass = gas_out.mass), so:
+#     if Wexp == None:
+#         PW = gas_in.H - gas_out.H
+#     else:
+#         PW = Wexp * (gas_in.enthalpy_mass - gas_out.enthalpy_mass)
+#     return PW
 
 #  2.0
 # try the fastest first.

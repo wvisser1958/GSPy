@@ -57,34 +57,17 @@ class TGaspath(TComponent):
         else:
             self.enable_liquid_water = enable_liquid_water
 
+        self.fs_in_des = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
+        self.fs_out = TFlowState.create_empty(self.system.gas, station_nr=self.station_out)
+
+
     def Run(self, Mode, PointTime):
         self.fs_in = self.system.gaspath_conditions[self.station_in]
 
         if Mode == 'DP':
-            # create fs_inDes, fs_out cantera Quantity (fs_in already created)
-
-            # GC: 
-            # self.fs_inDes = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass)
-            # self.fs_out = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass)
-            self.fs_in_des = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
-            self.fs_out = TFlowState.create_empty(self.system.gas, station_nr=self.station_out)
-
             self.fs_in_des.copy_from(self.fs_in, self.station_in)
-            self.fs_out.copy_from(self.fs_in, self.station_out)
 
-            # self.Wdes = fu.scalar(self.fs_in_des.W)
-            # self.Wgas = fu.scalar(self.fs_in_des.W_gas)
-            # self.Wcdes = self.Wgas * fu.GetFlowCorrectionFactor(self.fs_in_des)
-            # self.W = self.Wdes
-            # self.Wc = self.Wcdes
-        else:
-            # self.W = fu.scalar(self.fs_in.m_total)
-            # self.Wgas = fu.scalar(self.fs_in.mass)
-            # self.Wc = self.Wgas * fu.GetFlowCorrectionFactor(self.fs_in)
-
-            self.fs_out.gas_q.TPY = self.fs_in.gas_q.TPY
-            #  here, in this abstract class we assume no phase change (liquid water) 
-            self.fs_out.W_gas = self.fs_in.mass
+        self.fs_out.copy_from(self.fs_in, self.station_out)
 
         # if heathpaths, add Q
         self.Add_Q_to_fs_in_q(Mode)

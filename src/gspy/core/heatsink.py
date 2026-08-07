@@ -45,11 +45,13 @@ class THeatsink(TComponent):
     def Run(self, Mode, PointTime):
         if Mode == 'DP':
             # define state and error for OD 
-            self.system.states = np.append(self.system.states, 1)
-            self.istate_T = self.system.states.size-1
+            # self.system.states = np.append(self.system.states, 1)
+            # self.istate_T = self.system.states.size-1
+            self.istate_T = self.system.add_state(self.name + '_T', 1.0)    
             # error for equation fs_in.wc = wcmap
-            self.system.errors = np.append(self.system.errors, 0)
-            self.ierror_Q = self.system.errors.size-1
+            # self.system.errors = np.append(self.system.errors, 0)
+            # self.ierror_Q = self.system.errors.size-1
+            self.ierror_Q = self.system.add_error(self.name + '_Q', 0.0)
         if self.heatpaths:
             Qhs_out = self.CalculateHeatTransfer(None, fu.HeatTransferLocation.HEATSINK)
             self.Q_balance += Qhs_out

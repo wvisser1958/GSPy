@@ -223,15 +223,18 @@ class TTurbine(TTurboComponent):
 
             # add states and errors
             # rotor speed state is same as compressor's
-            self.system.states = np.append(self.system.states, 1)
-            self.istate_beta = self.system.states.size-1
+            # self.system.states = np.append(self.system.states, 1)
+            # self.istate_beta = self.system.states.size-1
+            self.istate_beta = self.system.add_state(self.name + '_beta', 1.0)
             # error for equation fs_in.wc = wcmap
-            self.system.errors = np.append(self.system.errors, 0)
-            self.ierror_wc = self.system.errors.size-1
+            # self.system.errors = np.append(self.system.errors, 0)
+            # self.ierror_wc = self.system.errors.size-1
+            self.ierror_wc = self.system.add_error(self.name + '_wc', 0.0)
             # shaft power error
             if self.TurbineType == 'GG':
-                self.system.errors = np.append(self.system.errors, 0)
-                self.ierror_shaftpw = self.system.errors.size-1
+                # self.system.errors = np.append(self.system.errors, 0)
+                # self.ierror_shaftpw = self.system.errors.size-1
+                self.ierror_shaftpw = self.system.add_error(self.name + '_shaftpw', 0.0)
             # calculate parameters for output
             self.N = self.Nc * fu.GetRotorspeedCorrectionFactor(self.fs_in)
         # ******************** end DP design mode *************************

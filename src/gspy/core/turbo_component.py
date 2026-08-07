@@ -33,7 +33,7 @@ class TTurboComponent(TGaspath):
                  Etades,
                  Ncmapdes, 
                  Betamapdes,
-                 Polytropic_DP_eta = 0,
+                 Polytropic_DP_eta: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
 

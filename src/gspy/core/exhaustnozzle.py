@@ -95,8 +95,10 @@ class TExhaustNozzle(TGaspath):
                 self.Vthroat = Vthroat_is
             self.Tthroat = self.fs_throat.T
             # exit flow error
-            self.system.errors = np.append(self.system.errors, 0)
-            self.ierror_w = self.system.errors.size - 1
+            # self.system.errors = np.append(self.system.errors, 0)
+            # self.ierror_w = self.system.errors.size - 1
+            self.ierror_w = self.system.add_error(self.name + '_Wout', 0.0)
+
             if self.Vthroat <= 0:
                 self.Vthroat = 0.001  # always assume a minimal flow velocity: 0.001 will result in a theoretical
                                     # very large exhaust area

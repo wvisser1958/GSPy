@@ -201,6 +201,25 @@ class TFlowState:
         )
         return 0.0 if m <= tol else m
 
+    # for TInlet: scale mass up from 1 kg (TAmbient) to inlet gas mass flow
+    def scale_mass(self, scale_value: float):
+        f = float(scale_value)
+
+        if f < 0.0:
+            raise ValueError("scale_value must be >= 0")
+
+        self.gas_q.mass *= f    # this sets W_gas, which is used to compute m_vap and m_liq
+        self.m_dry *= f
+        self.m_total_water *= f # now m_total_water = m_vap + m_liq, so this is consistent with the scaled W_gas and m_liq 
+                                # m_vap is calculated from the H2O fraction in the W_gas (or gas_q.mass) 
+                                # with m_total_water set, now m_liq is also defined
+
+        # no need to scale W, since W is derived from W_gas and m_liq
+        # self.W *= f    
+        # self.W = f    
+
+        return self
+
     @property
     def has_condensed_water(self):
         return self.m_liq > self.LIQ_ABS_TOL
@@ -479,23 +498,218 @@ class TFlowState:
         )
         return obj
 
-    def copy_from(self, other: "TFlowState", new_station_nr: str = None) -> "TFlowState":
+    def copy_from(self, other: "TFlowState", new_station_nr: str = None, scale_W: float = 1.0) -> "TFlowState":
         self.gas_q.TPX = other.gas_q.T, other.gas_q.P, other.gas_q.X
-        self.gas_q.mass = other.gas_q.mass
         self.station_nr = new_station_nr if str(new_station_nr) is not None else str(other.station_nr)
 
         self.i_H2O=other.i_H2O
-        self.m_dry = other.m_dry
-        self.m_total_water = other.m_total_water
+        self.enable_liquid_water = other.enable_liquid_water
+
+        # these 3 need to be set, the W, m_vap and m_liq properties are derived from them 
+        self.gas_q.mass = other.gas_q.mass * scale_W    # this sets W_gas, which is used to compute m_vap and m_liq
+        self.m_dry = other.m_dry * scale_W
+        self.m_total_water = other.m_total_water * scale_W  # now m_total_water = m_vap + m_liq, so this is consistent with the scaled W_gas and m_liq 
+                                                            # m_vap is calculated from the H2O fraction in the W_gas (or gas_q.mass) 
+                                                            # with m_total_water set, now m_liq is also defined
+
         # self.enable_liquid_model = other.enable_liquid_model
         # self.force_gas_only = other.force_gas_only
-        self.enable_liquid_water = other.enable_liquid_water
         self.Ts = other.Ts
         self.Ps = other.Ps
         self.Mach = other.Mach
         self.V = other.V
         self.A = other.A
         self.rhos = other.rhos
+        return self
+
+    def mix_same_composition_gas_only(
+        self,
+        flow1: "TFlowState",
+        flow2: "TFlowState",
+        *,
+        P_out: float,
+    ) -> "TFlowState":
+        """
+        Fast adiabatic mixing of two gas-only streams with identical
+        gas-species composition.
+        """
+        gas1 = flow1.gas_q
+        gas2 = flow2.gas_q
+
+        m1 = gas1.mass
+        m2 = gas2.mass
+        m_out = m1 + m2
+
+        if m_out <= 0.0:
+            raise ValueError("Combined gas mass must be positive.")
+
+        H_out = gas1.enthalpy + gas2.enthalpy
+
+        # Set composition only once from flow1.
+        self.gas_q.TPY = flow1.T, float(P_out), gas1.phase.Y
+        self.gas_q.mass = m_out
+        self.gas_q.HP = H_out / m_out, float(P_out)
+
+        self.enable_liquid_water = False
+        self.m_dry = flow1.m_dry + flow2.m_dry
+        self.m_total_water = flow1.m_total_water + flow2.m_total_water
+        self._m_vap = self.m_total_water
+        self._m_liq = 0.0
+
+        self._set_static_equal_total()
+        return self
+
+    def mix_from(
+        self,
+        flow1: "TFlowState",
+        flow2: "TFlowState",
+        *,
+        P_out: float | None = None,
+        enable_liquid_water: bool | None = None,
+    ) -> "TFlowState":
+        """
+        Mix two TFlowState streams into this TFlowState.
+
+        Conserved quantities
+        --------------------
+        - Gas-species masses
+        - Total water mass, including separately tracked liquid water
+        - Total extensive enthalpy
+        - Total stream mass
+
+        Pressure
+        --------
+        Mixing does not determine the outlet pressure. If P_out is omitted,
+        the lower inlet pressure is used. This corresponds to throttling the
+        higher-pressure stream to the lower pressure before adiabatic mixing.
+
+        Parameters
+        ----------
+        flow1, flow2
+            Inlet flow states.
+
+        P_out
+            Outlet pressure [Pa]. Default is min(flow1.P, flow2.P).
+
+        enable_liquid_water
+            True:
+                The outlet may contain separate liquid water and the final
+                state is established with the vapor-liquid HP flash.
+
+            False:
+                All inlet water, including liquid water, is treated as
+                gas-phase H2O at the outlet.
+
+            None:
+                Enable the liquid model if it is enabled for either inlet.
+
+        Returns
+        -------
+        self
+            The mixed outlet state.
+        """
+        if flow1.gas_q.phase.n_species != flow2.gas_q.phase.n_species:
+            raise ValueError(
+                "Cannot mix TFlowState objects with different species sets."
+            )
+
+        if flow1.gas_q.phase.species_names != flow2.gas_q.phase.species_names:
+            raise ValueError(
+                "Cannot mix TFlowState objects with different species ordering."
+            )
+
+        if P_out is None:
+            P_out = min(flow1.P, flow2.P)
+
+        P_out = float(P_out)
+
+        if P_out <= 0.0:
+            raise ValueError("P_out must be positive.")
+
+        if enable_liquid_water is None:
+            enable_liquid_water = (
+                flow1.enable_liquid_water
+                or flow2.enable_liquid_water
+            )
+
+        enable_liquid_water = bool(enable_liquid_water)
+
+        # Cache all inlet quantities before modifying self. This also allows
+        # self to be the same object as flow1 or flow2.
+        Y1 = flow1.gas_q.phase.Y.copy()
+        Y2 = flow2.gas_q.phase.Y.copy()
+
+        m_gas1 = flow1.gas_q.mass
+        m_gas2 = flow2.gas_q.mass
+
+        m_liq1 = flow1.m_liq
+        m_liq2 = flow2.m_liq
+
+        m_dry_out = flow1.m_dry + flow2.m_dry
+        m_water_out = flow1.m_total_water + flow2.m_total_water
+
+        # The inlet total enthalpies include their liquid-water enthalpy.
+        H_target = flow1.H_total + flow2.H_total
+
+        # Gas-species mass vector before handling separately tracked liquid.
+        species_masses = m_gas1 * Y1 + m_gas2 * Y2
+
+        m_liq_in = m_liq1 + m_liq2
+
+        if enable_liquid_water:
+            # Keep inlet liquid separate initially. update_HP() will determine
+            # the final equilibrium vapor-liquid split.
+            m_gas_initial = m_gas1 + m_gas2
+
+        else:
+            # Gas-only outlet: convert all separate liquid into gas-phase H2O.
+            species_masses[self.i_H2O] += m_liq_in
+            m_gas_initial = m_gas1 + m_gas2 + m_liq_in
+
+        if m_gas_initial <= 0.0:
+            raise ValueError("The mixed gas mass must be positive.")
+
+        Y_out = species_masses / m_gas_initial
+
+        # Use the mass-weighted inlet temperature only as an initial state.
+        # The final temperature is determined from H_target and P_out.
+        T_guess = (
+            m_gas1 * flow1.T
+            + m_gas2 * flow2.T
+        ) / (m_gas1 + m_gas2)
+
+        self.enable_liquid_water = enable_liquid_water
+
+        self.gas_q.TPY = T_guess, P_out, Y_out
+        self.gas_q.mass = m_gas_initial
+
+        self.m_dry = m_dry_out
+        self.m_total_water = m_water_out
+
+        if enable_liquid_water:
+            # Establish final T and vapor-liquid split from conserved total
+            # enthalpy and selected outlet pressure.
+            self.update_HP(
+                H_target=H_target,
+                P_target=P_out,
+            )
+        else:
+            # All water is now included in the gas composition.
+            self.gas_q.HP = H_target / m_gas_initial, P_out
+
+            self.m_total_water = (
+                self.gas_q.mass
+                * self.gas_q.phase.Y[self.i_H2O]
+            )
+
+            if hasattr(self, "_m_vap"):
+                self._m_vap = self.m_total_water
+
+            if hasattr(self, "_m_liq"):
+                self._m_liq = 0.0
+
+        self._set_static_equal_total()
+
         return self
 
     # ------------------------------------------------------------------
@@ -651,22 +865,6 @@ class TFlowState:
     # ------------------------------------------------------------------
     # public methods
     # ------------------------------------------------------------------
-    # for TInlet: scale mass up from 1 kg (TAmbient) to inlet gas mass flow
-    def scale_mass(self, scale_value: float):
-        f = float(scale_value)
-
-        if f < 0.0:
-            raise ValueError("scale_value must be >= 0")
-
-        self.gas_q.mass *= f
-        self.m_dry *= f
-        self.m_total_water *= f
-
-        # self.W *= f    
-        self.W = f    
-
-        return self
-
     def set_conditions_humidity(self, *,
                                 T: float,
                                 P: float,
@@ -1625,7 +1823,7 @@ class TFlowState:
     # ------------------------------------------------------------------
     # convenience compressor helpers
     # ------------------------------------------------------------------
-    def compress_isentropic(self, PR: float, out: "TFlowState"):
+    def compress_isentropic(self, PR: float, out: "TFlowState", W_total = None):
         """
         Ideal compression:
         - total entropy gas + liquid conserved
@@ -1633,19 +1831,31 @@ class TFlowState:
         """
         out.copy_from(self)
 
+        # in case mass is given (e.g., for a compressor with bleed, fan core or duct flow etc.), 
+        # set the output mass by scaling from self
+        Starget = float(self.S_total)
+        if W_total is not None:
+            out.scale_mass(W_total/self.W)
+            Starget = Starget * W_total/self.W
         out.update_SP(
-            S_target=self.S_total,
+            S_target=Starget,
             P_target=PR * self.P,
         )
 
         out._set_static_equal_total()
         return out
 
-    def compress_real_eta_isentropic(self, PR, out, eta_is):
+    def compress_real_eta_isentropic(self, PR, out, eta_is, W_out = None):
 
-        self.compress_isentropic(PR, out)
+        self.compress_isentropic(PR, out, W_total=W_out)
 
         H1 = self.H_total
+
+        # in case mass is given (e.g., for a compressor with bleed, fan core or duct flow etc.), 
+        # set the output mass by scaling from self
+        if W_out is not None:
+            H1 = H1 * W_out/self.W
+        
         H2s = out.H_total
 
         H2_target = H1 + (H2s - H1) / eta_is
@@ -1659,13 +1869,17 @@ class TFlowState:
 
     def compress_real_polytropic_eta_fast(self, PR: float,
                                 out: "TFlowState",
-                                eta_poly: float):
+                                eta_poly: float,
+                                W_out = None):
         if PR <= 0.0:
             raise ValueError("PR must be > 0")
         if not (0.0 < eta_poly <= 1.0):
             raise ValueError("eta_poly must be in (0, 1]")
 
         out.copy_from(self)
+
+        if W_out is not None:
+            out.scale_mass(W_out/self.W)
 
         R = ct.gas_constant / self.gas_q.mean_molecular_weight
         Sout = self.gas_q.entropy_mass + R * math.log(PR) * (1.0 / eta_poly - 1.0)
@@ -1680,7 +1894,8 @@ class TFlowState:
         out._set_static_equal_total()
 
     def compress_real_polytropic_eta(self, PR: float, out: "TFlowState",
-                            eta_poly: float, tmp: "TFlowState" = None, n_steps: int = 20):
+                            eta_poly: float, tmp: "TFlowState" = None, n_steps: int = 20,
+                            W_out = None):
 
         """
         Polytropic compressor model.
@@ -1768,6 +1983,9 @@ class TFlowState:
             # initialize output from inlet state
             out.copy_from(self)
 
+            if W_out is not None:
+                out.scale_mass(W_out/self.W)
+
             # gas constant of current mixture [J/kg/K]
             R = ct.gas_constant / self.gas_q.mean_molecular_weight
 
@@ -1827,6 +2045,10 @@ class TFlowState:
         # initialize outlet from inlet
         out.copy_from(self)
 
+        if W_out is not None:
+            out.scale_mass(W_out/self.W)
+
+
         # inlet and outlet pressures
         P1 = self.P
         P2 = PR * P1
@@ -1845,6 +2067,8 @@ class TFlowState:
 
             # current real-state enthalpy and entropy
             H_in = out.H_total
+
+
             S_in = out.S_total
 
             # ---------------------------------------------------------
@@ -1904,7 +2128,12 @@ class TFlowState:
                       eta: float,
                       Polytropic_Eta: bool = False,
                       tmp: "TFlowState" = None,
-                      n_steps: int = 20):
+                      n_steps: int = 20,
+                      W_out = None):
+
+        H_total_0 = self.H_total
+        if W_out is not None:
+            H_total_0 = H_total_0 * W_out/self.W
 
         if Polytropic_Eta:
             self.compress_real_polytropic_eta(
@@ -1913,15 +2142,18 @@ class TFlowState:
                 eta_poly=eta,
                 tmp=tmp,
                 n_steps=n_steps,
+                W_out=W_out
             )
         else:
             self.compress_real_eta_isentropic(
                 PR=PR,
                 out=out,
                 eta_is=eta,
+                W_out=W_out
             )
 
-        PW = out.H_total - self.H_total
+        # PW = out.H_total - self.H_total
+        PW = out.H_total - H_total_0
         return out, PW
 
     # ------------------------------------------------------------------
@@ -2320,6 +2552,10 @@ class TFlowState:
         # turbine power output is positive
         PW = self.H_total - out.H_total
         return out, PW
+
+    # ------------------------------------------------------------------
+    # combustor mixture equilibration
+    # ------------------------------------------------------------------
 
     def equilibrate_quantity(self) -> None:
         # Equilibrate the combustor mixture at constant enthalpy and pressure.
