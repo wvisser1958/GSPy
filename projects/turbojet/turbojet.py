@@ -14,6 +14,9 @@
 #   Wilfried Visser
 #   Oscar Kogenhop
 
+from numpy.char import array
+import numpy as np
+
 from gspy.core.system import TSystemModel
 
 from gspy.core.control import TControl
@@ -74,7 +77,7 @@ def main():
                     PRdes = 1               # design pressure ratio (PR = 1 - Ploss_relative)
                     )
     
-    compressor1 = TCompressor(owner=turbojet,               # owning system model object
+    compressor1 = TCompressor(system=turbojet,               # owning system model object
                               name='Compressor1',           # component name
                               map_filename='compmap.map' ,  # map file name
                               station_in = 2,               # station nr in and out
@@ -89,7 +92,7 @@ def main():
                               Bleeds=None,                  # optional list of bleeds
                               heatpaths = None)             # optional list of heat path links with heatsinks
 
-    combustor1 = TCombustor(owner=turbojet,                 # owning system model object
+    combustor1 = TCombustor(system=turbojet,                 # owning system model object
                             name='Combustor1',              # component name
                             map_filename = None,            # map file name             # for future use of a combustor efficiency map
                             # OD fuel input from FuelControl
@@ -103,8 +106,8 @@ def main():
                             # note that using Texit as imput may be less stable in some cases
 
                             PRdes=1,                # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
-                            Etades=1,               # design combustor efficiency
-                            Tfueldes=None,          # Fuel temperature K           # If None, then Tfuel is assumed to be equal to temperature of entry air flow
+                            Etades=0.91,            # design combustor efficiency
+                            Tfueldes=298.15,        # Fuel temperature K           # If None, then Tfuel is assumed to be equal to temperature of entry air flow
 
                             # For the fuel properties specification there are 2 options:
                             #     1:        virtual fuel with unknown composition:
@@ -115,10 +118,18 @@ def main():
                             #                   'NC12H26:1' (dodecane),
                             #                   'CH4:9, N2:1' (mixture of CH4 and N2 in ratio 9:1 by mass)
                             #                   or 'CH4:5, C2H6:1' for example, and fuel temperature
-                            LHVdes=43031,               # LHV, required if Fuelcomposition is None
-                            HCratiodes=1.9167,          # HCratio
-                            OCratiodes=0,               # OCratio
-                            FuelCompositiondes=None,    # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
+                            # LHVdes=43031,               # LHV [kJ/kg] at T_standard_ref = 298.15 # (25°C), required if Fuelcomposition is None
+                            # Cp_fuel_des=2093,           # optional specific heat of the fuel for LVH, H/C and O/C ratio specification, in J/kg-K
+                            # HCratiodes=1.9167,          # HCratio
+                            # OCratiodes=0,               # OCratio
+                            # FuelCompositiondes=None,    # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
+
+                            # LHVdes=43031,               # LHV [kJ/kg] at T_standard_ref = 298.15 # (25°C), required if Fuelcomposition is None
+                            Cp_fuel_des=2093,           # optional specific heat of the fuel for LVH, H/C and O/C ratio specification, in J/kg-K
+                            # HCratiodes=1.9167,          # HCratio
+                            # OCratiodes=0,               # OCratio
+                            FuelCompositiondes='CH4:9, N2:1',    # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
+
                             A=None                      # Cross flow area to calculate fundamental pressue loss
                             )
                             # example with Texit as design input:
@@ -139,7 +150,7 @@ def main():
                             # fuel specified by Fuel temperature and fuel mix composition (by mass)
                             #    288.15,      None, None, None, 'CH4:5, C2H6:1')
 
-    turbine1 =    TTurbine(owner=turbojet,              # owning system model object
+    turbine1 =    TTurbine(system=turbojet,              # owning system model object
                            name='Turbine1',             # component name
                            map_filename='turbimap.map', # map file name
                            control_component=None,      # optional control component
@@ -158,14 +169,14 @@ def main():
                            )
                         
                         
-    duct1    = TDuct(owner=turbojet,                    # owning system model object
+    duct1    = TDuct(system=turbojet,                    # owning system model object
                      name='ExhDuct',                    # component name
                      station_in=5, 
                      station_out=7,                     # station nr in and out
                      PRdes=1.0                          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                     )
 
-    exhaustnozzle = TExhaustNozzle(owner=turbojet,      # owning system model object
+    exhaustnozzle = TExhaustNozzle(system=turbojet,      # owning system model object
                                    name='ExhaustNozzle',# component name
                                    station_in=7, 
                                    station_throat=8, 
@@ -200,7 +211,8 @@ def main():
     if run_OD:
         # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
         turbojet.mode = 'OD'
-        turbojet.input_points = fuelcontrol.get_OD_input_points()
+        # turbojet.input_points = fuelcontrol.get_OD_input_points()
+        turbojet.input_points = np.array([[0, 0.37]])        
         print("\nOff-design (OD) results")
         print("=======================")
         # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet

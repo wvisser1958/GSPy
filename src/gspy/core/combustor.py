@@ -16,6 +16,7 @@
 from scipy.optimize import root_scalar
 import numpy as np
 import cantera as ct
+from gspy.core.flow_state import TFlowState
 
 from gspy.core.gaspath import TGaspath
 import gspy.core.constants as c
@@ -29,10 +30,12 @@ class TCombustor(TGaspath):
                  PRdes = 1, 
                  Etades = 1,
                  Tfueldes = 288.15, 
-                 LHVdes = None, 
+                 LHVdes = None,   # LHV [kJ/kg] at T_standard_ref = 298.15 # (25°C)
                  HCratiodes = None, 
                  OCratiodes = None, 
                  FuelCompositiondes = None, 
+                 Cp_fuel_des = 0,   # leave as 0 if not specified, then will be calculated from the fuel composition if specified
+                                    # and if LHV specified fuel , then fuel heating will be assumed 0
                  A = None, 
                  FARdes = None,
                  **kwargs):
@@ -55,12 +58,15 @@ class TCombustor(TGaspath):
         self.Etades = Etades
 
         self.Tfueldes = Tfueldes
+        self.Tfuel = self.Tfueldes
         self.LHVdes = LHVdes
         self.HCratiodes = HCratiodes
         self.OCratiodes = OCratiodes
         # fuel composition string, e.g. 'NC12H26:1', or a mixture like 'NC12H26:5, C2H6:1'
         # with 'NC12H26:5, C2H6:1' mole ratio if 5:1 if TPX is used, mass ratio if TPY is used, see Cantera documentation
         self.FuelCompositiondes = FuelCompositiondes
+
+        self.Cp_fuel_des = Cp_fuel_des
 
         # 1.4 set Fuel
         self.fuel = None  # initialize fuel quantity for later testing if None or already assigned
@@ -81,13 +87,28 @@ class TCombustor(TGaspath):
         self.scratch_quantity = None  # scratch quantity for enthalpy calculations
 
     #  1.4 use separate routine, for allowing change of fuel for OD simulation cases
-    def SetFuel(self, aTfuel, aLHV, aHCratio, aOCratio, aFuelComposition):
+    def SetFuel(self, aTfuel, aLHV, aHCratio, aOCratio, aFuelComposition, Cp_fuel = None):
         self.Tfuel = aTfuel
         self.LHV = aLHV          # Lower Heating Value in kJ/kg
         self.HCratio = aHCratio  # H/C ratio for the virtual fuel
         self.OCratio = aOCratio  # O/C ratio for the virtual fuel
         self.FuelComposition = aFuelComposition
+        if Cp_fuel is None:
+            self.Cp_fuel = self.Cp_fuel_des
+        else:    
+            self.Cp_fuel = Cp_fuel      
         return
+
+    def fuel_sensible_enthalpy(self):
+        return self.Cp_fuel * (
+            self.Tfuelin - c.T_standard_ref
+        )
+
+    def fuel_enthalpy_input(self):
+        return (
+            self.LHV * 1000.0
+            + self.fuel_sensible_enthalpy()
+        )
 
     # 1.2 this routine is not actively used during simulation, but may be used separately
     #     to determine/compare LHV values or comparing values with vs without specified FuelComposion specified
@@ -256,7 +277,11 @@ class TCombustor(TGaspath):
                 )
 
         def CalcEndConditions(PointTime, Mode):
-            # self.GetLHV()
+            if self.Tfuel is None:      # assume Tfuel equal to T of air in
+                self.Tfuelin = self.fs_in_q.T
+            else:                       # use user specified Tfuel
+                self.Tfuelin = self.Tfuel
+
             if (self.FuelComposition == '') or (self.FuelComposition is None):  # fuel specification based on LHV, HC and OC mole ratio
                 #  2.1 use fs_out instead as the gas prior to mixing with fuel, 
                 # as fs_out.Y has been corrected for any liquid water (using self.fs_out.disable_liquid_model(collapse=True): 
@@ -357,7 +382,8 @@ class TCombustor(TGaspath):
                 # based on the specified LHV and the enthalpy of the inlet gas composition at the reference conditions, 
                 # and accounting for the efficiency (Etades) which represents heat loss during combustion:
                 # assuming all water evaporated
-                H_prod_final = self.Wf * self.LHV * 1000 * self.Etades + H_in_initial - H_in_ref  + H_prod_ref
+                x = self.fuel_sensible_enthalpy()
+                H_prod_final = self.Wf * self.fuel_enthalpy_input() * self.Etades + H_in_initial - H_in_ref  + H_prod_ref
 
                 # now set exit gas_out H to h_prod_final, this will calculate gas_out.T
                 self.fs_out.HP = H_prod_final, Pin
@@ -369,19 +395,19 @@ class TCombustor(TGaspath):
                 #  1.4 test if fuel exists (DP may be virtual flow, and OD composition specified, so....)
                 # if Mode == 'DP':
                 if self.fuel is None:
-                    # create separate fuel quantity for mixing with gas_in
-                    self.fuel = ct.Quantity(self.system.gas)
-                self.fuel.mass = self.Wf
-                if self.Tfuel is None:      # assume Tfuel equal to T of air in
-                    Tfuelin = self.fs_in_q.T
-                else:                       # use user specified Tfuel
-                    Tfuelin = self.Tfuel
+                    # create separate fuel TFlowState for mixing with gas_in
+                    self.fuel = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
+                    self.fuel.enable_liquid_water = False  # no 2 phase water flow with fuel at this stage
+                self.fuel.W = self.Wf
+
                 # v1.2 set P fuel to Pout, otherwise (using gas_in.P, which is before the pressure loss)
                 #  the fuel pressure will increase the combustor pressure again with the TPY assignment
                 # self.fuel.TPY = Tfuelin, self.gas_in.P, self.FuelComposition
-                self.fuel.TPY = Tfuelin, Pin, self.FuelComposition
+                self.fuel.TPY = 288.15, Pin, self.FuelComposition
+                self.fuel.TPY = self.Tfuelin, Pin, self.FuelComposition
                 # fuel.TPY = self.gas_in.T, self.gas_in.P, self.FuelComposition
-                self.fs_out = self.fs_in_q + self.fuel
+                # self.fs_out = self.fs_in_q + self.fuel
+                self.fs_out = self.fs_out.mix_from(self.fs_in, self.fuel, P_out=self.fs_out.P, enable_liquid_water = False)
 
                 # 1.3
                 if self.Etades < 1.000:
@@ -407,7 +433,8 @@ class TCombustor(TGaspath):
                     self.fs_out.HP = h_target, Pin
                 else:
                     # v1.2 reimpose pressure Pout to gas_out
-                    self.fs_out.HP = self.fs_out.enthalpy_mass, Pin
+                    self.fs_out.equilibrate_combustor_mixture()
+                    self.fs_out.HP = self.fs_out.H_total, Pin
 
                 # 2.0
                 # self.gas_out.equilibrate("HP")

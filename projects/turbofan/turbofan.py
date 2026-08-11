@@ -214,15 +214,14 @@ def main():
         # turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None)
         # turbofan.input_points = fuel_control.re_init_input(None,
         #                                                         1.11,
-        #                                                         None, None, None,
-        #                                                         'T4',
-        #                                                         point_time_value_array = [combustor.Texitdes])    
+        #                                                         1600, 1200, -50,
+        #                                                         'T4')    
         # turbofan.Run_OD_simulation('Test step at 0m / Ma 0.0 Design conditions')
 
-        # intermediate step at design T4 to help iteration towards point far from DP
-        # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
-        # conditions is desired
-        # turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None)
+        # # intermediate step at design T4 to help iteration towards point far from DP
+        # # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
+        # # conditions is desired
+        # turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None)
         # turbofan.input_points = fuel_control.re_init_input(None,
         #                                                         0.7,
         #                                                         None, None, None,
@@ -230,22 +229,35 @@ def main():
         #                                                         point_time_value_array = [combustor.Texitdes])    
         # turbofan.Run_OD_simulation('Intermediate step at 5000m / Ma 0.8')
 
-        # sweep T4 at typical cruise condition 10k / Ma 0.8:
+
+        # # intermediate step at design T4 to help iteration towards point far from DP
+        # # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
+        # # conditions is desired
         turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None)
         turbofan.input_points = fuel_control.re_init_input(None,
                                                                 0.7,
-                                                                1600, 1100, -50,
+                                                                1600, 1200, -50,
                                                                 'T4')    
-        turbofan.Run_OD_simulation('Performance at 5000m / Ma 0.8')
+        turbofan.Run_OD_simulation('Intermediate step at 5000m / Ma 0.8')
 
         # # sweep T4 at typical cruise condition 10k / Ma 0.8:
+        # turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None)
+        # turbofan.input_points = fuel_control.re_init_input(None,
+        #                                                         0.7,
+        #                                                         1600, 1100, -50,
+        #                                                         'T4')    
+        # turbofan.Run_OD_simulation('Performance at 5000m / Ma 0.8')
+
+        # turbofan.ambient.SetConditions('DP', 0, 0, 0, None, None)
+        # turbofan.Run_DP_simulation()
+
+        # # # sweep T4 at typical cruise condition 11k / Ma 0.8:
         # turbofan.ambient.SetConditions('OD', 11000, 0.8, 0, None, None)
         # turbofan.input_points = fuel_control.re_init_input(None,
         #                                                         0.5,
         #                                                         1600, 1100, -50,
         #                                                         'T4')    
         # turbofan.Run_OD_simulation('Performance at 11000m / Ma 0.8')
-
 
     # export OutputTable to CSV
     turbofan.OutputToCSV()

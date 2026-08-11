@@ -87,7 +87,7 @@ LIQUID_WATER_INDEX = -1
 T_std = 288.15
 P_std = 101325
 
-# Standard temperature for chemical gas model calculations
+# Standard temperature for chemical gas model calculations and for fuel LHV
 T_standard_ref = 298.15 # (25°C)
 P_standard_ref = ct.one_atm  # (1 atm)
 

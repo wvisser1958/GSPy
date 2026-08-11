@@ -38,6 +38,14 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
+### GSPy v3.0.0.0                                                     14-04-2026
+--------------------------------------------------------------------------------
+### Improvements
+--------------------------------------------------------------------------------
+- TFlowState layer between Cantera Quantity and GSPy fluid calculations
+  including liquid water
+- accounting for fuel sensible heat in combustor calculations
+
 ### GSPy v2.0.0.0                                                     14-04-2026
 --------------------------------------------------------------------------------
 ### Improvements
