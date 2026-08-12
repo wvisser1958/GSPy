@@ -1,6 +1,7 @@
 from __future__ import annotations
 import math
 import cantera as ct
+import gspy.core.constants as c
 from scipy.optimize import root_scalar
 from scipy.optimize import root
 import gspy.core.utils as fu
@@ -16,9 +17,9 @@ class TFlowState:
     Water vapor always remains inside gas_q.
     """
 
-    T_WATER_TRIPLE = 273.16
-    T_WATER_CRITICAL = 647.096
-    MW_H2O = 18.01528e-3
+    # T_WATER_TRIPLE = 273.16
+    # T_WATER_CRITICAL = 647.096
+    # MW_H2O = 18.01528e-3
 
     LIQ_ABS_TOL = 1e-9
     LIQ_REL_TOL = 1e-4   # 0.01% of water inventory; adjust to e.g. 1e-3 or 1e-5 if needed
@@ -248,17 +249,18 @@ class TFlowState:
             return self.gas_q.entropy
         return self.gas_q.entropy + self.m_liq * self._sat_liquid_s(self.T)
 
-    @property
-    def p_saturation(self):
-        if self.T >= self.T_WATER_CRITICAL:
-            return self.P
-        if self.T <= self.T_WATER_TRIPLE:
-            raise ValueError(
-                f"T={self.T:g} K is below the liquid-water triple point for this model."
-            )
-        w =self._water()
-        w.TQ = self.T, 1.0
-        return w.P_sat
+    # not
+    # @property
+    # def p_saturation(self):
+    #     if self.T >= c.T_WATER_CRITICAL:
+    #         return self.P
+    #     if self.T <= c.T_WATER_TRIPLE:
+    #         raise ValueError(
+    #             f"T={self.T:g} K is below the liquid-water triple point for this model."
+    #         )
+    #     w =self._water()
+    #     w.TQ = self.T, 1.0
+    #     return w.P_sat
 
     @property
     def RH_gas(self):
@@ -1062,6 +1064,14 @@ class TFlowState:
         self.A = None
         self.rhos = self.gas_q.density
 
+    # for changing from ambient frame of reference to moving engine frame of reference in inlet
+    def _set_total_equal_static(self):
+        self.Ts = self.T
+        self.Ps = self.P
+        self.Mach = 0.0
+        self.V = 0.0
+        self.A = None
+        self.rhos = self.gas_q.density
 
     def repartition_at_TP(self, T: float, P: float):
         """
@@ -1113,7 +1123,7 @@ class TFlowState:
             return
 
         if T_low is None:
-            T_low = max(self.T, self.T_WATER_TRIPLE + 1.0)
+            T_low = max(self.T, c.T_WATER_TRIPLE + 1.0)
         if T_high is None:
             T_high = max(2.0 * self.T, self.T + 400.0)
 
@@ -1151,7 +1161,7 @@ class TFlowState:
             return
 
         if T_low is None:
-            T_low = max(self.T, self.T_WATER_TRIPLE + 1.0)
+            T_low = max(self.T, c.T_WATER_TRIPLE + 1.0)
         if T_high is None:
             T_high = max(2.0 * self.T, self.T + 400.0)
 
@@ -1442,7 +1452,7 @@ class TFlowState:
     #     mw_dry = self._mean_mw_of_composition(T, P, dry_basis_X)
     #     n_dry = self.m_dry / mw_dry
     #     n_h2o_total = x_req / max(1.0 - x_req, 1e-15) * n_dry
-    #     self.m_total_water = n_h2o_total * self.MW_H2O
+    #     self.m_total_water = n_h2o_total * c.MW_H2O
     #     if not self.enable_liquid_water:
     #         self.disable_liquid_model(collapse=True)
     def _initialize_from_requested_x(self, T, P, dry_basis_X, x_req):
@@ -1466,7 +1476,7 @@ class TFlowState:
         mw_dry = self._mean_mw_of_composition(T, P, dry_basis_X)
         n_dry = self.m_dry / mw_dry
         n_h2o_total = x_req / max(1.0 - x_req, 1e-15) * n_dry
-        self.m_total_water = n_h2o_total * self.MW_H2O
+        self.m_total_water = n_h2o_total * c.MW_H2O
 
         # Clean up tiny artificial liquid at RH≈100%
         m_liq_raw = self.m_total_water - self.m_vap
@@ -1501,44 +1511,100 @@ class TFlowState:
         dry = {sp: xi / scale for sp, xi in X.items() if sp != "H2O"}
         return self._normalize_without_h2o(dry)
 
-    def _sat_water_mole_fraction(self, T, P):
-        if T <= self.T_WATER_TRIPLE:
+    # def _sat_water_mole_fraction(self, T, P):
+    #     if T <= c.T_WATER_TRIPLE:
+    #         raise ValueError(
+    #             f"T={T:g} K is below the liquid-water triple point for this model."
+    #         )
+
+    #     if T >= c.T_WATER_CRITICAL:
+    #         return 1.0
+
+    #     w =self._water()
+    #     w.TQ = T, 1.0
+    #     p_sat = w.P_sat
+
+    #     if p_sat >= P:
+    #         return 1.0
+
+    #     return max(p_sat / P, 0.0)
+
+    def _sat_water_mole_fraction(self, T: float, P: float) -> float:
+        """
+        Saturation mole fraction of H2O at temperature T [K]
+        and total pressure P [Pa].
+
+        Above the water triple point:
+            use Cantera liquid-vapor saturation pressure.
+
+        Below the triple point:
+            use saturation vapor pressure over ice
+            (Murphy & Koop, 2005).
+
+        Returns
+        -------
+        x_sat : float
+            Saturated gas-phase H2O mole fraction.
+        """
+        if P <= 0.0:
+            raise ValueError("Pressure must be > 0")
+
+        p_sat = self.water_saturation_pressure(T)
+
+        # At very low total pressure, saturation pressure could in principle
+        # approach/exceed total pressure. Cap to a physically valid gas mole
+        # fraction below 1.
+        return min(p_sat / P, 1.0 - 1e-12)
+
+    def _sat_liquid_h(self, T: float) -> float:
+        if T < c.T_WATER_TRIPLE:
             raise ValueError(
-                f"T={T:g} K is below the liquid-water triple point for this model."
+                f"T={T:g} K is below the water triple point. "
+                "Liquid-water enthalpy is not defined by this model."
             )
 
-        if T >= self.T_WATER_CRITICAL:
-            return 1.0
-
-        w =self._water()
-        w.TQ = T, 1.0
-        p_sat = w.P_sat
-
-        if p_sat >= P:
-            return 1.0
-
-        return max(p_sat / P, 0.0)
-
-    def _sat_liquid_h(self, T):
-        if T <= self.T_WATER_TRIPLE:
+        if T >= c.T_WATER_CRITICAL:
             raise ValueError(
-                f"T={T:g} K is below the liquid-water triple point for this model."
+                f"T={T:g} K is at or above the water critical temperature. "
+                "A saturated-liquid state does not exist."
             )
 
-        if T >= self.T_WATER_CRITICAL:
-            return 0.0
-
-        w =self._water()
+        w = self._water()
         w.TQ = T, 0.0
         return w.enthalpy_mass
 
+    def water_saturation_pressure(self, T: float) -> float:
+        """
+        Saturation vapor pressure [Pa].
+
+        Above 273.15 K:
+            use Cantera liquid-vapor saturation.
+
+        Below 273.15 K:
+            use saturation over ice (Murphy & Koop, 2005).
+        """
+        if T >= c.T_WATER_TRIPLE:
+            water = ct.Water()
+            water.TQ = T, 1.0
+            return water.P_sat
+
+        # Murphy & Koop (2005), saturation vapor pressure over ice
+        ln_p = (
+            9.550426
+            - 5723.265 / T
+            + 3.53068 * math.log(T)
+            - 0.00728332 * T
+        )
+
+        return math.exp(ln_p)
+
     def _sat_liquid_s(self, T):
-        if T <= self.T_WATER_TRIPLE:
+        if T <= c.T_WATER_TRIPLE:
             raise ValueError(
                 f"T={T:g} K is below the liquid-water triple point for this model."
             )
 
-        if T >= self.T_WATER_CRITICAL:
+        if T >= c.T_WATER_CRITICAL:
             return 0.0
 
         w =self._water()
@@ -1593,7 +1659,7 @@ class TFlowState:
                 m_liq = 0.0
             else:
                 n_vap_sat = x_sat / max(1.0 - x_sat, 1e-15) * n_dry
-                m_vap_sat = n_vap_sat * self.MW_H2O
+                m_vap_sat = n_vap_sat * c.MW_H2O
                 m_vap = min(m_total_water, m_vap_sat)
                 m_liq = max(0.0, m_total_water - m_vap)
 
@@ -1601,7 +1667,7 @@ class TFlowState:
                 m_liq = 0.0
                 m_vap = m_total_water
 
-            n_vap = m_vap / self.MW_H2O
+            n_vap = m_vap / c.MW_H2O
             x_h2o = n_vap / (n_dry + n_vap) if (n_dry + n_vap) > 0.0 else 0.0
 
             Xgas = {sp: xi * (1.0 - x_h2o) for sp, xi in dry_basis_X.items()}
@@ -1664,7 +1730,7 @@ class TFlowState:
         dry_basis_X = self._current_dry_basis_X()
         m_dry = self.m_dry
         m_total_water = self.m_total_water
-        T_min = self.T_WATER_TRIPLE + 1.0
+        T_min = c.T_WATER_TRIPLE + 1.0
 
         def residual(T):
             st = self._state_at_TP_with_split(
@@ -2330,7 +2396,7 @@ class TFlowState:
         mw_dry = out.gas_q.mean_molecular_weight / 1000.0
 
         n_dry = self.m_dry / mw_dry
-        n_vap = m_vap_new / self.MW_H2O
+        n_vap = m_vap_new / c.MW_H2O
 
         x_h2o = n_vap / (n_dry + n_vap) if (n_dry + n_vap) > 0.0 else 0.0
 

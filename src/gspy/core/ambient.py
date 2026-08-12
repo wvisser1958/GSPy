@@ -82,9 +82,10 @@ class TAmbient(TComponent):
         # Relative humidity [%]
         # ----------------------------------------------------------
         if self.humidity_mode == "RH":
-            water = ct.Water()
-            water.TQ = self.Tsa, 1.0
-            p_sat = water.P_sat
+            # water = ct.Water()
+            # water.TQ = self.Tsa, 1.0
+            # p_sat = water.P_sat
+            p_sat = self.fs_ambient.water_saturation_pressure(self.Tsa)
 
             p_h2o = (self.humidity_value / 100.0) * p_sat
             x_h2o = p_h2o / self.Psa

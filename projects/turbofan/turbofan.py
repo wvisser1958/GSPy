@@ -34,7 +34,8 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turbofan = TSystemModel('Turbofan', model_file = __file__)
+    turbofan = TSystemModel('Turbofan', model_file = __file__,
+                            sys_enable_liquid_water=True)
 
     # create a control (controlling all inputs to the system model)
     # combustor Texit input, with Wf 1.11 as first guess for 1600 K DP combustor exit temperature
@@ -233,7 +234,7 @@ def main():
         # # intermediate step at design T4 to help iteration towards point far from DP
         # # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
         # # conditions is desired
-        turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None)
+        turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None, RH=120)
         turbofan.input_points = fuel_control.re_init_input(None,
                                                                 0.7,
                                                                 1600, 1200, -50,

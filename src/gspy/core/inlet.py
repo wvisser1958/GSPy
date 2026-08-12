@@ -29,16 +29,29 @@ class TInlet(TGaspath):
         super().__init__(**kwargs)
         self.Wdes = Wdes
         self.PRdes = PRdes
-
+        self.PR = self.PRdes
+        # 2.1 separate TGasCondition for fs_in (do not share with ambient gaspath_condition)
+        self.fs_in = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
+        
     def Run(self, Mode, PointTime):
         if Mode == 'DP':
-            # 2.1 separate TGasCondition for fs_in (do not share with ambient gaspath_condition)
-            # old Get the ambient conditions for the inlet fs_in conditions
-            # old self.owner.gaspath_conditions[self.station_in] = self.owner.gaspath_conditions[self.owner.ambient.station_nr]
-            self.fs_in = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
+            # assign fs in to system gaspath_conditions library
             self.system.gaspath_conditions[self.station_in] = self.fs_in
+        # get ambient gas conditions into inlet entry conditions, Copy ambient flow, including total water
+        fs_amb = self.system.ambient
+        self.fs_in.copy_from(self.system.gaspath_conditions[fs_amb.station_nr], fs_amb.station_nr)
+        
+        # Establish inlet total enthalpy corresponding to ambient, still with total mass 1 kg
+        # static enthalpy + flight kinetic energy
+        H_total_in = self.fs_in.H_total + 0.5 * fs_amb.V**2
 
-        self.fs_in.copy_from(self.system.gaspath_conditions[self.system.ambient.station_nr], self.system.ambient.station_nr)
+        self.fs_in.update_HP(
+            H_target=H_total_in,
+            P_target=fs_amb.Pta,
+        )
+
+        # Apply inlet pressure recovery etc.
+        P_total_out = fs_amb.Pta * self.PR
 
         if Mode == 'DP':
             # now scale all masses (liquid and gas) from 1 (i.e. the mass of TAmbient) to Wdes
@@ -47,10 +60,10 @@ class TInlet(TGaspath):
 
         # super (TGasPath) Run sets fs_in, fs_in_des and fs_out to self.owner.gaspath_conditions[self.station_in]
         # and in DP mode sets fs_in_des to fs_in
-        super().Run(Mode, PointTime)
+        # ??? super().Run(Mode, PointTime)
 
         # self.fs_in.TP = self.fs_in.T, self.fs_in.P
-        if Mode == 'DP':
+        # if Mode == 'DP':
             # obsolete
             # self.fs_in.mass = self.Wdes
             
@@ -75,7 +88,7 @@ class TInlet(TGaspath):
 
             # self.fs_out.TP = self.fs_in.T, self.fs_in.P * self.PRdes
             # this inlet has constant PR, no OD PR yet (use manual input in code here, or make PR, Ram recovery map)
-            self.PR = self.PRdes
+            # self.PR = self.PRdes
 
         # self.W = self.fs_in.W
 
@@ -89,7 +102,21 @@ class TInlet(TGaspath):
         # )
 
         self.fs_out.copy_from(self.fs_in, self.station_out)
-        self.fs_out.TP = self.fs_in.T, self.fs_in.P * self.PR
+        # self.fs_out.TP = self.fs_in.T, self.fs_in.P * self.PR
+
+        # Find equilibrium T and vapor/liquid split while conserving H
+        self.fs_out.update_HP(
+            H_target=self.fs_in.H_total,
+            P_target=P_total_out,
+        )
+
+        # No area information -> station represented as stagnated
+        self.fs_out._set_static_equal_total()
+
+        self.Add_Q_to_fs_in_q(Mode)
+
+        self.system.gaspath_conditions[self.station_out] = self.fs_out
+
         # self.fs_out.mass = self.fs_in.mass
         self.RD = self.fs_in.W_gas * self.system.ambient.V / 1000 # kN
         # add ram drag to system level ram drag (note that multiple inlets may exist)
