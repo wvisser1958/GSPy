@@ -35,15 +35,19 @@ class TControl(TComponent):
         # 2.1
         self.re_init_input(self.map_filename,
                     DP_input_value,
-                    OD_start_value, OD_end_value, OD_point_step_value,
+                    OD_start_value, 
+                    OD_end_value, 
+                    OD_point_step_value,
                     OD_controlled_parameter_name,
                     point_time_value_array = point_time_value_array)
 
     # 2.1
     def re_init_input(self, map_filename,
                             DP_input_value,
-                            OD_start_value, OD_end_value, OD_point_step_value,
-                            OD_controlled_parameter_name,
+                            OD_start_value, 
+                            OD_end_value = None, 
+                            OD_point_step_value = None,
+                            OD_controlled_parameter_name = None,
                             *,
                             # point_time_value_array: 
                             #   - either an array with control demand/input values 
