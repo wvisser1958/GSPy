@@ -13,6 +13,7 @@
 # Authors
 #   Wilfried Visser
 
+import math
 import cantera as ct
 import aerocalc as ac     # !!!! install with "pip install aero-calc", see https://www.kilohotel.com/python/aerocalc/html/
 from gspy.core.base_component import TComponent
@@ -213,20 +214,50 @@ class TAmbient(TComponent):
             for sp in dry_X
         }
 
+    # def _x_H2O_saturation(self, T, P):
+    #     """
+    #     Saturation mole fraction of water vapor at static T/P.
+    #     """
+
+    #     if T <= 273.16:
+    #         raise ValueError("Gas-only humidity model does not handle ice conditions")
+
+    #     if T >= 647.096:
+    #         return 1.0
+
+    #     water = ct.Water()
+    #     water.TQ = T, 1.0
+    #     p_sat = water.P_sat
+
+    #     if p_sat >= P:
+    #         return 1.0
+
+    #     return p_sat / P
+
     def _x_H2O_saturation(self, T, P):
         """
         Saturation mole fraction of water vapor at static T/P.
-        """
 
-        if T <= 273.16:
-            raise ValueError("Gas-only humidity model does not handle ice conditions")
+        Below the water triple point, saturation is calculated
+        with respect to ice.
+        """
 
         if T >= 647.096:
             return 1.0
 
-        water = ct.Water()
-        water.TQ = T, 1.0
-        p_sat = water.P_sat
+        if T >= 273.16:
+            water = ct.Water()
+            water.TQ = T, 1.0
+            p_sat = water.P_sat
+        else:
+            # Murphy & Koop (2005): saturation vapor pressure over ice [Pa]
+            ln_p_sat = (
+                9.550426
+                - 5723.265 / T
+                + 3.53068 * math.log(T)
+                - 0.00728332 * T
+            )
+            p_sat = math.exp(ln_p_sat)
 
         if p_sat >= P:
             return 1.0

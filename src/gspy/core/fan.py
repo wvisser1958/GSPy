@@ -88,6 +88,8 @@ class TFan(TTurboComponent):
             self.OD_crossFlow = ct.Quantity(self.gas_in.phase, mass = 1)
         else:
             self.BPR = self.owner.states[self.istate_BPR] * self.BPRdes
+            # 2.0.0.5
+            self.gas_out_duct.TPY = self.gas_in.TPY
 
         # 1.5 bug fix !!!! 20-12-2025 W. Visser
         # W_core_in and W_duct_in are always the part corresponding to BPRdes  (design value!, we split the core and duct/bypass corresponding to BPRdes)
