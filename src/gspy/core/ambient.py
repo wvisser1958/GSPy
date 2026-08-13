@@ -31,8 +31,8 @@ class TAmbient(TComponent):
                  dTs, 
                  Psa, 
                  Tsa, 
-                #  RH=None,
-                 RH=0,
+                 RH=None,
+                #  RH=0,
                  ambient_output_species = None,
                  **kwargs):
         super().__init__(**kwargs)
@@ -138,6 +138,8 @@ class TAmbient(TComponent):
                       H2O_mass_pct=None, 
                       H2O_vol_pct=None,
                       enable_liquid_water = None):
+
+        self.RH = RH
 
         specified = [(k, v) for k, v in {
             'RH': RH,
@@ -284,16 +286,6 @@ class TAmbient(TComponent):
         out = super().get_outputs()
         s = self.station_nr
 
-        # return {
-        #     "Alt": self.Altitude,
-        #     f"Ts{s}": self.Tsa,
-        #     f"Ps{s}": self.Psa,
-        #     f"Tt{s}": self.Tta,
-        #     f"Pt{s}": self.Pta,
-        #     f"dTs{s}": self.dTs,
-        #     f"Mach{s}": self.Macha,
-        #     f"RH{s}": self.Gas_Ambient.RH_gas,
-
         out[f"Alt"] = self.Altitude
         out[f"Ts{s}"] = self.Tsa
         out[f"Ps{s}"] = self.Psa
@@ -301,7 +293,7 @@ class TAmbient(TComponent):
         out[f"Pt{s}"] = self.Pta
         out[f"dTs{s}"] = self.dTs
         out[f"Mach{s}"] = self.Macha
-        out[f"RH{s}"] = self.fs_ambient.RH_gas
+        out[f"RH{s}"] = self.RH
 
         for sp, idx in zip(self.fs_out_output_species,
                         self.fs_out_output_species_indices):

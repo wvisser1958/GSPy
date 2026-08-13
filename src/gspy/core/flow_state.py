@@ -239,13 +239,13 @@ class TFlowState:
 
     @property
     def H_total(self):
-        if not self._use_liquid_model():
+        if (not self._use_liquid_model()) or (self.m_liq < self.LIQ_ABS_TOL):
             return self.gas_q.enthalpy
         return self.gas_q.enthalpy + self.m_liq * self._sat_liquid_h(self.T)
 
     @property
     def S_total(self):
-        if not self._use_liquid_model():
+        if not self._use_liquid_model() or (self.m_liq < self.LIQ_ABS_TOL):
             return self.gas_q.entropy
         return self.gas_q.entropy + self.m_liq * self._sat_liquid_s(self.T)
 
@@ -410,9 +410,11 @@ class TFlowState:
     # constructors
     # ------------------------------------------------------------------
     @classmethod
-    def create_empty(cls, gas, station_nr: str):
+    def create_empty(cls, gas, station_nr: str, 
+                     *,
+                     enable_liquid_water = False):
         # gas = ct.Solution(mechanism)
-        return cls(gas=gas, gas_mass=1.0, station_nr=station_nr)
+        return cls(gas=gas, gas_mass=1.0, station_nr=station_nr, enable_liquid_water = enable_liquid_water)
 
     @classmethod
     def from_RH(cls, gas: ct.Solution, gas_mass: float, station_nr: str, 
@@ -500,12 +502,16 @@ class TFlowState:
         )
         return obj
 
-    def copy_from(self, other: "TFlowState", new_station_nr: str = None, scale_W: float = 1.0) -> "TFlowState":
+    def copy_from(self, other: "TFlowState", new_station_nr: str = None, scale_W: float = 1.0,
+                  overrule_enable_liquid_water = None) -> "TFlowState":
         self.gas_q.TPX = other.gas_q.T, other.gas_q.P, other.gas_q.X
         self.station_nr = new_station_nr if str(new_station_nr) is not None else str(other.station_nr)
 
         self.i_H2O=other.i_H2O
-        self.enable_liquid_water = other.enable_liquid_water
+        if overrule_enable_liquid_water != None:
+            self.enable_liquid_water = overrule_enable_liquid_water
+        else:
+            self.enable_liquid_water = other.enable_liquid_water
 
         # these 3 need to be set, the W, m_vap and m_liq properties are derived from them 
         self.gas_q.mass = other.gas_q.mass * scale_W    # this sets W_gas, which is used to compute m_vap and m_liq
@@ -1310,11 +1316,15 @@ class TFlowState:
             self.disable_liquid_model(collapse=True)
             return
 
-        if mode == "H":
-            target = self.W_gas * value + liq_old * self._sat_liquid_h(self.T)
+        if mode == "H":            
+            target = self.W_gas * value 
+            if liq_old > self.LIQ_ABS_TOL:
+                target += liq_old * self._sat_liquid_h(self.T)
             self.update_HP(H_target=target, P_target=P)
         elif mode == "S":
-            target = self.W_gas * value + liq_old * self._sat_liquid_s(self.T)
+            target = self.W_gas * value 
+            if liq_old > self.LIQ_ABS_TOL:
+                target += liq_old * self._sat_liquid_s(self.T)
             self.update_SP(S_target=target, P_target=P)
         else:
             raise ValueError("mode must be 'H' or 'S'")
@@ -1529,32 +1539,59 @@ class TFlowState:
 
     #     return max(p_sat / P, 0.0)
 
+    # def _sat_water_mole_fraction(self, T: float, P: float) -> float:
+    #     """
+    #     Saturation mole fraction of H2O at temperature T [K]
+    #     and total pressure P [Pa].
+
+    #     Above the water triple point:
+    #         use Cantera liquid-vapor saturation pressure.
+
+    #     Below the triple point:
+    #         use saturation vapor pressure over ice
+    #         (Murphy & Koop, 2005).
+
+    #     Returns
+    #     -------
+    #     x_sat : float
+    #         Saturated gas-phase H2O mole fraction.
+    #     """
+    #     if P <= 0.0:
+    #         raise ValueError("Pressure must be > 0")
+
+    #     p_sat = self.water_saturation_pressure(T)
+
+    #     # At very low total pressure, saturation pressure could in principle
+    #     # approach/exceed total pressure. Cap to a physically valid gas mole
+    #     # fraction below 1.
+    #     return min(p_sat / P, 1.0 - 1e-12)
+
     def _sat_water_mole_fraction(self, T: float, P: float) -> float:
         """
-        Saturation mole fraction of H2O at temperature T [K]
-        and total pressure P [Pa].
-
-        Above the water triple point:
-            use Cantera liquid-vapor saturation pressure.
+        Maximum gas-phase H2O mole fraction at T/P.
 
         Below the triple point:
-            use saturation vapor pressure over ice
-            (Murphy & Koop, 2005).
+            saturation vapor pressure over ice.
 
-        Returns
-        -------
-        x_sat : float
-            Saturated gas-phase H2O mole fraction.
+        Between triple and critical point:
+            liquid-vapor saturation pressure from Cantera.
+
+        At or above the critical temperature:
+            no liquid-vapor phase boundary exists, so all water can
+            remain in the gas/supercritical phase.
         """
         if P <= 0.0:
             raise ValueError("Pressure must be > 0")
 
+        if T >= c.T_WATER_CRITICAL:
+            return 1.0
+
         p_sat = self.water_saturation_pressure(T)
 
-        # At very low total pressure, saturation pressure could in principle
-        # approach/exceed total pressure. Cap to a physically valid gas mole
-        # fraction below 1.
-        return min(p_sat / P, 1.0 - 1e-12)
+        if p_sat >= P:
+            return 1.0
+
+        return p_sat / P
 
     def _sat_liquid_h(self, T: float) -> float:
         if T < c.T_WATER_TRIPLE:
@@ -1573,22 +1610,53 @@ class TFlowState:
         w.TQ = T, 0.0
         return w.enthalpy_mass
 
+    # def water_saturation_pressure(self, T: float) -> float:
+    #     """
+    #     Saturation vapor pressure [Pa].
+
+    #     Above 273.15 K:
+    #         use Cantera liquid-vapor saturation.
+
+    #     Below 273.15 K:
+    #         use saturation over ice (Murphy & Koop, 2005).
+    #     """
+    #     if T >= c.T_WATER_TRIPLE:
+    #         water = ct.Water()
+    #         water.TQ = T, 1.0
+    #         return water.P_sat
+
+    #     # Murphy & Koop (2005), saturation vapor pressure over ice
+    #     ln_p = (
+    #         9.550426
+    #         - 5723.265 / T
+    #         + 3.53068 * math.log(T)
+    #         - 0.00728332 * T
+    #     )
+
+    #     return math.exp(ln_p)
+
     def water_saturation_pressure(self, T: float) -> float:
         """
         Saturation vapor pressure [Pa].
 
-        Above 273.15 K:
-            use Cantera liquid-vapor saturation.
+        T < triple point:
+            saturation over ice (Murphy & Koop, 2005).
 
-        Below 273.15 K:
-            use saturation over ice (Murphy & Koop, 2005).
+        triple point <= T < critical point:
+            liquid-vapor saturation from Cantera.
         """
+        if T >= c.T_WATER_CRITICAL:
+            raise ValueError(
+                f"Saturation pressure is not defined above the water "
+                f"critical temperature ({c.T_WATER_CRITICAL:g} K)."
+            )
+
         if T >= c.T_WATER_TRIPLE:
-            water = ct.Water()
+            water = self._water()
             water.TQ = T, 1.0
             return water.P_sat
 
-        # Murphy & Koop (2005), saturation vapor pressure over ice
+        # Murphy & Koop (2005): saturation vapor pressure over ice
         ln_p = (
             9.550426
             - 5723.265 / T
@@ -1679,8 +1747,8 @@ class TFlowState:
             s_gas = self.gas_q.entropy_mass
             m_gas = m_dry + m_vap
 
-            h_liq = self._sat_liquid_h(T) if m_liq > 0.0 else 0.0
-            s_liq = self._sat_liquid_s(T) if m_liq > 0.0 else 0.0
+            h_liq = self._sat_liquid_h(T) if m_liq > self.LIQ_ABS_TOL else 0.0
+            s_liq = self._sat_liquid_s(T) if m_liq > self.LIQ_ABS_TOL else 0.0
 
             RH_gas = 100.0 * x_h2o / x_sat if (0.0 < x_sat < 1.0) else 0.0
 
@@ -1707,22 +1775,140 @@ class TFlowState:
         self.m_dry = st["m_gas"] - st["m_vap"]
         self.m_total_water = st["m_vap"] + st["m_liq"]
 
-    def _flash_HP_or_SP(self, target, P_target, mode,
-                        T_low, T_high, tol, maxiter):
-        # _flash_HP_or_SP(...) is solving:
-        # Given:
-        #     H_target (or S_target)
-        #     P_target
-        #     m_dry
-        #     m_total_water
-        # Find:
-        #     T
-        # such that:
-        # H_total(T,P) = H_target or S_total(T,P) = S_target
-        # where:
-        # H_total = H_gas(T,P,x_H2O) + H_liquid(T,m_liq)
-        # and simultaneously: m_total_water = m_vap + m_liq
-        # with vapor-liquid equilibrium enforced.
+    # def _flash_HP_or_SP(self, target, P_target, mode,
+    #                     T_low, T_high, tol, maxiter):
+    #     # _flash_HP_or_SP(...) is solving:
+    #     # Given:
+    #     #     H_target (or S_target)
+    #     #     P_target
+    #     #     m_dry
+    #     #     m_total_water
+    #     # Find:
+    #     #     T
+    #     # such that:
+    #     # H_total(T,P) = H_target or S_total(T,P) = S_target
+    #     # where:
+    #     # H_total = H_gas(T,P,x_H2O) + H_liquid(T,m_liq)
+    #     # and simultaneously: m_total_water = m_vap + m_liq
+    #     # with vapor-liquid equilibrium enforced.
+
+    #     if mode not in ("H", "S"):
+    #         raise ValueError("mode must be 'H' or 'S'")
+
+    #     dry_basis_X = self._current_dry_basis_X()
+    #     m_dry = self.m_dry
+    #     m_total_water = self.m_total_water
+    #     T_min = c.T_WATER_TRIPLE + 1.0
+
+    #     def residual(T):
+    #         st = self._state_at_TP_with_split(
+    #             T=T,
+    #             P=P_target,
+    #             dry_basis_X=dry_basis_X,
+    #             m_dry=m_dry,
+    #             m_total_water=m_total_water,
+    #         )
+    #         return (st["H_total"] if mode == "H" else st["S_total"]) - target
+
+    #     f_low = residual(T_low)
+    #     f_high = residual(T_high)
+
+    #     if self.debug_flash:
+    #         print(f"_flash {mode}: f({T_low})={f_low:.6e}, f({T_high})={f_high:.6e}")
+
+    #     if abs(f_low) < tol:
+    #         return self._state_at_TP_with_split(T_low, P_target, dry_basis_X, m_dry, m_total_water)
+    #     if abs(f_high) < tol:
+    #         return self._state_at_TP_with_split(T_high, P_target, dry_basis_X, m_dry, m_total_water)
+
+    #     if f_low * f_high > 0.0:
+    #         if f_low > 0.0 and f_high > 0.0:
+    #             T2 = T_low
+    #             for _ in range(20):
+    #                 T_new = max(T_min, T2 - 0.5 * (T_high - T_low))
+    #                 if T_new <= T_min + 1e-6:
+    #                     break
+    #                 f_new = residual(T_new)
+    #                 if self.debug_flash:
+    #                     print(f"  expand down: f({T_new})={f_new:.6e}")
+    #                 if abs(f_new) < tol:
+    #                     return self._state_at_TP_with_split(T_new, P_target, dry_basis_X, m_dry, m_total_water)
+    #                 if f_new * f_high < 0.0:
+    #                     T_low, f_low = T_new, f_new
+    #                     break
+    #                 T2 = T_new
+    #                 T_high, f_high = T_low, f_low
+    #         elif f_low < 0.0 and f_high < 0.0:
+    #             T2 = T_high
+    #             for _ in range(20):
+    #                 T2 *= 1.5
+    #                 f2 = residual(T2)
+    #                 if self.debug_flash:
+    #                     print(f"  expand up: f({T2})={f2:.6e}")
+    #                 if abs(f2) < tol:
+    #                     return self._state_at_TP_with_split(T2, P_target, dry_basis_X, m_dry, m_total_water)
+    #                 if f_low * f2 < 0.0:
+    #                     T_high, f_high = T2, f2
+    #                     break
+    #         else:
+    #             raise ValueError("Unexpected bracketing state")
+
+    #         if f_low * f_high > 0.0:
+    #             raise ValueError(
+    #                 f"Could not bracket flash root: "
+    #                 f"f({T_low})={f_low:.6e}, f({T_high})={f_high:.6e}"
+    #             )
+
+    #     sol = root_scalar(
+    #         residual,
+    #         bracket=(T_low, T_high),
+    #         method="toms748",
+    #         xtol=tol,
+    #         maxiter=maxiter,
+    #     )
+
+    #     if not sol.converged:
+    #         raise RuntimeError(f"Flash solver did not converge: {sol.flag}")
+
+    #     return self._state_at_TP_with_split(
+    #         T=sol.root,
+    #         P=P_target,
+    #         dry_basis_X=dry_basis_X,
+    #         m_dry=m_dry,
+    #         m_total_water=m_total_water,
+    #     )
+
+
+    def _flash_HP_or_SP(
+        self,
+        target,
+        P_target,
+        mode,
+        T_low,
+        T_high,
+        tol,
+        maxiter,
+    ):
+        """
+        Flash calculation at specified pressure.
+
+        Solves for temperature T such that either:
+
+            H_total(T, P_target) = target     mode == "H"
+
+        or:
+
+            S_total(T, P_target) = target     mode == "S"
+
+        while conserving:
+            - dry-gas mass
+            - total water mass
+
+        and enforcing vapor/liquid equilibrium.
+
+        The current model does not support a condensed ice phase, so the
+        search is not allowed below the water triple-point temperature.
+        """
 
         if mode not in ("H", "S"):
             raise ValueError("mode must be 'H' or 'S'")
@@ -1730,7 +1916,12 @@ class TFlowState:
         dry_basis_X = self._current_dry_basis_X()
         m_dry = self.m_dry
         m_total_water = self.m_total_water
-        T_min = c.T_WATER_TRIPLE + 1.0
+
+        # Do not allow the liquid-water flash to enter the ice region.
+        T_min = c.T_WATER_TRIPLE + 1e-6
+
+        T_low = max(float(T_low), T_min)
+        T_high = max(float(T_high), T_low + 1.0)
 
         def residual(T):
             st = self._state_at_TP_with_split(
@@ -1740,56 +1931,134 @@ class TFlowState:
                 m_dry=m_dry,
                 m_total_water=m_total_water,
             )
-            return (st["H_total"] if mode == "H" else st["S_total"]) - target
+
+            if mode == "H":
+                return st["H_total"] - target
+            else:
+                return st["S_total"] - target
+
+        # --------------------------------------------------------------
+        # Initial bracket
+        # --------------------------------------------------------------
 
         f_low = residual(T_low)
         f_high = residual(T_high)
 
         if self.debug_flash:
-            print(f"_flash {mode}: f({T_low})={f_low:.6e}, f({T_high})={f_high:.6e}")
+            print(
+                f"_flash {mode}: "
+                f"f({T_low:.6g})={f_low:.6e}, "
+                f"f({T_high:.6g})={f_high:.6e}"
+            )
 
-        if abs(f_low) < tol:
-            return self._state_at_TP_with_split(T_low, P_target, dry_basis_X, m_dry, m_total_water)
-        if abs(f_high) < tol:
-            return self._state_at_TP_with_split(T_high, P_target, dry_basis_X, m_dry, m_total_water)
+        if abs(f_low) <= tol:
+            return self._state_at_TP_with_split(
+                T=T_low,
+                P=P_target,
+                dry_basis_X=dry_basis_X,
+                m_dry=m_dry,
+                m_total_water=m_total_water,
+            )
+
+        if abs(f_high) <= tol:
+            return self._state_at_TP_with_split(
+                T=T_high,
+                P=P_target,
+                dry_basis_X=dry_basis_X,
+                m_dry=m_dry,
+                m_total_water=m_total_water,
+            )
+
+        # --------------------------------------------------------------
+        # Expand downward if both residuals are positive.
+        #
+        # Because H_total and S_total normally increase with T, this means
+        # that the required state lies below the current bracket.
+        # --------------------------------------------------------------
+
+        if f_low > 0.0 and f_high > 0.0:
+
+            if T_low > T_min:
+                T_low = T_min
+                f_low = residual(T_low)
+
+                if self.debug_flash:
+                    print(
+                        f"  expand down: "
+                        f"f({T_low:.6g})={f_low:.6e}"
+                    )
+
+                if abs(f_low) <= tol:
+                    return self._state_at_TP_with_split(
+                        T=T_low,
+                        P=P_target,
+                        dry_basis_X=dry_basis_X,
+                        m_dry=m_dry,
+                        m_total_water=m_total_water,
+                    )
+
+            # Still above target at the lowest supported temperature:
+            # solution would require entering the ice region.
+            if f_low > 0.0:
+                raise ValueError(
+                    f"{mode} flash requires T below the water triple point. "
+                    f"At T_min={T_min:.6g} K, residual={f_low:.6e}. "
+                    "Condensed ice is not supported by the current model."
+                )
+
+        # --------------------------------------------------------------
+        # Expand upward if both residuals are negative.
+        #
+        # The required state lies above the current bracket.
+        # --------------------------------------------------------------
+
+        elif f_low < 0.0 and f_high < 0.0:
+
+            for _ in range(20):
+
+                # Increase upper temperature substantially each attempt.
+                T_high *= 1.5
+                f_high = residual(T_high)
+
+                if self.debug_flash:
+                    print(
+                        f"  expand up: "
+                        f"f({T_high:.6g})={f_high:.6e}"
+                    )
+
+                if abs(f_high) <= tol:
+                    return self._state_at_TP_with_split(
+                        T=T_high,
+                        P=P_target,
+                        dry_basis_X=dry_basis_X,
+                        m_dry=m_dry,
+                        m_total_water=m_total_water,
+                    )
+
+                if f_high > 0.0:
+                    break
+
+            if f_high < 0.0:
+                raise ValueError(
+                    f"Could not bracket {mode} flash root after expanding "
+                    f"upper temperature to {T_high:.6g} K: "
+                    f"f_low={f_low:.6e}, f_high={f_high:.6e}"
+                )
+
+        # --------------------------------------------------------------
+        # We should now have a proper sign-changing bracket.
+        # --------------------------------------------------------------
 
         if f_low * f_high > 0.0:
-            if f_low > 0.0 and f_high > 0.0:
-                T2 = T_low
-                for _ in range(20):
-                    T_new = max(T_min, T2 - 0.5 * (T_high - T_low))
-                    if T_new <= T_min + 1e-6:
-                        break
-                    f_new = residual(T_new)
-                    if self.debug_flash:
-                        print(f"  expand down: f({T_new})={f_new:.6e}")
-                    if abs(f_new) < tol:
-                        return self._state_at_TP_with_split(T_new, P_target, dry_basis_X, m_dry, m_total_water)
-                    if f_new * f_high < 0.0:
-                        T_low, f_low = T_new, f_new
-                        break
-                    T2 = T_new
-                    T_high, f_high = T_low, f_low
-            elif f_low < 0.0 and f_high < 0.0:
-                T2 = T_high
-                for _ in range(20):
-                    T2 *= 1.5
-                    f2 = residual(T2)
-                    if self.debug_flash:
-                        print(f"  expand up: f({T2})={f2:.6e}")
-                    if abs(f2) < tol:
-                        return self._state_at_TP_with_split(T2, P_target, dry_basis_X, m_dry, m_total_water)
-                    if f_low * f2 < 0.0:
-                        T_high, f_high = T2, f2
-                        break
-            else:
-                raise ValueError("Unexpected bracketing state")
+            raise ValueError(
+                f"Could not bracket {mode} flash root: "
+                f"f({T_low:.6g})={f_low:.6e}, "
+                f"f({T_high:.6g})={f_high:.6e}"
+            )
 
-            if f_low * f_high > 0.0:
-                raise ValueError(
-                    f"Could not bracket flash root: "
-                    f"f({T_low})={f_low:.6e}, f({T_high})={f_high:.6e}"
-                )
+        # --------------------------------------------------------------
+        # Scalar root solve
+        # --------------------------------------------------------------
 
         sol = root_scalar(
             residual,
@@ -1800,10 +2069,23 @@ class TFlowState:
         )
 
         if not sol.converged:
-            raise RuntimeError(f"Flash solver did not converge: {sol.flag}")
+            raise RuntimeError(
+                f"{mode} flash did not converge after "
+                f"{sol.iterations} iterations."
+            )
+
+        T_solution = sol.root
+
+        if self.debug_flash:
+            print(
+                f"_flash {mode} converged: "
+                f"T={T_solution:.9g} K, "
+                f"iterations={sol.iterations}, "
+                f"calls={sol.function_calls}"
+            )
 
         return self._state_at_TP_with_split(
-            T=sol.root,
+            T=T_solution,
             P=P_target,
             dry_basis_X=dry_basis_X,
             m_dry=m_dry,

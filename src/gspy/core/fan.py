@@ -53,8 +53,12 @@ class TFan(TTurboComponent):
                          **kwargs)
         self.station_out_duct = station_out_duct
 
-        self.fs_out_duct = TFlowState.create_empty(self.system.gas, station_nr=self.station_out_duct)
-        self.fs_crossflow = TFlowState.create_empty(self.system.gas, station_nr=self.station_out)
+        self.fs_out_duct = TFlowState.create_empty(self.system.gas, 
+                                                   station_nr=self.station_out_duct,
+                                                   enable_liquid_water=self.enable_liquid_water)
+        self.fs_crossflow = TFlowState.create_empty(self.system.gas, 
+                                                    station_nr=self.station_out,
+                                                   enable_liquid_water=False) # no liquid water in cross flow (drops will go strait trough)
 
         self.BPRdes = BPRdes
 
@@ -148,7 +152,6 @@ class TFan(TTurboComponent):
             self.Wcdes_core_in = self.W_gas_core_in_for_map * fu.GetFlowCorrectionFactor(self.fs_in)
             self.map_core.ReadMapAndGetScaling(self.Ncdes, self.Wcdes_core_in, self.PRdes_core, self.Etades_core)
             # PW_core_old = fu.Compression(self.fs_in, self.fs_out, self.PRdes_core, self.Etades_core, self.Polytropic_DP_eta)
-# self.fs_out, self.PW_core = self.fs_out.compress_real_eta(
             self.fs_out, self.PW_core = self.fs_in.compress_real_eta(
                 PR=self.PRdes_core,
                 out=self.fs_out,

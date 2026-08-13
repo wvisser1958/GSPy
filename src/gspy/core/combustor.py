@@ -396,7 +396,9 @@ class TCombustor(TGaspath):
                 # if Mode == 'DP':
                 if self.fuel is None:
                     # create separate fuel TFlowState for mixing with gas_in
-                    self.fuel = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
+                    self.fuel = TFlowState.create_empty(self.system.gas, 
+                                                        station_nr=self.station_in, 
+                                                        enable_liquid_water = False)
                     self.fuel.enable_liquid_water = False  # no 2 phase water flow with fuel at this stage
                 self.fuel.W = self.Wf
 
