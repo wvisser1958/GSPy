@@ -15,18 +15,23 @@
 
 import numpy as np
 import cantera as ct
-import gspy.core.utils as fu
-from scipy.optimize import root_scalar
+# import gspy.core.utils as fu
+# from scipy.optimize import root_scalar
 from gspy.core.gaspath import TGaspath
 
 
 class TExhaustDiffuser(TGaspath):
-    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, PRdes):    # Constructor of the class
+    # def __init__(self, owner, name, MapFileName, ControlComponent, station_in, station_out, PRdes):    # Constructor of the class
+    def __init__(self,
+                 *,
+                 PRdes,
+                 **kwargs):    # Constructor of the class
         # CXdes, CVdes, CDdes are for propelling nozzle
         # PRdes = diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
         # If PRdes <> None then a divergent diffuser expansion is calculated, with PRdes as the diffuser
         # pressure loss. PRdes must be < 1. Psout then determines the diffuser exit area A9.
-        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
+        # super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
+        super().__init__(**kwargs)
         self.PRdes = PRdes
 
     def Run(self, Mode, PointTime):
@@ -44,7 +49,7 @@ class TExhaustDiffuser(TGaspath):
         # diffuser with pressure loss, diffusing flow.
         # 1 - PR is rel. pressure loss proportional to Wc^2
         # in derived version, maybe make PR loss map
-        dprel = (1 - self.PRdes) * np.square(self.Wc/self.Wcdes)
+        dprel = (1 - self.PRdes) * np.square(self.fs_in.Wc/self.fs_in_des.Wc)
         self.PR = 1 - dprel
         if Mode == 'DP':
             # diffuser
