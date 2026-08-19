@@ -91,6 +91,10 @@ P_std = 101325
 T_standard_ref = 298.15 # (25°C)
 P_standard_ref = ct.one_atm  # (1 atm)
 
+T_WATER_TRIPLE = 273.16
+T_WATER_CRITICAL = 647.096
+MW_H2O = 18.01528e-3
+
 C_StefanBoltzmann = 5.67e-8; # [W/m2/K4]
 
 w = ct.Water()

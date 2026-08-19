@@ -34,7 +34,8 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turbofan = TSystemModel('Turbofan', model_file = __file__)
+    turbofan = TSystemModel('Turbofan', model_file = __file__,
+                            sys_enable_liquid_water=True)
 
     # create a control (controlling all inputs to the system model)
     # combustor Texit input, with Wf 1.11 as first guess for 1600 K DP combustor exit temperature
@@ -59,7 +60,8 @@ def main():
                    station_in  = 1,        # station nr in
                    station_out = 2,        # station nr out (station strings are also allowed, e.g. '010' and '020')
                    Wdes = 337,            # design inlet mass flow
-                   PRdes = 1               # design pressure ratio (PR = 1 - Ploss_relative)                    
+                   PRdes = 1,               # design pressure ratio (PR = 1 - Ploss_relative)                    
+                   fs_out_output_species = ["H2O", "H2O_LIQ"] 
                    )
 
     # for turbofan, note that fan has 2 GasOut outputs
@@ -80,6 +82,7 @@ def main():
                map_filename='', # set tp '' intentionally, to avoid error message and avoid reading of a map file, because we have 2 maps for the fan, one for core and one for duct    
                map_filename_core='bigfanc.map',    
                map_filename_duct='bigfand.map',    
+               fs_out_output_species = ["H2O", "H2O_LIQ"],
                cf=1                                # cross flow control factor (see fan.py code)
                )
 
@@ -95,7 +98,8 @@ def main():
                               Betamapdes=0.8,               # map design Beta (for scaling)
                               PRdes=10.9,                   # design pressure ratio
                               SpeedOption='GG',             # speed option
-       )
+                              fs_out_output_species = ["H2O", "H2O_LIQ"] 
+                    )
 
     # ***************** Combustor ******************************************************
     # fuel input
@@ -180,7 +184,8 @@ def main():
                                 station_out=19,
                                 CXdes=1,
                                 CVdes=1,
-                                CDdes=1
+                                CDdes=1,
+                                enable_liquid_water = False
                                 )
     # create a turbojet system model
     turbofan.define_comp_run_list(  fuel_control,
@@ -233,12 +238,20 @@ def main():
         # # intermediate step at design T4 to help iteration towards point far from DP
         # # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
         # # conditions is desired
-        turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None)
-        turbofan.input_points = fuel_control.re_init_input(None,
-                                                                0.7,
-                                                                1600, 1200, -50,
-                                                                'T4')    
-        turbofan.Run_OD_simulation('Intermediate step at 5000m / Ma 0.8')
+        # turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None, RH=0)
+        # turbofan.input_points = fuel_control.re_init_input(None, 0.7,
+        #                                                          1600, 1200, -50,
+        #                                                          'T4'                                                                
+        #                                                     )   
+        # turbofan.Run_OD_simulation('Intermediate step at 5000m / Ma 0.8')
+
+        # test turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None, RH=360)
+        turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None, RH=100)
+        turbofan.input_points = fuel_control.re_init_input(None, 0.5,
+                                                                 1600, 1200, -50,
+                                                                 'T4'
+                                                            )   
+        turbofan.Run_OD_simulation('10000m / Ma 0.8')
 
         # # sweep T4 at typical cruise condition 10k / Ma 0.8:
         # turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None)

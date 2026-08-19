@@ -58,7 +58,9 @@ class TGaspath(TComponent):
             self.enable_liquid_water = enable_liquid_water
 
         self.fs_in_des = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
-        self.fs_out = TFlowState.create_empty(self.system.gas, station_nr=self.station_out)
+        self.fs_out = TFlowState.create_empty(self.system.gas, 
+                                              station_nr=self.station_out, 
+                                              enable_liquid_water=self.enable_liquid_water)
 
 
     def Run(self, Mode, PointTime):
@@ -67,7 +69,7 @@ class TGaspath(TComponent):
         if Mode == 'DP':
             self.fs_in_des.copy_from(self.fs_in, self.station_in)
 
-        self.fs_out.copy_from(self.fs_in, self.station_out)
+        self.fs_out.copy_from(self.fs_in, self.station_out, overrule_enable_liquid_water=self.enable_liquid_water)
 
         # if heathpaths, add Q
         self.Add_Q_to_fs_in_q(Mode)

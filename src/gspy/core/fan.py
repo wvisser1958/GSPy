@@ -53,8 +53,12 @@ class TFan(TTurboComponent):
                          **kwargs)
         self.station_out_duct = station_out_duct
 
-        self.fs_out_duct = TFlowState.create_empty(self.system.gas, station_nr=self.station_out_duct)
-        self.fs_crossflow = TFlowState.create_empty(self.system.gas, station_nr=self.station_out)
+        self.fs_out_duct = TFlowState.create_empty(self.system.gas, 
+                                                   station_nr=self.station_out_duct,
+                                                   enable_liquid_water=self.enable_liquid_water)
+        self.fs_crossflow = TFlowState.create_empty(self.system.gas, 
+                                                    station_nr=self.station_out,
+                                                   enable_liquid_water=False) # no liquid water in cross flow (drops will go strait trough)
 
         self.BPRdes = BPRdes
 
@@ -76,6 +80,8 @@ class TFan(TTurboComponent):
         self.Etades_duct = Etades_duct
 
         # 1.6
+        if not 0.0 <= cf <= 1.0:
+            raise ValueError(f"cf factor must be between 0 and 1, got {cf}")
         self.cf = cf
 
     def GetSlWcValues(self):
@@ -146,7 +152,6 @@ class TFan(TTurboComponent):
             self.Wcdes_core_in = self.W_gas_core_in_for_map * fu.GetFlowCorrectionFactor(self.fs_in)
             self.map_core.ReadMapAndGetScaling(self.Ncdes, self.Wcdes_core_in, self.PRdes_core, self.Etades_core)
             # PW_core_old = fu.Compression(self.fs_in, self.fs_out, self.PRdes_core, self.Etades_core, self.Polytropic_DP_eta)
-# self.fs_out, self.PW_core = self.fs_out.compress_real_eta(
             self.fs_out, self.PW_core = self.fs_in.compress_real_eta(
                 PR=self.PRdes_core,
                 out=self.fs_out,
@@ -259,26 +264,28 @@ class TFan(TTurboComponent):
             # due to BPR changing from BPRdes, and the cf factor for cross flow
             crossflow_to_add = self.W_crossflow * (1-self.cf)
 
-            if crossflow_to_add > 0:  # i.e. BPR > BPRdes
-                # adjust duct flow properties with some of the core flow (flowing into the duct)
-                # reduce core flow mass:
-                self.fs_out.scale_mass((self.fs_out.W - crossflow_to_add)/self.fs_out.W)
-                # add W_crossflow to duct flow mass:
-                # assign crossflow flowstate properties to the crossflow flowstate, for adding to the duct flow
-                self.fs_crossflow.copy_from(self.fs_out, self.station_out, scale_W = crossflow_to_add/self.fs_out.W)
-                # interpolate the pressure of the mixed flow, based on the mass flow weighted average of the pressures of the two flows
-                P_out_mixed = (self.fs_out_duct.P*self.fs_out_duct.W + self.fs_crossflow.P*self.fs_crossflow.W)/(self.fs_out_duct.W + self.fs_crossflow.W)
-                self.fs_out_duct.mix_same_composition_gas_only(self.fs_out_duct, self.fs_crossflow, P_out=P_out_mixed)
-            else:
-                # adjust core flow properties with some of the duct flow (flowing into the core)
-                # reduce duct flow mass:
-                self.fs_out_duct.scale_mass((self.fs_out_duct.W + crossflow_to_add)/self.fs_out_duct.W)
-                # add W_crossflow to core flow mass:
-                # assign crossflow flowstate properties to the crossflow flowstate, for adding to the core flow
-                self.fs_crossflow.copy_from(self.fs_out_duct, self.station_out, scale_W = -crossflow_to_add/self.fs_out_duct.W)
-                # interpolate the pressure of the mixed flow, based on the mass flow weighted average of the pressures of the two flows
-                P_out_mixed = (self.fs_out.P*self.fs_out.W + self.fs_crossflow.P*self.fs_crossflow.W)/(self.fs_out.W + self.fs_crossflow.W)
-                self.fs_out.mix_same_composition_gas_only(self.fs_out, self.fs_crossflow, P_out=P_out_mixed)
+            cf_tolerance = 1e-4
+            if self.cf < 1-cf_tolerance: # only add crossflow if cf significantly < 1 (crossflow_to_add significant)
+                if crossflow_to_add > 0:  # i.e. BPR > BPRdes
+                    # adjust duct flow properties with some of the core flow (flowing into the duct)
+                    # reduce core flow mass:
+                    self.fs_out.scale_mass((self.fs_out.W - crossflow_to_add)/self.fs_out.W)
+                    # add W_crossflow to duct flow mass:
+                    # assign crossflow flowstate properties to the crossflow flowstate, for adding to the duct flow
+                    self.fs_crossflow.copy_from(self.fs_out, self.station_out, scale_W = crossflow_to_add/self.fs_out.W)
+                    # interpolate the pressure of the mixed flow, based on the mass flow weighted average of the pressures of the two flows
+                    P_out_mixed = (self.fs_out_duct.P*self.fs_out_duct.W + self.fs_crossflow.P*self.fs_crossflow.W)/(self.fs_out_duct.W + self.fs_crossflow.W)
+                    self.fs_out_duct.mix_same_composition_gas_only(self.fs_out_duct, self.fs_crossflow, P_out=P_out_mixed)
+                else:
+                    # adjust core flow properties with some of the duct flow (flowing into the core)
+                    # reduce duct flow mass:
+                    self.fs_out_duct.scale_mass((self.fs_out_duct.W + crossflow_to_add)/self.fs_out_duct.W)
+                    # add W_crossflow to core flow mass:
+                    # assign crossflow flowstate properties to the crossflow flowstate, for adding to the core flow
+                    self.fs_crossflow.copy_from(self.fs_out_duct, self.station_out, scale_W = -crossflow_to_add/self.fs_out_duct.W)
+                    # interpolate the pressure of the mixed flow, based on the mass flow weighted average of the pressures of the two flows
+                    P_out_mixed = (self.fs_out.P*self.fs_out.W + self.fs_crossflow.P*self.fs_crossflow.W)/(self.fs_out.W + self.fs_crossflow.W)
+                    self.fs_out.mix_same_composition_gas_only(self.fs_out, self.fs_crossflow, P_out=P_out_mixed)
 
         # total power and shaft power balance
         self.PW = self.PW_core + self.PW_duct

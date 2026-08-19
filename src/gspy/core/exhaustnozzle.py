@@ -45,8 +45,10 @@ class TExhaustNozzle(TGaspath):
         # add nozzle throat station
         # 2.1
         # self.GasThroat = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
-        self.fs_throat = TFlowState.create_empty(self.system.gas, self.station_throat)
-        self.fs_throat.copy_from(self.fs_in)
+        self.fs_throat = TFlowState.create_empty(self.system.gas, 
+                                                 self.station_throat,
+                                                 enable_liquid_water=self.enable_liquid_water)
+        self.fs_throat.copy_from(self.fs_in, overrule_enable_liquid_water=self.enable_liquid_water)
         
         Hin = self.fs_in.gas_q.enthalpy_mass
         Pin = self.fs_in.gas_q.P
