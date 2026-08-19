@@ -174,7 +174,8 @@ def main():
                       name='Exhduct_cold',     # component name
                       station_in=21,
                       station_out=23,
-                      PRdes=1.0                 # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+                      PRdes=1.0,
+                      fs_out_output_species = ["H2O", "H2O_LIQ"]                  # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                       )
 
     cold_nozzle = TExhaustNozzle(system=turbofan, 
@@ -185,7 +186,8 @@ def main():
                                 CXdes=1,
                                 CVdes=1,
                                 CDdes=1,
-                                enable_liquid_water = False
+                                enable_liquid_water = True,
+                                fs_out_output_species = ["H2O", "H2O_LIQ"] 
                                 )
     # create a turbojet system model
     turbofan.define_comp_run_list(  fuel_control,

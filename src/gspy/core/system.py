@@ -496,8 +496,8 @@ class TSystemModel:
             # residuals will return residuals of system conservation equations, schedules, limiters etc.
             # the residuals are the errors returned by Do_Run
             # 2.1
-            return self.Do_Run('OD', point_time, states)
-            # return self.Do_Run('OD', ipoint, states)
+            errors = self.Do_Run('OD', point_time, states)
+            return errors
 
         #  2.1
         self.descr = descr
@@ -515,7 +515,8 @@ class TSystemModel:
                 rmax = 0
                 try:
                     def find_solution(high_gas_fidelity): 
-                        self.high_gas_fidelity = high_gas_fidelity       
+                        self.high_gas_fidelity = high_gas_fidelity     
+
                         solution = root(residuals,
                                         self.states,
                                         method = 'krylov',
@@ -526,14 +527,13 @@ class TSystemModel:
                                                     'fatol': self.error_tolerance,     # absolute residual target
                                                     #  slowing things down:
                                                     # 'xatol': 1e-12,                  # avoid premature "small step" success
+                                                    # note that at the initial pass of residuals, we get a warning:
+                                                    # "invalid value encountered in scalar divide", which is benign
                                                     'jac_options' :{
                                                         'rdiff': 1e-4,   # larger relative perturbation step
                                                     }
                                                     }
                                         )
-                                        # options={'maxiter': maxiter, 'xtol': 0.01})
-                                        # options={'maxiter': maxiter, 'line_search': 'wolfe'})
-                        # 2.0
                         r = residuals(solution.x)
                         rmax = np.max(np.abs(r))
                         if rmax > self.error_tolerance:
@@ -583,7 +583,7 @@ class TSystemModel:
             print(f"\tGross thrust: {self.FG:.2f} kN")
             print(f"\tRam drag    : {self.RD:.2f} kN")
             print(f"\tNet thrust  : {self.FN:.2f} kN")
-            print(f"\tTSFC        : {self.WF/ self.FN:.2f} kg/s/kN")
+            print(f"\tTSFC        : {self.WF/ self.FN:.5f} kg/s/kN")
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW = self.PW + shaft.PW_sum

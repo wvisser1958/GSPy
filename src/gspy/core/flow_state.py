@@ -507,7 +507,15 @@ class TFlowState:
     def copy_from(self, other: "TFlowState", new_station_nr: str = None, scale_W: float = 1.0,
                   overrule_enable_liquid_water = None) -> "TFlowState":
         self.gas_q.TPX = other.gas_q.T, other.gas_q.P, other.gas_q.X
-        self.station_nr = new_station_nr if str(new_station_nr) is not None else str(other.station_nr)
+        
+        # self.station_nr = new_station_nr if str(new_station_nr) is not None else str(other.station_nr)
+        if new_station_nr is not None:
+            # if new_station_nr given, always assign to self.station_nr
+            self.station_nr = new_station_nr  
+        else: 
+            if self.station_nr is None:
+                # assign to other.station_nr
+                self.station_nr = other.station_nr
 
         self.i_H2O=other.i_H2O
         if overrule_enable_liquid_water != None:

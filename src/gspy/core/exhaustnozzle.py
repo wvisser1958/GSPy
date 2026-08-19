@@ -130,7 +130,7 @@ class TExhaustNozzle(TGaspath):
                     dH = 0.0
                 else:
                     raise RuntimeError(
-                        f"Static enthalpy exceeds total enthalpy: dH={dH:g}"
+                        f"Static enthalpy exceeds total enthalpy: dH={dH:g} at station {fs.station_nr}"
                     )
 
             V = math.sqrt(2.0 * dH / m_dot)
@@ -682,23 +682,33 @@ class TExhaustNozzle(TGaspath):
             """
             fs.copy_from(fs_total)
 
-            fs.update_SP(
-                S_target=St,
-                P_target=Ps,
-            )
+            try:
+                fs.update_SP(
+                    S_target=St,
+                    P_target=Ps,
+                )
+            except Exception as err:
+                raise RuntimeError(
+                    f"Invalid isentropic nozzle state at Ps={Ps:g} Pa at station {fs.station_nr}."
+                    f"(Pt={Pt:g} Pa)"
+                ) from err
 
-            dH = Ht - fs.H_total
+            ht = Ht / W
+            hs = fs.H_total / fs.W
+            dh = ht - hs
 
-            if dH < 0.0:
-                if dH > -1e-10 * max(abs(Ht), 1.0):
-                    dH = 0.0
+            DH_TOL = 2.0  # J/kg
+
+            if dh < 0.0:
+                if dh > -DH_TOL:
+                    dh = 0.0
                 else:
                     raise RuntimeError(
-                        f"Static enthalpy exceeds total enthalpy: "
-                        f"dH={dH:g}"
+                        f"Static enthalpy exceeds total enthalpy at station {fs.station_nr}: "
+                        f"dh={dh:g} J/kg"
                     )
 
-            V = math.sqrt(2.0 * dH / W)
+            V = math.sqrt(2.0 * dh)
 
             rho = bulk_density(fs)
             a = fs.gas_q.phase.sound_speed
@@ -740,7 +750,7 @@ class TExhaustNozzle(TGaspath):
         # Cantera may encounter an invalid low-temperature state.
         # ----------------------------------------------------------
 
-        P_high = Pt * (1.0 - 1e-10)
+        P_high = 0.999 * Pt
         f_high = sonic_residual(P_high)
 
         if f_high >= 0.0:
@@ -1067,7 +1077,7 @@ class TExhaustNozzle(TGaspath):
             self.A_exit_des = result["A_exit_required"]
             self.A_exit = self.A_exit_des
 
-            self.ierror_w = self.system.add_error(self.name + '_Wout', 0.0)
+            self.ierror_w = self.system.add_error(self.name + '_A_exit', 0.0)
 
             # self.V_throat = self.fs_throat.V
             # if self.V_throat <= 0:
@@ -1089,12 +1099,11 @@ class TExhaustNozzle(TGaspath):
                 exit_throat_area_ratio=self.ConDi_exit_throat_area_ratio,
             )
 
-            A_required = result["A_throat_required"]
+            A_exit_required = result["A_exit_required"]
 
-            self.system.errors[self.ierror_w] = (
-                A_required / self.A_throat
-                - 1.0
-            )
+            # divide error by 2 to avoid oscillation (e.g. increasing A by the error will overshoot by about 100% !)
+            self.system.errors[self.ierror_w] = (A_exit_required -self.A_exit) / 2 / self.A_exit_des
+
             # self.system.errors[self.ierror_w] = (fu.scalar(self.fs_in.mass) - massflow) / fu.scalar(self.fs_in_des.W_gas)
             # self.system.errors[self.ierror_w] = (fu.scalar(self.fs_throat.A) - fu.scalar(self.Athroat_des)) / fu.scalar(self.Athroat_des)
 
