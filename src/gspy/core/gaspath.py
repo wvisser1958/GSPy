@@ -163,7 +163,24 @@ class TGaspath(TComponent):
 
     #     return out
 
-    # 2.0.0.0
+    def get_flowstate_mass_fractions(self, out, fs : TFlowState, station_nr):
+        #  mass fraction outputs for specified species in fs
+        gas_q = fs.gas_q
+        Y = gas_q.Y          # or gas_q.phase.Y if needed
+        m_gas = gas_q.mass
+        m_total = fs.W
+        if m_total > 0.0:
+            for sp, idx in zip(self.fs_out_output_species,
+                            self.fs_out_output_species_indices):
+                if idx == c.LIQUID_WATER_INDEX:
+                    value = fs.m_liq / m_total
+                else:
+                    value = Y[idx] * m_gas / m_total
+                out[f"Y{station_nr}_{sp}"] = value
+        else:
+            for sp in self.fs_out_output_species:
+                out[f"Y{station_nr}_{sp}"] = 0.0
+
     def get_outputs(self):
         out = super().get_outputs()
 
@@ -178,24 +195,25 @@ class TGaspath(TComponent):
         if self.PR is not None:
             out[f"PR{self.id}"] = self.PR
 
-        #  2.0.0.2 mass fraction outputs for specified species in fs_out
-        s_out = self.station_out
-        fs_out = self.fs_out
-        gas_q = fs_out.gas_q
-        Y = gas_q.Y          # or gas_q.phase.Y if needed
-        m_gas = gas_q.mass
-        m_total = fs_out.W
-        if m_total > 0.0:
-            for sp, idx in zip(self.fs_out_output_species,
-                            self.fs_out_output_species_indices):
-                if idx == c.LIQUID_WATER_INDEX:
-                    value = fs_out.m_liq / m_total
-                else:
-                    value = Y[idx] * m_gas / m_total
-                out[f"Y{s_out}_{sp}"] = value
-        else:
-            for sp in self.fs_out_output_species:
-                out[f"Y{s_out}_{sp}"] = 0.0
+        # #  2.0.0.2 mass fraction outputs for specified species in fs_out
+        # s_out = self.station_out
+        # fs_out = self.fs_out
+        # gas_q = fs_out.gas_q
+        # Y = gas_q.Y          # or gas_q.phase.Y if needed
+        # m_gas = gas_q.mass
+        # m_total = fs_out.W
+        # if m_total > 0.0:
+        #     for sp, idx in zip(self.fs_out_output_species,
+        #                     self.fs_out_output_species_indices):
+        #         if idx == c.LIQUID_WATER_INDEX:
+        #             value = fs_out.m_liq / m_total
+        #         else:
+        #             value = Y[idx] * m_gas / m_total
+        #         out[f"Y{s_out}_{sp}"] = value
+        # else:
+        #     for sp in self.fs_out_output_species:
+        #         out[f"Y{s_out}_{sp}"] = 0.0
+        self.get_flowstate_mass_fractions(out, self.fs_out, self.station_out)
 
         return out
 

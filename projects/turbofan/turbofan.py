@@ -245,8 +245,8 @@ def main():
         #                                                     )   
         # turbofan.Run_OD_simulation('Intermediate step at 5000m / Ma 0.8')
 
-        # test turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None, RH=360)
-        turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None, RH=100)
+        turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None, RH=360)
+        # turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None, RH=100)
         turbofan.input_points = fuel_control.re_init_input(None, 0.5,
                                                                  1600, 1200, -50,
                                                                  'T4'

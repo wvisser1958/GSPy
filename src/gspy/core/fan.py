@@ -332,6 +332,9 @@ class TFan(TTurboComponent):
     # 2.0.0.0
     def get_outputs(self):
         out = super().get_outputs()
+
+        self.get_flowstate_mass_fractions(out, self.fs_out_duct, self.station_out_duct)
+
         out["BPR"+self.id] = self.BPR
         out["crossflow"+self.id] = self.W_crossflow
         out["PR_core"+self.id] = self.PR_core

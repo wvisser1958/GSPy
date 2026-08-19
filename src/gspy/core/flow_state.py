@@ -74,6 +74,8 @@ class TFlowState:
         self.i_H2O = int(self.gas_q.phase.species_index("H2O"))
 
         self.velocity = None
+        self.A = None
+        self.rho = None
 
         self.station_nr = str(station_nr)
 
@@ -527,7 +529,7 @@ class TFlowState:
         self.Mach = other.Mach
         self.V = other.V
         self.A = other.A
-        self.rhos = other.rhos
+        self.rho = other.rho
         return self
 
     def mix_same_composition_gas_only(
@@ -969,7 +971,7 @@ class TFlowState:
             self.Mach = 0.0
             self.V = 0.0
             self.A = None
-            self.rhos = self.gas_q.density
+            self.rho = self.gas_q.density
             return
 
         if A is not None and mdot is None:
@@ -1057,7 +1059,7 @@ class TFlowState:
             self.V = vel
             self.Mach = vel / a
             self.A = A
-            self.rhos = rho
+            self.rho = rho
 
         finally:
             self._restore_gasq_state(saved)
@@ -1068,7 +1070,7 @@ class TFlowState:
         self.Mach = 0.0
         self.V = 0.0
         self.A = None
-        self.rhos = self.gas_q.density
+        self.rho = self.gas_q.density
 
     # for changing from ambient frame of reference to moving engine frame of reference in inlet
     def _set_total_equal_static(self):
@@ -1077,7 +1079,7 @@ class TFlowState:
         self.Mach = 0.0
         self.V = 0.0
         self.A = None
-        self.rhos = self.gas_q.density
+        self.rho = self.gas_q.density
 
     def repartition_at_TP(self, T: float, P: float):
         """

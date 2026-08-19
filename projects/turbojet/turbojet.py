@@ -106,7 +106,7 @@ def main():
                             # note that using Texit as imput may be less stable in some cases
 
                             PRdes=1,                # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
-                            Etades=0.91,            # design combustor efficiency
+                            Etades=1.0,             # design combustor efficiency
                             Tfueldes=298.15,        # Fuel temperature K           # If None, then Tfuel is assumed to be equal to temperature of entry air flow
 
                             # For the fuel properties specification there are 2 options:
@@ -118,17 +118,13 @@ def main():
                             #                   'NC12H26:1' (dodecane),
                             #                   'CH4:9, N2:1' (mixture of CH4 and N2 in ratio 9:1 by mass)
                             #                   or 'CH4:5, C2H6:1' for example, and fuel temperature
-                            # LHVdes=43031,               # LHV [kJ/kg] at T_standard_ref = 298.15 # (25°C), required if Fuelcomposition is None
-                            # Cp_fuel_des=2093,           # optional specific heat of the fuel for LVH, H/C and O/C ratio specification, in J/kg-K
-                            # HCratiodes=1.9167,          # HCratio
-                            # OCratiodes=0,               # OCratio
-                            # FuelCompositiondes=None,    # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
-
-                            # LHVdes=43031,               # LHV [kJ/kg] at T_standard_ref = 298.15 # (25°C), required if Fuelcomposition is None
+                            LHVdes=43031,               # LHV [kJ/kg] at T_standard_ref = 298.15 # (25°C), required if Fuelcomposition is None
                             Cp_fuel_des=2093,           # optional specific heat of the fuel for LVH, H/C and O/C ratio specification, in J/kg-K
-                            # HCratiodes=1.9167,          # HCratio
-                            # OCratiodes=0,               # OCratio
-                            FuelCompositiondes='CH4:9, N2:1',    # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
+                            HCratiodes=1.9167,          # HCratio
+                            OCratiodes=0,               # OCratio
+
+                            # Cp_fuel_des=2093,           # optional specific heat of the fuel for LVH, H/C and O/C ratio specification, in J/kg-K
+                            # FuelCompositiondes='CH4:9, N2:1',    # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
 
                             A=None                      # Cross flow area to calculate fundamental pressue loss
                             )
@@ -211,8 +207,8 @@ def main():
     if run_OD:
         # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
         turbojet.mode = 'OD'
-        # turbojet.input_points = fuelcontrol.get_OD_input_points()
-        turbojet.input_points = np.array([[0, 0.37]])        
+        turbojet.input_points = fuelcontrol.get_OD_input_points()
+        # turbojet.input_points = np.array([[0, 0.36]])        
         print("\nOff-design (OD) results")
         print("=======================")
         # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet

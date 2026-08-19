@@ -256,7 +256,7 @@ class TTurbine(TTurboComponent):
                 PR=self.PR,
                 out=self.fs_out,
                 eta=self.Eta,
-                polytropic_eta=self.Polytropic_DP_eta if Mode == 'DP' else False
+                polytropic_eta = False # OD always False
             )
             
             # v1.2
