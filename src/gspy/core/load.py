@@ -26,23 +26,14 @@ class TLoad(TOneShaftComponent):
         - Accessory gearbox parasitic load
     """
 
-    def __init__(
-        self,
-        owner,                  # owning system model object
-        name,                   # component name
-        map_filename_or_dict,   # map file name or dict with power values for different demands
-        control_component,      # optional control component, if None then no control component
-                                # is used for this load, otherwise the control component must be
-                                # defined before this load in the model file
-        shaft_id,               # shaft number of the load, must be defined in the model file
-                                # before this load, the shaft could also be created in the model
-                                # file first
-        power_kw_des,           # design power of the load, used to calculate the power demand
-                                # of the load at design conditions, and to calculate the power
-                                # demand at off-design conditions based on the power demand set
-                                # by the control component
-        ):
-        super().__init__(owner, name, map_filename_or_dict, control_component, shaft_id)
+    def __init__(self,
+                *,
+                power_kw_des,           # design power of the load, used to calculate the power demand
+                                        # of the load at design conditions, and to calculate the power
+                                        # demand at off-design conditions based on the power demand set
+                                        # by the control component
+                **kwargs):
+        super().__init__(**kwargs)
         self.power_w_des = power_kw_des * 1000  # convert kW to W
         self.power_w = self.power_w_des
 

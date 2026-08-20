@@ -35,10 +35,9 @@ class TShaftComponent(TComponent, ABC):
         - power : absorbed from shaft
     """
 
-    def __init__(self, owner, name, map_filename_or_dict, control_component, shaft_id):
-        super().__init__(owner, name, map_filename_or_dict, control_component)
-        self.shaft_id = shaft_id
-        self.drive_shaft = None  # to be assigned later in Run()
+    def __init__(self,
+                 **kwargs):    # Constructor of the class
+        super().__init__(**kwargs)
 
     @abstractmethod
     def get_drive_shaft_power(self) -> float:
@@ -85,16 +84,28 @@ class TOneShaftComponent(TShaftComponent, ABC):
     created automatically.
     """
 
-    def __init__(self, owner, name, map_filename_or_dict, control_component, shaft_id):
-        super().__init__(owner, name, map_filename_or_dict, control_component, shaft_id)
+    def __init__(self,
+                 *,
+                 drive_shaft_id,
+                 **kwargs):    # Constructor of the class
+        super().__init__(**kwargs)
+        self.drive_shaft_id = drive_shaft_id
+        self.drive_shaft = None  # to be assigned later in Run()
         self.power_w_des = None
         self.power_w = None
 
-        # Ensure shaft exists even if load is defined before turbomachinery
-        if all(shaft.shaft_id != shaft_id for shaft in owner.shaft_list):
-            owner.shaft_list.append(
-                fshaft.TShaft(shaft_id, name + " shaft " + str(shaft_id))
-            )
+        # Let us not define shafts from the shaft component, there is usually no known design speed
+        # # Ensure shaft exists even if load is defined before turbomachinery, create shaft and assume shaft Ntdes = Ndes, assign I = 0 here (specify turbomachinery with an I value)
+        if all(shaft.shaft_id != self.drive_shaft_id for shaft in self.system.shaft_list):
+        #     self.system.shaft_list.append(fshaft.TShaft(system=self.system,
+        #                                                shaft_id=self.shaft_id,
+        #                                                name=self.name + ' shaft ' + str(shaft_id),
+        #                                                Ntdes=None, # shaft design speed
+        #                                                I=0         # shaft moment of inertia kg.m2
+        #                                                )
+        #                                   )
+            raise ValueError(
+                f"ShaftDevice '{self.name}': Drive shaft with id '{self.drive_shaft_id}' is not defined in the model file. Please define the shaft first.")
 
     def get_power_conversion(self) -> float:
         """
@@ -134,15 +145,15 @@ class TOneShaftComponent(TShaftComponent, ABC):
             else:  # use power demand from component design specification
                 self.power_w = self.power_w_des
 
-    def Run(self, mode, point_time):
+    def Run(self, Mode, PointTime):
         # Get shaft by shaft_id
-        self.drive_shaft = self.system.get_shaft(self.shaft_id)
+        self.drive_shaft = self.system.get_shaft(self.drive_shaft_id)
 
         # Resolve control component
         self._resolve_control()
 
         # Determine the power demand from the control component if applicable
-        self._calculate_power_demand(mode)
+        self._calculate_power_demand(Mode)
 
         # Apply the shaft power contribution to the connected shaft
         self.drive_shaft.PW_sum = self.drive_shaft.PW_sum + self.get_drive_shaft_power()
@@ -160,16 +171,11 @@ class TTwoShaftComponent(TShaftComponent, ABC):
     exist in the model before the component is created.
     """
 
-    def __init__(
-        self,
-        owner,
-        name,
-        map_filename_or_dict,
-        control_component,
-        drive_shaft_id,
-        driven_shaft_id,
-    ):
-        super().__init__(owner, name, map_filename_or_dict, control_component, drive_shaft_id)
+    def __init__(self,
+                 *,
+                 driven_shaft_id,
+                 **kwargs):
+        super().__init__(**kwargs)
 
         # For a two-shaft device, we need to define a second shaft connection and
         # corresponding attributes
@@ -183,24 +189,24 @@ class TTwoShaftComponent(TShaftComponent, ABC):
         # For example, for a gearbox the drive and driven shaft speeds are related
         # by the gear ratio, so both shafts need to be defined before the gearbox
         # can be defined.
-        required_shaft_ids = {drive_shaft_id, driven_shaft_id}
-        existing_shaft_ids = {shaft.shaft_id for shaft in owner.shaft_list}
+        required_shaft_ids = {self.drive_shaft_id, self.driven_shaft_id}
+        existing_shaft_ids = {shaft.shaft_id for shaft in system.shaft_list}
 
         missing_ids = required_shaft_ids - existing_shaft_ids
 
         if missing_ids:
-            if drive_shaft_id in missing_ids:
+            if self.drive_shaft_id in missing_ids:
                 raise ValueError(
-                    f"Drive shaft with id '{drive_shaft_id}' for two-shaft device "
-                    f"'{name}' is not defined in the model file. Please define the drive shaft first."
+                    f"Drive shaft with id '{self.drive_shaft_id}' for two-shaft device "
+                    f"'{self.name}' is not defined in the model file. Please define the drive shaft first."
                 )
             if driven_shaft_id in missing_ids:
                 raise ValueError(
-                    f"Driven shaft with id '{driven_shaft_id}' for two-shaft device "
-                    f"'{name}' is not defined in the model file. Please define the driven shaft first."
+                    f"Driven shaft with id '{self.driven_shaft_id}' for two-shaft device "
+                    f"'{self.name}' is not defined in the model file. Please define the driven shaft first."
                 )
 
-    def Run(self, mode, point_time):
+    def Run(self, Mode, PointTime):
         """
         Base execution for two-shaft devices.
 
