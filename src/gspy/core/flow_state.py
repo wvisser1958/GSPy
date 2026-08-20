@@ -2181,20 +2181,22 @@ class TFlowState:
     # ------------------------------------------------------------------
     # convenience compressor helpers
     # ------------------------------------------------------------------
-    def compress_isentropic(self, PR: float, out: "TFlowState", W_total = None):
+    def compress_isentropic(self, PR: float, out: "TFlowState", W_out = None):
         """
         Ideal compression:
         - total entropy gas + liquid conserved
         - target total pressure
         """
+        if out is self:
+            raise ValueError(f"out cannot be equal to self in TFlowState.compress_isentropic, at station {self.station_nr}")
         out.copy_from(self)
 
         # in case mass is given (e.g., for a compressor with bleed, fan core or duct flow etc.), 
         # set the output mass by scaling from self
         Starget = float(self.S_total)
-        if W_total is not None:
-            out.scale_mass(W_total/self.W)
-            Starget = Starget * W_total/self.W
+        if W_out is not None:
+            out.scale_mass(W_out/self.W)
+            Starget = Starget * W_out/self.W
         out.update_SP(
             S_target=Starget,
             P_target=PR * self.P,
@@ -2205,7 +2207,7 @@ class TFlowState:
 
     def compress_real_eta_isentropic(self, PR, out, eta_is, W_out = None):
 
-        self.compress_isentropic(PR, out, W_total=W_out)
+        self.compress_isentropic(PR, out, W_out=W_out)
 
         H1 = self.H_total
 

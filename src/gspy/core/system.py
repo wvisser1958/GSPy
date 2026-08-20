@@ -27,6 +27,7 @@ import gspy.core.constants as c
 from gspy.core.ambient import TAmbient
 from gspy.core.gaspath import TGaspath
 from gspy.core.heatsink import THeatsink
+from gspy.core.shaft_component import TShaftComponent
 
 DEFAULT_YAML = "jetsurf.yaml"
 DEFAULT_VERBOSE = True
@@ -586,12 +587,14 @@ class TSystemModel:
             print(f"\tTSFC        : {self.WF/ self.FN:.5f} kg/s/kN")
         self.PW = 0
         for shaft in self.shaft_list:
-            self.PW = self.PW + shaft.PW_sum
+            self.PW += shaft.PW_sum
             print(f"\tPower offtake shaft {shaft.shaft_id} : {shaft.PW_sum/1000:.2f} kW")
+        for component in self.component_run_list:
+            if isinstance(component, TShaftComponent):
+                self.PW -= component.get_drive_shaft_power()
         if not math.isclose(self.PW, 0.0, abs_tol=1e-3):
-            print(f"\tTotal power output : {self.PW/1000:.2f} kW")
-            print(f"\tSFC shaft power    : {self.WF / self.PW * 1000:.2f} kg/s/kW")
-
+            print(f"\tTotal power output : {self.PW/1000:.3f} kW")
+            print(f"\tSFC shaft power    : {self.WF / self.PW  * 1e6:.3f} g/s/kW")
 
     # 2.0.0.0
     def get_outputs(self):
@@ -605,11 +608,14 @@ class TSystemModel:
             out["TSFC"] = self.WF / self.FN * 1000 # g/s/kN
         self.PW = 0
         for shaft in self.shaft_list:
-            self.PW = self.PW + shaft.PW_sum
+            self.PW += shaft.PW_sum
             out[f"PW{shaft.shaft_id}"] = shaft.PW_sum/1000
+        for component in self.component_run_list:
+            if isinstance(component, TShaftComponent):
+                self.PW -= component.get_drive_shaft_power()
         out["PW"] = self.PW/1000
-        # if not math.isclose(self.PW, 0.0, abs_tol=1e-3):
-        #     out["SFCshaft"] = self.WF / self.PW * 1000 # kg/s/kW
+        if not math.isclose(self.PW, 0.0, abs_tol=1e-3):
+            out["SFCshaft"] = self.WF / self.PW * 1e6 # g/s/kW
         return out
 
     def print_DP_equation_solution(self):

@@ -33,6 +33,12 @@ class TCompressor(TTurboComponent):
         self.PRdes = PRdes
         self.SpeedOption = SpeedOption
         self.Bleeds = Bleeds
+        if self.Bleeds != None:
+            for bleed in self.Bleeds:
+                bleed.fs_in = TFlowState.create_empty(self.system.gas, 
+                                              station_nr=bleed.station_in, 
+                                              # we are assuming not liquid water in the bleed flows, so also not in the cooling flows
+                                              enable_liquid_water=False)
 
     # 1.6 virtual method CreateMap will be called in ancestor TTurboComponent
     # for either single map or series of maps in case of variable geometry with multipe maps for example
@@ -103,43 +109,44 @@ class TCompressor(TTurboComponent):
             self.fs_out.W_gas = self.W_map            
 
         # v1.2 correction for bleed flows
-        dW = 0
+        total_all_bleed_fractions = 0
         dHW_bleeds_total = 0
-        # dH due to compression from fs_in_q
-        dH = self.fs_out.gas_q.enthalpy_mass - self.fs_in_q.gas_q.enthalpy_mass
-        dP = self.fs_out.gas_q.P - self.fs_in_q.gas_q.P
+        # dHW due to compression from fs_in_q
+        dHW_no_bleeds = self.fs_out.H_total - self.fs_in_q.H_total
+        dP = self.fs_out.P - self.fs_in_q.P
         if self.Bleeds != None:
             for bleed in self.Bleeds:
-                Wbleed = bleed.bleedfraction * self.W
-                dW = dW + Wbleed
+                total_all_bleed_fractions += bleed.bleedfraction
                 # dHW = dHW + (1 - bleed.dPfactor) * dH * Wbleed
-                if bleed.fs_in == None:
-                    #  define bleed inflow fs_in conditions
-                    bleed.fs_in = ct.Quantity(self.fs_in_q.phase, Wbleed)
-                else:
-                    bleed.fs_in.TPY = self.fs_in_q.T, self.fs_in_q.P, self.fs_in_q.Y
-                    bleed.fs_in.mass = Wbleed
-                #  add to station conditions dictionary
-                self.system.gaspath_conditions[bleed.station_in] = bleed.fs_in
+                # bleed.fs_in.TPY = self.fs_in_q.T, self.fs_in_q.P, self.fs_in_q.Y
+                # bleed.fs_in.scale_mass(bleed.bleedfraction * self.fs_in.W)
+                # bleed.fs_in.copy_from(self.fs_in_q, bleed.station_in, scale_W = bleed.bleedfraction, overrule_enable_liquid_water=False)
+                
 
                 # Compress Wbleed to bleed point
                 #  2.1
                 # dHW1 = fu.Compression(self.fs_in, bleed.fs_in, (self.fs_in.P+dP*bleed.dPfactor)/self.fs_in.P, self.Eta, 
                 #                       self.Polytropic_DP_eta if Mode=='DP' else 0)
-                bleed.fs_in, dHW1 = self.fs_in_q.compress_real_eta(
-                    PR=(self.fs_in_q.P+dP*bleed.dPfactor)/self.fs_in_q.P,
+                # note that we are not using fs_in_q. Any Q added to bleed flow will only be added to bleed.fs_out
+                bleed.fs_in, dHW_bleed = self.fs_in.compress_real_eta(
+                    PR=(self.fs_in.P+dP*bleed.dPfactor)/self.fs_in.P,
                     out=bleed.fs_in,
                     eta=self.Eta,
+                    W_out=bleed.bleedfraction*self.fs_in.W,
                     Polytropic_Eta=self.Polytropic_DP_eta if Mode=='DP' else False
                 )
 
+                #  add to station conditions dictionary
+                self.system.gaspath_conditions[bleed.station_in] = bleed.fs_in
+
                 # now delta of compression power due to the bleed is
-                dHW2 = dH * Wbleed  - dHW1
-                dHW_bleeds_total = dHW_bleeds_total + dHW2
+                dHW_bleeds_total = dHW_bleeds_total + dHW_bleed
                 # run the bleed flow run code (default is simply the TGasPath method, sets bleed.fs_out to bleed.fs_in)
                 bleed.Run(Mode, PointTime)
-            self.fs_out.mass = self.fs_out.mass - dW
-            self.PW = self.PW - dHW_bleeds_total
+            #  correct outgoing mass flow rate
+            self.fs_out.scale_mass(1 - total_all_bleed_fractions)
+            # power is the power w/o bleeds scaled back to the mass flow minus bleeds, plus the power for the bleeds
+            self.PW = dHW_no_bleeds*(1 - total_all_bleed_fractions) + dHW_bleeds_total
 
         self.shaft.PW_sum = self.shaft.PW_sum - self.PW
 

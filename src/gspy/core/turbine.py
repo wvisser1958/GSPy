@@ -62,22 +62,23 @@ class TTurbine(TTurboComponent):
             self.DHW_cl_exp = 0
             self.W_cl_eff = 0
             Ekin_at_R1 = np.square(np.pi*self.N/60)
+            # we are assuming not liquid water in the bleed flows, so also not in the cooling flows
             for cf in self.CoolingFlows:
                 cf.Run(Mode, PointTime)  # this calculates the bleed flow rate, set fs_injected to fs_in
                 # pumping power for blade cooling
                 if cf.Rexit > 0:
                     # power taken from shaft for accelerating the cooling flow in circumferential direction
-                    dHradialpump = Ekin_at_R1 * np.square(cf.Rexit)
-                    cf.DHWpump =  dHradialpump * cf.W
-                    self.DHW_cl_pump = self.DHW_cl_pump + cf.DHWpump
+                    dhradialpump = Ekin_at_R1 * np.square(cf.Rexit)
+                    cf.DHWpump =  dhradialpump * cf.W
+                    self.DHW_cl_pump += cf.DHWpump
                     # isentropic compression due to 'radial pump' action
                     # in the rotating frame dH increase is half of dHradialpump
-                    dH_for_P = dHradialpump/2
-                    TR_pump = (cf.fs_in.T + dH_for_P/cf.fs_in.cp_mass)/cf.fs_in.T
-                    gamma = cf.fs_in.cp_mass/cf.fs_in.cv_mass
+                    dH_for_P = dhradialpump/2
+                    TR_pump = (cf.fs_in.T + dH_for_P/cf.fs_in.gas_q.cp_mass)/cf.fs_in.T
+                    gamma = cf.fs_in.gas_q.cp_mass/cf.fs_in.gas_q.cv_mass
                     PR_pump = np.power(TR_pump, gamma/(gamma-1))
                     # now add full dHradialpump to enthalpy, and P increase to fs_injected
-                    cf.fs_injected.HP = cf.fs_in.enthalpy_mass + dHradialpump, cf.fs_in.P * PR_pump
+                    cf.fs_injected.HP = cf.fs_in.gas_q.enthalpy_mass + dhradialpump, cf.fs_in.P * PR_pump
                 else:
                     cf.DHWpump = 0
 
@@ -95,23 +96,25 @@ class TTurbine(TTurboComponent):
                         polytropic_eta=self.Polytropic_DP_eta if Mode == 'DP' else False
                     )                    
 
-                    self.DHW_cl_exp = self.DHW_cl_exp + cf.DHWexp
+                    self.DHW_cl_exp += cf.DHWexp
                 else:
                     cf.DHWexp = 0
 
                 # add fraction of flow to be included inlet mass flow conservation of mass error equation
-                self.W_cl_eff = self.W_cl_eff + cf.W_tur_eff_fraction * cf.W
+                self.W_cl_eff += cf.W_tur_eff_fraction * cf.W
 
                 # add to main exit flow
                 Pout = self.fs_out.P
-                self.fs_out = self.fs_out + cf.fs_out
+                # self.fs_out = self.fs_out + cf.fs_out
                 # Because Cantera assumes you are physically combining two finite quantities of gas,
                 # so it recomputes the real thermodynamic result, not a mathematical average.
                 # That means:
                 # If the two gases weren’t identical species distribution + identical temperature,
                 # the post-mix EOS solution will slightly shift pressure — even if both started at “same P”.
                 #  so we must preserve pressure strictly
-                self.fs_out.HP = self.fs_out.enthalpy_mass, Pout
+                # self.fs_out.HP = self.fs_out.enthalpy_mass, Pout
+                self.fs_out.mix_from(self.fs_out, cf.fs_out, P_out=Pout)
+
             # return total cooling effects on turbine performance: PW delta and Wc delta
             return self.DHW_cl_exp - self.DHW_cl_pump, self.W_cl_eff
 

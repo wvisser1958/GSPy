@@ -57,11 +57,12 @@ class TGaspath(TComponent):
         else:
             self.enable_liquid_water = enable_liquid_water
 
-        self.fs_in_des = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
+        self.fs_in_des = TFlowState.create_empty(self.system.gas, 
+                                                 station_nr=self.station_in,
+                                                 enable_liquid_water=self.enable_liquid_water)
         self.fs_out = TFlowState.create_empty(self.system.gas, 
                                               station_nr=self.station_out, 
                                               enable_liquid_water=self.enable_liquid_water)
-
 
     def Run(self, Mode, PointTime):
         self.fs_in = self.system.gaspath_conditions[self.station_in]

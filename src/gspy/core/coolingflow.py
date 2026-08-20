@@ -16,12 +16,15 @@
 import numpy as np
 import cantera as ct
 from gspy.core.gaspath import TGaspath
+from gspy.core.flow_state import TFlowState
 
 class TCoolingFlow(TGaspath):
-    def __init__(self, owner, name, map_filename, control_component, station_in, station_out,
+    def __init__(self,
+                 *,
                  coolingflownumber, frombleednumber, fractiontakendes,
-                 dPfraction, W_tur_eff_fraction, Rexit) :    # Constructor of the class
-        super().__init__(owner, name, map_filename, control_component, station_in, station_out)
+                 dPfraction, W_tur_eff_fraction, Rexit,
+                 **kwargs) :    # Constructor of the class
+        super().__init__(**kwargs)
         self.coolingflownumber = coolingflownumber
         self.frombleednumber = frombleednumber
         self.fractiontakendes = fractiontakendes
@@ -32,34 +35,40 @@ class TCoolingFlow(TGaspath):
         self.gas_injected = None
         self.DHWexp = None
         self.DHWpump = None
-
+        self.fs_injected = TFlowState.create_empty(self.system.gas, 
+                                                   station_nr=self.station_out, 
+                                                   enable_liquid_water=False)
+                
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
             self.fractiontaken = self.fractiontakendes
-            # quantity of gas after injection
-            self.gas_injected = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass*self.fractiontaken)
-            self.gas_out = ct.Quantity(self.gas_injected.phase, mass = self.gas_injected.mass)
-        else:
+            # quantity of gas after injection: is a fraction of fs_in so cannot be the same as fs_in which is the out of the 
+            # bleed flow, which must keep its total bleed flow mass flow rate
+            # self.gas_injected = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass*self.fractiontaken)
+            # self.gas_out = ct.Quantity(self.gas_injected.phase, mass = self.gas_injected.mass)
+        # else:
             #  at this state, fraction taken still constant
-            self.fractiontaken = self.fractiontakendes
-            self.gas_injected.mass = self.fs_in.mass * self.fractiontaken
-            self.gas_injected.TPY = self.fs_in.TPY
-        self.gas_out.mass = self.gas_injected.mass
-        self.W = self.gas_out.mass
-        return self.gas_out
+            # self.fractiontaken = self.fractiontakendes
+        self.fs_injected.copy_from(self.fs_in, 
+                                   self.fractiontaken)
+        # self.gas_injected.mass = self.fs_in.mass * self.fractiontaken
+        # self.fs_injected.TPY = self.fs_in.TPY
+        self.fs_out.copy_from(self.fs_injected)
+        self.W = self.fs_out.W
+        return self.fs_out
 
     def PrintPerformance(self, Mode, PointTime):
         super().PrintPerformance(Mode, PointTime)
         print(f"\tFraction from bleed nr {self.frombleednumber}: {self.fractiontaken:.2f}")
         print(f"\tInject conditions:")
-        print(f"\t\tTemperature : {self.gas_injected.T:.1f} K")
-        print(f"\t\tPressure    : {self.gas_injected.P:.0f} Pa")
+        print(f"\t\tTemperature : {self.fs_injected.T:.1f} K")
+        print(f"\t\tPressure    : {self.fs_injected.P:.0f} Pa")
         #  1.6 WV
         print(f"\tExit conditions:")
-        print(f"\t\tMass flow : {self.gas_out.mass:.1f} [kg/s]")
-        print(f"\t\tTemperature : {self.gas_out.T:.1f} K")
-        print(f"\t\tPressure    : {self.gas_out.P:.0f} Pa")
+        print(f"\t\tMass flow : {self.fs_out.W:.1f} [kg/s]")
+        print(f"\t\tTemperature : {self.fs_out.T:.1f} K")
+        print(f"\t\tPressure    : {self.fs_out.P:.0f} Pa")
 
         if self.DHWpump != None:
             print(f"\t\tDHW rad pump : {self.DHWpump:.0f} kW")
@@ -71,12 +80,12 @@ class TCoolingFlow(TGaspath):
         out = super().get_outputs()
 
         out[f"Fraction from bleed nr {self.frombleednumber}"]  = self.fractiontaken
-        out[f"T{self.station_in}j"]  = self.gas_injected.T
-        out[f"P{self.station_in}j"]  = self.gas_injected.P
+        out[f"T{self.station_in}j"]  = self.fs_injected.T
+        out[f"P{self.station_in}j"]  = self.fs_injected.P
         #  1.6 WV
-        out[f"W{self.station_out}"]  = self.gas_out.mass
-        out[f"T{self.station_out}"]  = self.gas_out.T
-        out[f"P{self.station_out}"]  = self.gas_out.P
+        out[f"W{self.station_out}"]  = self.fs_out.mass
+        out[f"T{self.station_out}"]  = self.fs_out.T
+        out[f"P{self.station_out}"]  = self.fs_out.P
 
         if self.DHWpump != None:
             out[f"DHWpump{self.station_out}"]  = self.DHWpump
