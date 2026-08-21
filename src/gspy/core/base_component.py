@@ -132,6 +132,13 @@ class TComponent(ABC):
         if self.heatpaths:
             for heatpath in self.heatpaths:
                 out.update(heatpath.get_outputs())
-                
         return out
+
+    def get_output_units(self):
+        units = {}
+        if self.heatpaths:
+            for heatpath in self.heatpaths:
+                units.update(heatpath.get_output_units())
+        return units
+                
     

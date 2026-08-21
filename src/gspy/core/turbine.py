@@ -304,3 +304,12 @@ class TTurbine(TTurboComponent):
                 out.update(coolingflow.get_outputs())
 
         return out
+
+    def get_output_units(self):
+        units = super().get_output_units()
+
+        if self.CoolingFlows != None:
+            for coolingflow in self.CoolingFlows:
+                units.update(coolingflow.get_output_units())
+
+        return units    

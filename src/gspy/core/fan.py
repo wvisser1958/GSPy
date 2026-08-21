@@ -345,6 +345,21 @@ class TFan(TTurboComponent):
         out["Eta_is_duct"+self.id] = self.Eta_duct
         return out
 
+    def get_output_units(self):
+        units = super().get_output_units()
+
+        self.get_flowstate_mass_fraction_units(units, self.station_out_duct)
+
+        units["BPR"+self.id] = "[-]"
+        units["crossflow"+self.id] = "[kg/s]"
+        units["PR_core"+self.id] = "[-]"
+        units["PR_duct"+self.id] = "[-]"
+        units["Wc_core"+self.id] = "[kg/s]"
+        units["Wc_duct"+self.id] = "[kg/s]"
+        units["Eta_is_core"+self.id] = "[-]"
+        units["Eta_is_duct"+self.id] = "[-]"
+        return units
+
     # override PlotMaps, to now plot the self.map_core and self.map_duct
     def PlotMaps(self): # Plot performance in map(s)
         if self.map_core != None:

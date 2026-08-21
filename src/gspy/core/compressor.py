@@ -166,3 +166,10 @@ class TCompressor(TTurboComponent):
             for bleed in self.Bleeds:
                 out.update(bleed.get_outputs())
         return out
+
+    def get_output_units(self):
+        units = super().get_output_units()
+        if self.Bleeds != None:
+            for bleed in self.Bleeds:
+                units.update(bleed.get_output_units())
+        return units

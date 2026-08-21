@@ -455,4 +455,48 @@ class THeatpath(ABC):
             self.Get_Inlet_or_Outlet_Output(self.ht, out)
 
         return out
+
+    def Get_Inlet_or_Outlet_Output_units(self, ht, units):
+        loc_value = ht.ht_loc.value
+        if self.system.debug_output:
+            units[f"a_{loc_value} {self.name}"] = "[m2]"
+            units[f"Nu_{loc_value}"] = "[-]"
+            units[f"hs_conv_{loc_value} {self.name}"] = "[W/m2/K]"
+            units[f"hs_cond_{loc_value} {self.name}"] = "[W/m2/K]"
+            units[f"T_wall_{loc_value} {self.name}"] = "[K]"
+            units[f"Q_rad_{loc_value} {self.name}"] = "[W]"
+        units[f"Q_{loc_value} {self.name}"] = "[W]"
     
+    def get_output_units(self):
+        units = {}
+
+        if self.system.debug_output:
+            if self.a_ht is not None:
+                units[f"a_ht_{self.name}"] = "[m2]"
+            if self.a_flow is not None:
+                units[f"a_flow_{self.name}"] = "[m2]"
+            if self.d_re is not None:
+                units[f"d_re_{self.name}"] = "[m]"
+            if self.k_gas is not None:
+                units[f"k_gas_{self.name}"] = "[W/m/K]"
+            if self.Nu is not None:
+                units[f"Nu_{self.name}"] = "[-]"
+            if self.d_mat is not None:
+                units[f"d_mat_{self.name}"] = "[m]"
+            if self.k_mat is not None:
+                units[f"k_mat_{self.name}"] = "[W/m/K]"
+            if self.eps_rad is not None:
+                units[f"eps_rad_{self.name}"] = "[-]"
+            if self.u_user is not None:
+                units[f"u_user_{self.name}"] = "[W/m2/K]"
+            if self.Q_user is not None:
+                units[f"Q_user_{self.name}"] = "[kW]"
+
+        if isinstance(self.ht, THeatPathStates):
+            self.Get_Inlet_or_Outlet_Output_units(self.ht.inlet, units)
+            self.Get_Inlet_or_Outlet_Output_units(self.ht.outlet, units)
+            units[f"Q_total {self.name}"] = "[W]"
+        else:
+            self.Get_Inlet_or_Outlet_Output_units(self.ht, units)
+
+        return units

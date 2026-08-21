@@ -303,7 +303,25 @@ class TAmbient(TComponent):
                 # correct gas mass fractions (gas_q.Y) to total mass fractions (including liquid water) by dividing by total mass
                 value = self.fs_ambient.gas_q.Y[idx] * self.fs_ambient.gas_q.mass / self.fs_ambient.W
             out[f"Y{s}_{sp}"] = value
-        return out    
+        return out  
+
+    def get_output_units(self):
+        units = super().get_output_units()
+
+        s = self.station_nr
+
+        units[f"Alt"] = "[m]"
+        units[f"Ts{s}"] = "[K]"
+        units[f"Ps{s}"] = "[Pa]"
+        units[f"Tt{s}"] = "[K]"
+        units[f"Pt{s}"] = "[Pa]"
+        units[f"dTs{s}"] = "[K]"
+        units[f"Mach{s}"] = "[-]"
+        units[f"RH{s}"] = "[%]"
+
+        for sp in self.fs_out_output_species:
+            units[f"Y{s}_{sp}"] = "[-]"
+        return units      
 
     def get_station_nr(self):
         return self.station_nr

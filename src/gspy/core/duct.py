@@ -56,3 +56,9 @@ class TDuct(TGaspath):
         if self.Q is not None:
             out[f"Q{self.id}"] = self.Q / 1000  # kW
         return out
+
+    def get_output_units(self):
+        units = super().get_output_units()
+        if self.Q is not None:
+            units[f"Q{self.id}"] = "[kW]"
+        return units    

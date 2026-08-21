@@ -559,3 +559,9 @@ class TCombustor(TGaspath):
         out = super().get_outputs()
         out["Wf_"+self.name] = self.Wf
         return out
+
+    def get_output_units(self):
+        units = super().get_output_units()
+        units["Wf_"+self.name] = "[kg/s]"
+
+        return units

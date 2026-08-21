@@ -76,5 +76,11 @@ class TExhaustDiffuser(TGaspath):
         sout = self.station_out
         out[f"T{sout}"]  = self.fs_out.T
         out[f"P{sout}"]  = self.fs_out.P
-
         return out
+
+    def get_output_units(self):
+        units = super().get_output_units()
+        sout = self.station_out
+        units[f"T{sout}"]  = "[K]"
+        units[f"P{sout}"]  = "[Pa]"
+        return units

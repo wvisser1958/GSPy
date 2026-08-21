@@ -80,6 +80,13 @@ class TStarterGenerator(TMotor):
         out["PF_" + self.name] = self.power_factor  # power factor for output
         return out
 
+    def get_output_units(self):
+        units = {}
+        units["PW_" + self.name] = "[kW]"
+        units["S_" + self.name] = "[kVA]"
+        units["PF_" + self.name] = "[-]"
+        return units
+    
     def get_drive_shaft_power(self):
         # Sign depends on operating mode: starter delivers power to shaft,
         # generator absorbs power from shaft

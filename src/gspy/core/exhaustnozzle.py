@@ -1159,3 +1159,21 @@ class TExhaustNozzle(TGaspath):
 
         return out
 
+    def get_output_units(self):
+        units = super().get_output_units()
+
+        sthr = self.station_throat
+        sout = self.station_out
+
+        units[f"T{sthr}"]  = "[K]"
+        units[f"P{sthr}"]  = "[P]"
+        units[f"V{sthr}"]  = "[m/s]"
+        units[f"Mach{sthr}"]  = "[-]"
+        units[f"T{sout}"]  = "[K]"
+        units[f"P{sout}"]  = "[P]"
+        units[f"A{sthr}"]  = "[m2]"
+        units[f"A{sthr}_geom"]  = "[m2]"
+        units["FG_"+self.name]  = "[kN]"
+
+        return units
+

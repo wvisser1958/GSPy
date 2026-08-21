@@ -236,6 +236,29 @@ class TTurboComponent(TGaspath):
         # 2.0 OK
         out[f"TQ{self.id}"] = self.PW / (2 * math.pi * self.N / 60) if self.PW != None and self.N != None else None
 
-        out[f"PW{self.id}"] = self.PW
+        out[f"PW{self.id}"] = self.PW/1000
 
         return out
+
+    def get_output_units(self):
+        units = super().get_output_units()
+
+        units[f"N{self.shaft_id}"] = "[rpm]"
+        units[f"Nc{self.id}"] = "[rpm]"
+        units[f"N{self.shaft_id}%"] = "[%]"
+        units[f"Nc%{self.id}"] = "[%]"
+
+        # 1.5
+        if self.Eta != None:
+            units[f"Eta_is{self.id}"] = "[-]"
+
+        # 1.6 WV
+        if self.vg_angle_des !=None:
+            units[f"vg_angle{self.id}"] = "[degr]"
+
+        # 2.0 OK
+        units[f"TQ{self.id}"] = "[Nm]"
+
+        units[f"PW{self.id}"] = "[kW]"
+
+        return units    

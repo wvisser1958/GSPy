@@ -93,3 +93,22 @@ class TCoolingFlow(TGaspath):
             out[f"DHWexp{self.station_out}"]  = self.DHWexp
 
         return out
+
+    def get_output_units(self):
+        units = super().get_output_units()
+
+        units[f"Fraction from bleed nr {self.frombleednumber}"]  = "[-]"
+        units[f"T{self.station_in}j"]  = "[K]"
+        units[f"P{self.station_in}j"]  = "[Pa]"
+
+        #  1.6 WV
+        units[f"W{self.station_out}"]  = "[kg/s]"
+        units[f"T{self.station_out}"]  = "[K]"
+        units[f"P{self.station_out}"]  = "[Pa]"
+
+        if self.DHWpump != None:
+            units[f"DHWpump{self.station_out}"]  = "[W]"
+        if self.DHWexp != None:
+            units[f"DHWexp{self.station_out}"]  = "[W]"
+
+        return units

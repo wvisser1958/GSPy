@@ -43,6 +43,12 @@ class TLoad(TOneShaftComponent):
 
         return out
 
+    def get_output_units(self):
+        out = {}
+        out["PW_" + self.name] = "[kW]"
+
+        return out
+
     def get_drive_shaft_power(self):
         # Power consumer, so negative sign: power absorbed from shaft
         return -self.power_w

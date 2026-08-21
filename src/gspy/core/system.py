@@ -176,6 +176,7 @@ class TSystemModel:
 
         # 1.1 WV dictionary for output during iteration (e.g. for control equations)
         self.output_dict = {}
+        self.output_units_dict = {}
 
         self.component_run_list = [self.ambient] # system model component list, always starting with ambient
         self.shaft_list = []
@@ -207,14 +208,6 @@ class TSystemModel:
         self.exception_error = 4
 
         self.continue_next_OD_point_on_error = True
-
-    # def AddAmbientHeatPaths(self, heatpaths):
-    #     self.ambient.heatpaths.append(hp)
-    #     # for hp in heatpaths:
-    #     #     self.ambient.heatpaths.append(hp)
-    #         # already defined:
-    #         # hp.system = self
-    #         # hp.component = self.ambient
 
     @staticmethod
     def _normalize(comp: dict[str, float],
@@ -307,12 +300,6 @@ class TSystemModel:
         ]
 
     # combined: use debug_errors_states property 
-    # @property
-    # def debug_states_errors(self):
-    #     return [
-    #         f"{ns:<20} = {vs:9.6g}  {ne:<20} = {ve:9.6g}"
-    #         for ns, vs, ne, ve in zip(self.state_names, self.states, self.error_names, self.errors, strict=True)
-    #     ]
     @property
     def debug_states_errors(self):
         return [
@@ -344,7 +331,19 @@ class TSystemModel:
         self.WF = 0.0    # Total fuel kg/s
         self.PW = 0.0    # Total net output shaft power kW
 
-        
+    def final_output(self, point_time, mode):
+        self.output_dict = {}
+        self.output_dict['Point/Time'] = point_time
+        self.output_dict['Mode'] = mode
+        self.output_dict['Description'] = self.descr
+        # Run simulation code of all components in the system model
+        for comp in self.component_run_list:
+            self.output_dict.update(comp.get_outputs())
+        self.output_dict.update(self.get_outputs())        
+
+    # # 2.0.0.0 not used
+    def define_comp_run_list(self, *component_list):
+        self.component_run_list = [self.ambient, *component_list]
 
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
@@ -390,11 +389,6 @@ class TSystemModel:
             comp.PostRun(mode, point_time)
 
         return self.errors
-
-    # 2.0.0.0
-    # self.component_run_list, always starting with ambient
-    def define_comp_run_list(self, *component_list):
-        self.component_run_list = [self.ambient, *component_list]
 
     # 1.6.0.1.8 dictionary with design targets and variables
     # def Run_DP_simulation():
@@ -462,7 +456,7 @@ class TSystemModel:
                         #     }   
                         )
                 except Exception as e:
-                    self.Do_Output(0, self.exception_error)
+                    self.Do_Output('DP', 0, self.exception_error)
                     print(f"DP target iteration exception error: {e}")
 
                 # report target equations iteration result
@@ -476,9 +470,9 @@ class TSystemModel:
 
             self.targets = targets # save target information for output
 
-            self.Do_Output(0, self.no_error)      # 0 to indicated all Ok if we get to this line of code after Do_Run
+            self.Do_Output('DP', 0, self.no_error)      # 0 to indicated all Ok if we get to this line of code after Do_Run
         except Exception as e:
-            self.Do_Output(0, self.exception_error)
+            self.Do_Output('DP', 0, self.exception_error)
             print(f"DP simulation: exception error: {e}")
 
     # 2.1
@@ -512,7 +506,6 @@ class TSystemModel:
             failedcount = 0
             for point_time, value in self.input_points:
                 # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
-                # fsys.Do_Output(Mode, inputpoints[ipoint])
                 rmax = 0
                 try:
                     def find_solution(high_gas_fidelity): 
@@ -548,7 +541,7 @@ class TSystemModel:
                         self.states = solution.x
                         solution = find_solution(high_gas_fidelity = True)
 
-                    self.Do_Output(point_time, self.no_error if solution.success else self.convergence_error)
+                    self.Do_Output('OD', point_time, self.no_error if solution.success else self.convergence_error)
 
                     if solution.success:
                         successcount = successcount + 1
@@ -560,14 +553,14 @@ class TSystemModel:
                         error_index = self.false_convergence_error
                     else:
                         error_index = self.exception_error
-                    self.Do_Output(point_time, error_index)
+                    self.Do_Output('OD', point_time, error_index)
                     failedcount = failedcount + 1
                     print(f"OD simulation: Error at point {point_time}: {e}")
                     if not self.continue_next_OD_point_on_error:
                         break
 
         except Exception as e:
-            self.Do_Output(point_time, self.exception_error)
+            self.Do_Output('OD', point_time, self.exception_error)
             failedcount = failedcount + 1
             print(f"OD simulation: exception error: {e}")
 
@@ -579,12 +572,12 @@ class TSystemModel:
     def PrintPerformance(self, mode, PointTime):
         print(f"System performance ({mode}) Point/Time:{PointTime}")
         print(f"\tFuel flow : {self.WF:.2f} kg/s")
-        if (self.FG != 0) or (self.RD !=0):
+        if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)):
             self.FN = self.FG - self.RD
             print(f"\tGross thrust: {self.FG:.2f} kN")
             print(f"\tRam drag    : {self.RD:.2f} kN")
             print(f"\tNet thrust  : {self.FN:.2f} kN")
-            print(f"\tTSFC        : {self.WF/ self.FN:.5f} kg/s/kN")
+            print(f"\tTSFC        : {self.WF*1000/self.FN:.5f} g/s/kN")
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW += shaft.PW_sum
@@ -592,7 +585,7 @@ class TSystemModel:
         for component in self.component_run_list:
             if isinstance(component, TShaftComponent):
                 self.PW -= component.get_drive_shaft_power()
-        if not math.isclose(self.PW, 0.0, abs_tol=1e-3):
+        if not math.isclose(self.PW, 0.0, abs_tol=4): # ignoring PW <= 1 W
             print(f"\tTotal power output : {self.PW/1000:.3f} kW")
             print(f"\tSFC shaft power    : {self.WF / self.PW  * 1e6:.3f} g/s/kW")
 
@@ -600,7 +593,7 @@ class TSystemModel:
     def get_outputs(self):
         out = {}
         out["WF"] = self.WF
-        if (self.FG != 0) or (self.RD !=0):
+        if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)):
             self.FN = self.FG - self.RD
             out["FG"] = self.FG
             out["FN"] = self.FN
@@ -609,14 +602,30 @@ class TSystemModel:
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW += shaft.PW_sum
-            out[f"PW{shaft.shaft_id}"] = shaft.PW_sum/1000
+            if not math.isclose(shaft.PW_sum, 0.0, abs_tol=4.0): # ignoring PW <= 4 W
+                out[f"PW{shaft.shaft_id}"] = shaft.PW_sum/1000
         for component in self.component_run_list:
             if isinstance(component, TShaftComponent):
                 self.PW -= component.get_drive_shaft_power()
-        out["PW"] = self.PW/1000
-        if not math.isclose(self.PW, 0.0, abs_tol=1e-3):
+        if not math.isclose(self.PW, 0.0, abs_tol=4.0): # ignoring PW <= 4 W
+            out["PW"] = self.PW/1000
             out["SFCshaft"] = self.WF / self.PW * 1e6 # g/s/kW
         return out
+
+    def get_output_units(self):
+        units = {}
+        units["WF"] = "[kg/s]"
+        if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)):
+            units["FG"] = "[kN]"
+            units["FN"] = "[kN]"
+            units["RD"] = "[kN]"
+            units["TSFC"] = "[g/s/kN]"
+        for shaft in self.shaft_list:
+            units[f"PW{shaft.shaft_id}"] = "[kW]"
+        if not math.isclose(self.PW, 0.0, abs_tol=4.0): # ignoring PW <= 1 W
+            units["PW"] = "[kW]"
+            units["SFCshaft"] = "[g/s/kW]"
+        return units
 
     def print_DP_equation_solution(self):
         if self.targets != None:
@@ -624,7 +633,11 @@ class TSystemModel:
             for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(self.targets):
                 self.vprint(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
 
-    def Do_Output(self, point_time, error_code):
+    def Do_Output(self, mode, point_time, error_code):
+
+        # re-generate output_dict based on converged or iteration end model status
+        self.final_output(point_time, mode)        
+
         # output to terminal
         if self.VERBOSE:
             # 1.4
@@ -653,13 +666,47 @@ class TSystemModel:
         if self.output_table is None:
             self.output_table = pd.DataFrame(self._output_rows)
 
+    # def OutputToCSV(self):
+    #     # Export to Excel
+    #     os.makedirs(self.output_dir_path, exist_ok=True)
+    #     outputcsvfilename = os.path.join(self.output_dir_path, self.model_name + ".csv")
+    #     self.prepare_output_table()
+    #     self.output_table.to_csv(outputcsvfilename, index=False, float_format='%.6f')
+    #     self.vprint("output saved in "+outputcsvfilename)
+
     def OutputToCSV(self):
-        # Export to Excel
+        # define output units
+        for comp in self.component_run_list:
+            self.output_units_dict.update(comp.get_output_units())
+        self.output_units_dict.update(self.get_output_units())
+
         os.makedirs(self.output_dir_path, exist_ok=True)
-        outputcsvfilename = os.path.join(self.output_dir_path, self.model_name + ".csv")
+        outputcsvfilename = os.path.join(
+            self.output_dir_path,
+            self.model_name + ".csv"
+        )
+
         self.prepare_output_table()
-        self.output_table.to_csv(outputcsvfilename, index=False, float_format='%.6f')
-        self.vprint("output saved in "+outputcsvfilename)
+
+        with open(outputcsvfilename, "w", newline="") as f:
+            # Header
+            f.write(",".join(self.output_table.columns) + "\n")
+
+            # Units
+            f.write(",".join(
+                self.output_units_dict.get(col, "")
+                for col in self.output_table.columns
+            ) + "\n")
+
+            # Data
+            self.output_table.to_csv(
+                f,
+                index=False,
+                header=False,
+                float_format="%.6f"
+            )
+
+        self.vprint("output saved in " + outputcsvfilename)
 
     def Plot_X_nY_graph(self, title, filename_suffix, xcol, ycollist, do_show = False):
         self.prepare_output_table()
