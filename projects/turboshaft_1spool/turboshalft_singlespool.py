@@ -28,7 +28,13 @@ from gspy.core.coolingflow import TCoolingFlow
 
 # IMPORTANT NOTE TO THIS MODEL FILE
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#
+# Single spool turboshaft APU model with bleed flows and cooling flows, using a radial compressor map
+# and a standard turbine map. This is a simplified model for demonstration purposes, and does not
+# represent a real APU. The model employs a generator power offtake only, and does not include any other
+# shaft loads or accessories. The model excludes a load compressor, it produces electricity only. The
+# model is not validated against any real data, and should not be used for any design or analysis
+# purposes. The model is intended for educational purposes only, to demonstrate the use of GSPy for
+# modeling a turboshaft APU with bleed flows and cooling flows.
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -43,13 +49,13 @@ def main():
     # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # FuelControl for open loop direct control of fuel flow
     fuelcontrol = TControl(
-        system=turboshaft,  # Owning system model object
-        name="Fcontrol",  # Component name
-        #    map_filename = '',             # Optional map file name
+        system=turboshaft,        # Owning system model object
+        name="Fcontrol",          # Component name
+        # map_filename = '',        # Optional map file name
         DP_input_value=0.060774,  # Design point (DP) input (Wf)
         OD_start_value=100,
-        #    OD_end_value = None,
-        #    OD_step_value = None,      # Off design (OD) input: single input value -> 100 % N1
+        # OD_end_value = None,
+        # OD_step_value = None,     # Off design (OD) input: single input value -> 100 % N1
         OD_controlled_parameter_name="Nc%_Compressor",
         # OD control parameter name: must be an output present in the output table
         # If None: the component using it directly takes the value
@@ -67,14 +73,14 @@ def main():
 
     # Generic gas turbine components
     inlet = TInlet(
-        system=turboshaft,  # Owning system model object
-        name="Inlet1",  # Component name
-        #    map_filename = '',       # Map file name
-        #    control = None,      # Optional control component
-        station_in="000",  # Station nr in
-        station_out="020",  # Station nr out
-        Wdes=3.844,  # design inlet mass flow
-        PRdes=0.9934,  # design pressure ratio (PR = 1 - Ploss_relative)
+        system=turboshaft,        # Owning system model object
+        name="Inlet1",            # Component name
+        # map_filename = '',        # Map file name
+        # control = None,           # Optional control component
+        station_in="000",         # Station nr in
+        station_out="020",        # Station nr out
+        Wdes=3.844,               # design inlet mass flow
+        PRdes=0.9934,             # design pressure ratio (PR = 1 - Ploss_relative)
     )
 
     # compressor bleeds
@@ -82,47 +88,47 @@ def main():
         TBleedFlow(
             system=turboshaft,
             name="HPbleed",
-            station_in="031",  # station in
-            station_out="032",  # station out
-            bleednumber=1,  # bleed number
-            bleedfractiondes=0.05,  # fraction of compressor inlet flow
-            dPfactor=1.0,  # dP factor: bleed extraction pressure fraction: Pbleed = Pin + dP * dPtotal
+            station_in="031",      # station in
+            station_out="032",     # station out
+            bleednumber=1,         # bleed number
+            bleedfractiondes=0.05, # fraction of compressor inlet flow
+            dPfactor=1.0,          # dP factor: bleed extraction pressure fraction: Pbleed = Pin + dP * dPtotal
             # this is an improvement over the GSP method where it was proportional to dH
             # dPfraction can be directly determined from the bleed pressure level requirement
         )
     ]
 
     compressor = TCompressor(
-        system=turboshaft,  # Owning system model object
-        name="Compressor",  # Component name
+        system=turboshaft,         # Owning system model object
+        name="Compressor",         # Component name
         map_filename="RadComp10-AIAA-79-1159.MAP",  # Map file name
-        #  control = None,          # Optional control component
-        station_in="020",  # Station nr in
-        station_out="030",  # Station nr out
-        shaft_id=1,  # Shaft nr
-        Ndes=36000,  # Design rpm
-        Etades=0.6787,  # Design efficiency
-        Ncmapdes=1.0,  # Map design Nc (for scaling)
-        Betamapdes=0.59714,  # Map design Beta (for scaling)
-        PRdes=8.0677,  # Design pressure ratio
-        SpeedOption="GG",  # Speed option
+        #  control = None,         # Optional control component
+        station_in="020",          # Station nr in
+        station_out="030",         # Station nr out
+        shaft_id=1,                # Shaft nr
+        Ndes=36000,                # Design rpm
+        Etades=0.6787,             # Design efficiency
+        Ncmapdes=1.0,              # Map design Nc (for scaling)
+        Betamapdes=0.59714,        # Map design Beta (for scaling)
+        PRdes=8.0677,              # Design pressure ratio
+        SpeedOption="GG",          # Speed option
         Bleeds=compressor_bleeds,  # Optional bleed flows object list
-        # heatpaths = None        # Optional list of heat path links with heatsinks)
+        # heatpaths = None          # Optional list of heat path links with heatsinks)
     )
 
     combustor = TCombustor(
-        system=turboshaft,  # Owning system model object
-        name="Combustor",  # Component name
-        # map_filename = '',       # Map file name             # for future use of a combustor efficiency map
+        system=turboshaft,         # Owning system model object
+        name="Combustor",          # Component name
+        # map_filename = '',        # Map file name; for future use of a combustor efficiency map
         # OD fuel input from FuelControl
-        control_component=fuelcontrol,  # Fuel control component    # fuel control component setting fuel flow depending on OD / PointTime point
-        station_in="030",  # Station nr in
-        station_out="040",  # Station nr out
-        Wfdes=0.0637,  # Design point (DP) fuel flow Wfdes
-        Texitdes=1250,  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
-        PRdes=0.96,  # Design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
-        Etades=0.985,  # Design combustor efficiency
-        Tfueldes=None,  # Fuel temperature K           # If None, then Tfuel is assumed to be equal to temperature of entry air flow
+        control_component=fuelcontrol, # Fuel control component; fuel control component setting fuel flow depending on OD / PointTime point
+        station_in="030",          # Station nr in
+        station_out="040",         # Station nr out
+        Wfdes=0.0637,              # Design point (DP) fuel flow Wfdes
+        Texitdes=1250,             # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
+        PRdes=0.96,                # Design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+        Etades=0.985,              # Design combustor efficiency
+        Tfueldes=None,             # Fuel temperature K; if None, then Tfuel is assumed to be equal to temperature of entry air flow
         # For the fuel properties specification there are 2 options:
         #     1:        Virtual fuel with unknown composition:
         #                   specify LHV, H/C ratio, O/C ratio and Tfuel. GSPy will then do the species bookkeeping, determine the exit
@@ -132,11 +138,11 @@ def main():
         #                   'NC12H26:1' (dodecane),
         #                   'CH4:9, N2:1' (mixture of CH4 and N2 in ratio 9:1 by mass)
         #                   or 'CH4:5, C2H6:1' for example, and fuel temperature
-        LHVdes=43031,  # LHV, required if Fuelcomposition is None
-        HCratiodes=1.9167,  # HCratio
-        OCratiodes=0,  # OCratio
-        FuelCompositiondes=None,  # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
-        A=None,  # Cross flow area to calculate fundamental pressue loss
+        LHVdes=43031,              # LHV, required if Fuelcomposition is None
+        HCratiodes=1.9167,         # HCratio
+        OCratiodes=0,              # OCratio
+        FuelCompositiondes=None,   # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
+        A=None,                    # Cross flow area to calculate fundamental pressue loss
     )
 
     # GGT cooling flows
@@ -156,49 +162,50 @@ def main():
     ]
 
     turbine = TTurbine(
-        system=turboshaft,  # Owning system model object
-        name="Turbine1",  # Component name
-        map_filename="turbimap.map",  # Map file name
-        control_component=None,  # Optional control component
-        station_in="040",  # Station nr in
-        station_out="050",  # Station nr out
-        shaft_id=1,  # Shaft nr
-        Ndes=36000,  # Design point (DP) rpm
-        Etades=0.88,  # Design point (DP) efficiency
-        Ncmapdes=1,  # Map design Nc (for scaling)
-        Betamapdes=0.50943,  # Map design Beta (for scaling)
-        Etamechdes=0.99,  # Design mechanical efficiency (standard isentropic, Polytropic_Eta = 0)
+        system=turboshaft,           # Owning system model object
+        name="Turbine1",             # Component name
+        map_filename="turbimap.map", # Map file name
+        control_component=None,      # Optional control component
+        station_in="040",            # Station nr in
+        station_out="050",           # Station nr out
+        shaft_id=1,                  # Shaft nr
+        Ndes=36000,                  # Design point (DP) rpm
+        Etades=0.88,                 # Design point (DP) efficiency
+        Ncmapdes=1,                  # Map design Nc (for scaling)
+        Betamapdes=0.50943,          # Map design Beta (for scaling)
+        Etamechdes=0.99,             # Design mechanical efficiency (standard isentropic, Polytropic_Eta = 0)
         #   TurbineType="GG",  # Turbine type 'GG' = gas generator delivering all power required by the shaft
-        # A single spool APU does not use all power for the compressor as there might be power off-take for a generator or other shaft load, so the turbine type is set to 'PT' = free power turbine
-        TurbineType="PT",  # Turbine type 'PT' = free power turbine or turbine driving power output shaft
+        # A single spool APU does not use all power for the compressor as there might be power off-take for a
+        # generator or other shaft load, so the turbine type is set to 'PT' = free power turbine
+        TurbineType="PT",            # Turbine type 'PT' = free power turbine or turbine driving power output shaft
         CoolingFlows=cooling_flows,  # Optional cooling flows object list
-        Polytropic_DP_eta=0,  # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
+        Polytropic_DP_eta=0,         # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
     )
 
     duct = TDuct(
-        system=turboshaft,  # Owning system model object
-        name="ExhDuct",  # Component name
+        system=turboshaft,    # Owning system model object
+        name="ExhDuct",       # Component name
         #  map_filename = '',   # Optional map file name
-        station_in="050",  # Station nr in
-        station_out="070",  # Station nr out
-        PRdes=1.0,  # Design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
+        station_in="050",     # Station nr in
+        station_out="070",    # Station nr out
+        PRdes=1.0,            # Design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
     )
 
-    exhaustnozzle = TExhaustDiffuser(
-        system=turboshaft,  # Owning system model object
+    exhaust_diffuser = TExhaustDiffuser(
+        system=turboshaft,       # Owning system model object
         name="ExhaustDiffuser",  # Component name
-        #  map_filename = '',        # Optional map file name
-        station_in="070",  # Station nr in
-        station_out="090",  # Station nr out
-        #   PRdes=0.9724,  # Design diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
-        PRdes=0.924,  # Design diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
+        # map_filename = '',       # Optional map file name
+        station_in="070",        # Station nr in
+        station_out="090",       # Station nr out
+        # PRdes=0.9724,            # Design diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
+        PRdes=0.924,             # Design diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
     )
 
     generator_load = TLoad(
-        system=turboshaft,  # Owning system model object
-        name="GeneratorLoad",  # Component name
-        drive_shaft_id=1,  # Shaft number of the load, must be defined in the model file before this load, the shaft could also be created in the model file first
-        power_kw_des=450,  # Design power of the load in kW, used to calculate the power demand of the load at design conditions, and to calculate the power demand at off-design conditions based on the power demand set by the control component
+        system=turboshaft,       # Owning system model object
+        name="GeneratorLoad",    # Component name
+        drive_shaft_id=1,        # Shaft number of the load, must be defined in the model file before this load, the shaft could also be created in the model file first
+        power_kw_des=450,        # Design power of the load in kW, used to calculate the power demand of the load at design conditions, and to calculate the power demand at off-design conditions based on the power demand set by the control component
     )
 
     # create a turbojet system model
@@ -209,7 +216,7 @@ def main():
         combustor,
         turbine,
         duct,
-        exhaustnozzle,
+        exhaust_diffuser,
         generator_load,
     )
 
