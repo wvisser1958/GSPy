@@ -42,9 +42,7 @@ def main():
     turboshaft = TSystemModel("BLeedlessAPU", model_file=__file__)
 
     # Override ambient object station number to with new station string
-    print("Ambinet station string: ", turboshaft.ambient.get_station_nr())
     turboshaft.ambient.set_station_nr("000")
-    print("Ambinet station string: ", turboshaft.ambient.get_station_nr())
 
     # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # FuelControl for open loop direct control of fuel flow
