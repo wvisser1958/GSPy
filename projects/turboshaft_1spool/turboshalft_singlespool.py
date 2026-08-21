@@ -246,11 +246,11 @@ def main():
     turboshaft.OutputToCSV()
 
     # Plot nY vs X parameter
-    turboshaft.Plot_X_nY_graph('Engine performance vs. N [%]',
+    turboshaft.Plot_X_nY_graph('Engine performance vs. generator load',  # title
                             # suffix for filename to keep multiple plot files apart
                             "_1",
                             # common X parameter column name with label
-                            ("N1%", "Rotor speed [%]"),
+                            ("PW_GeneratorLoad", "Generator load [kW]"),
                             # 4 Y paramaeter column names with labels and color
                             [   ("T040",              "TIT [K]",                  "blue"),
                                 ("T090",              "EGT [K]",                  "blue"),
