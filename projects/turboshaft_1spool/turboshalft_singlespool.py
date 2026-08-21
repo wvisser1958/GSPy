@@ -39,7 +39,7 @@ from gspy.core.coolingflow import TCoolingFlow
 
 
 def main():
-    turboshaft = TSystemModel("BLeedlessAPU", model_file=__file__)
+    turboshaft = TSystemModel("Turboshaft_Single_Spool", model_file=__file__)
 
     # Override ambient object station number to with new station string
     turboshaft.ambient.set_station_nr("000")
@@ -99,7 +99,7 @@ def main():
     compressor = TCompressor(
         system=turboshaft,         # Owning system model object
         name="Compressor",         # Component name
-        map_filename="RadComp10-AIAA-79-1159.MAP",  # Map file name
+        map_filename="RadialCompMap.map",  # Map file name
         #  control = None,         # Optional control component
         station_in="020",          # Station nr in
         station_out="030",         # Station nr out
@@ -109,7 +109,7 @@ def main():
         Ncmapdes=1.0,              # Map design Nc (for scaling)
         Betamapdes=0.59714,        # Map design Beta (for scaling)
         PRdes=8.0677,              # Design pressure ratio
-        SpeedOption="GG",          # Speed option
+        SpeedOption="CS",          # Speed option
         Bleeds=compressor_bleeds,  # Optional bleed flows object list
         # heatpaths = None          # Optional list of heat path links with heatsinks)
     )
@@ -123,7 +123,8 @@ def main():
         station_in="030",          # Station nr in
         station_out="040",         # Station nr out
         Wfdes=0.0637,              # Design point (DP) fuel flow Wfdes
-        Texitdes=1250,             # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
+        # Texitdes=1250,             # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
+        Texitdes=None,             # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
         PRdes=0.96,                # Design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
         Etades=0.985,              # Design combustor efficiency
         Tfueldes=None,             # Fuel temperature K; if None, then Tfuel is assumed to be equal to temperature of entry air flow
@@ -176,7 +177,7 @@ def main():
         # A single spool APU does not use all power for the compressor as there might be power off-take for a
         # generator or other shaft load, so the turbine type is set to 'PT' = free power turbine
         TurbineType="PT",            # Turbine type 'PT' = free power turbine or turbine driving power output shaft
-        CoolingFlows=cooling_flows,  # Optional cooling flows object list
+        # CoolingFlows=cooling_flows,  # Optional cooling flows object list
         Polytropic_DP_eta=0,         # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
     )
 
@@ -229,35 +230,35 @@ def main():
     turboshaft.ambient.SetConditions("DP", 0, 0, 0, None, None)
     turboshaft.Run_DP_simulation()
 
-    # # Run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
-    # turboshaft.mode = 'OD'
-    # turboshaft.inputpoints = fuelcontrol.get_OD_input_points()
-    # print("\nOff-design (OD) results")
-    # print("=======================")
-    # # Set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a
-    # # sweep of operating/inlet conditions is desired
-    # turboshaft.ambient.SetConditions('OD', 0, 0, 0, None, None)
-    # # Run OD simulation
-    # turboshaft.Run_OD_simulation()
+    # Run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
+    turboshaft.input_points = fuelcontrol.get_OD_input_points()
+    print("\nOff-design (OD) results")
+    print("=======================")
+    # Set OD ambient/flight conditions and operating loads
+    turboshaft.ambient.SetConditions('OD', 0, 0, 0, None, None)
+    for generator_load_value in [450, 400, 350, 300, 250, 200, 150, 100, 50, 0]:  # kW
+        print(f"\nRunning OD simulation for generator load: {generator_load_value} kW")
+        generator_load.set_OD_power_demand(generator_load_value)
+        # Run OD simulation
+        turboshaft.Run_OD_simulation()
 
     # Export OutputTable to CSV
     turboshaft.OutputToCSV()
 
-    # # Plot nY vs X parameter
-    # turboshaft.Plot_X_nY_graph('Engine performance vs. N [%]',
-    #                         # suffix for filename to keep multiple plot files apart
-    #                         "_1",
-    #                         # common X parameter column name with label
-    #                         ("N1%", "Rotor speed [%]"),
-    #                         # 4 Y paramaeter column names with labels and color
-    #                         [   ("T4",              "TIT [K]",                  "blue"),
-    #                             ("T5",              "EGT [K]",                  "blue"),
-    #                             ("W2",              "Inlet mass flow [kg/s]",   "blue"),
-    #                             ("Wf_Combustor",    "Fuel flow [kg/s]",         "blue"),
-    #                             ("FN",              "Net thrust [kN]",          "blue")            ])
+    # Plot nY vs X parameter
+    turboshaft.Plot_X_nY_graph('Engine performance vs. N [%]',
+                            # suffix for filename to keep multiple plot files apart
+                            "_1",
+                            # common X parameter column name with label
+                            ("N1%", "Rotor speed [%]"),
+                            # 4 Y paramaeter column names with labels and color
+                            [   ("T040",              "TIT [K]",                  "blue"),
+                                ("T090",              "EGT [K]",                  "blue"),
+                                ("W020",              "Inlet mass flow [kg/s]",   "blue"),
+                                ("Wf_Combustor",      "Fuel flow [kg/s]",         "blue") ])
 
-    #  # Create component map plots with operating lines if available
-    # turboshaft.PlotMaps()
+     # Create component map plots with operating lines if available
+    turboshaft.PlotMaps()
 
     print("---  End of running APU turboshaft simulation  ---")
 

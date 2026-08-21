@@ -46,3 +46,12 @@ class TLoad(TOneShaftComponent):
     def get_drive_shaft_power(self):
         # Power consumer, so negative sign: power absorbed from shaft
         return -self.power_w
+
+    def set_OD_power_demand(self, power_kw):
+        """
+        Set the off-design power demand of the load in kW.
+
+        Args:
+            power_kw (float): Power demand in kW.
+        """
+        self.power_w = power_kw * 1000  # convert kW to W

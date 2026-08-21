@@ -13,8 +13,6 @@
 # Authors
 #   Wilfried Visser
 
-import numpy as np
-import cantera as ct
 import gspy.core.utils as fu
 from gspy.core.flow_state import TFlowState
 from gspy.core.turbo_component import TTurboComponent
@@ -22,9 +20,9 @@ from gspy.core.compressormap import TCompressorMap
 
 
 class TCompressor(TTurboComponent):
-    def __init__(self, 
+    def __init__(self,
                  *,
-                PRdes,
+                 PRdes,
                  SpeedOption,
                  Bleeds=None,
                  **kwargs):    # Constructor of the class
@@ -35,8 +33,8 @@ class TCompressor(TTurboComponent):
         self.Bleeds = Bleeds
         if self.Bleeds != None:
             for bleed in self.Bleeds:
-                bleed.fs_in = TFlowState.create_empty(self.system.gas, 
-                                              station_nr=bleed.station_in, 
+                bleed.fs_in = TFlowState.create_empty(self.system.gas,
+                                              station_nr=bleed.station_in,
                                               # we are assuming not liquid water in the bleed flows, so also not in the cooling flows
                                               enable_liquid_water=False)
 
@@ -106,7 +104,7 @@ class TCompressor(TTurboComponent):
             # set out flow rate to W according to map
             # may deviate from self.fs_in.mass during iteration: this is to propagate the effect of mass flow error
             # to downstream components for more stable convergence in the solver (?)
-            self.fs_out.W_gas = self.W_map            
+            self.fs_out.W_gas = self.W_map
 
         # v1.2 correction for bleed flows
         total_all_bleed_fractions = 0
@@ -121,11 +119,11 @@ class TCompressor(TTurboComponent):
                 # bleed.fs_in.TPY = self.fs_in_q.T, self.fs_in_q.P, self.fs_in_q.Y
                 # bleed.fs_in.scale_mass(bleed.bleedfraction * self.fs_in.W)
                 # bleed.fs_in.copy_from(self.fs_in_q, bleed.station_in, scale_W = bleed.bleedfraction, overrule_enable_liquid_water=False)
-                
+
 
                 # Compress Wbleed to bleed point
                 #  2.1
-                # dHW1 = fu.Compression(self.fs_in, bleed.fs_in, (self.fs_in.P+dP*bleed.dPfactor)/self.fs_in.P, self.Eta, 
+                # dHW1 = fu.Compression(self.fs_in, bleed.fs_in, (self.fs_in.P+dP*bleed.dPfactor)/self.fs_in.P, self.Eta,
                 #                       self.Polytropic_DP_eta if Mode=='DP' else 0)
                 # note that we are not using fs_in_q. Any Q added to bleed flow will only be added to bleed.fs_out
                 bleed.fs_in, dHW_bleed = self.fs_in.compress_real_eta(
@@ -151,7 +149,7 @@ class TCompressor(TTurboComponent):
         self.shaft.PW_sum = self.shaft.PW_sum - self.PW
 
         self.Add_Q_to_fs_out()
-        
+
         return self.fs_out
 
     # v1.2

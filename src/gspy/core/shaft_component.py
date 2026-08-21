@@ -142,8 +142,8 @@ class TOneShaftComponent(TShaftComponent, ABC):
                     raise NotImplementedError(
                         "Control of shaft devices based on state variables is not implemented yet."
                     )
-            else:  # use power demand from component design specification
-                self.power_w = self.power_w_des
+            else:  # use power demand from component
+                self.power_w
 
     def Run(self, Mode, PointTime):
         # Get shaft by shaft_id
@@ -156,7 +156,7 @@ class TOneShaftComponent(TShaftComponent, ABC):
         self._calculate_power_demand(Mode)
 
         # Apply the shaft power contribution to the connected shaft
-        self.drive_shaft.PW_sum = self.drive_shaft.PW_sum + self.get_drive_shaft_power()
+        self.drive_shaft.PW_sum += self.get_drive_shaft_power()
 
         return
 
