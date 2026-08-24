@@ -146,12 +146,14 @@ class TControl(TComponent):
                 self.input_value = self.DP_input_value * self.system.states[self.istate_control]
             # 2.0 OK Allow single value input of OD_start_value only
             # self.control_parameter_demand = self.OD_start_value + self.OD_input_points[PointTime] * self.OD_point_step_value
-            self.control_parameter_demand = self.OD_start_value
+            # self.control_parameter_demand = self.OD_start_value
 
-            # if not((self.OD_end_value == None) or (self.OD_point_step_value == None)):
-                #  2.1
-                # self.control_parameter_demand = self.control_parameter_demand + self.OD_input_points[PointTime] * self.OD_point_step_value
-            self.control_parameter_demand = point_time_input_value
+            # # if not((self.OD_end_value == None) or (self.OD_point_step_value == None)):
+            #     #  2.1
+            #     # self.control_parameter_demand = self.control_parameter_demand + self.OD_input_points[PointTime] * self.OD_point_step_value
+            # self.control_parameter_demand = point_time_input_value
+            self.control_parameter_demand = self.system.get_value_at_point_time(PointTime)
+            pass
 
     # 1.1 WV PostRun evaluates the equation for controlling parameter named OD_controlledparName to input
     # note that anything calculated in PostRun will not end up in the output_dict !

@@ -40,6 +40,7 @@ class TSystemModel:
                 cantera_yaml_filename: str = DEFAULT_YAML,
                 verbose: bool = DEFAULT_VERBOSE,
                 sys_enable_liquid_water : bool = False,
+                ambient_station_nr = 'a',
                 ambient_output_species = None,
                 ambient_heatpaths = None,
                 debug_output: bool = False
@@ -164,7 +165,7 @@ class TSystemModel:
 
         self.ambient = TAmbient(system=self, 
                                 name='Ambient', 
-                                stationnr='a', 
+                                station_nr=ambient_station_nr, 
                                 Altitude=0, 
                                 Macha=0,   
                                 dTs=0,
@@ -208,6 +209,13 @@ class TSystemModel:
         self.exception_error = 4
 
         self.continue_next_OD_point_on_error = True
+
+        # Flags indicating if shaft or power has alreade been printed / added to output DataFrame
+        # is set to True base on FN or PW being non-zero, in subsequent points, FN and/or PW will continue to be outputted 
+        # regardless being 0 for the remainder of the simulation session
+        self.output_shaft_power = False
+        self.output_shaft_power_total = False
+        self.output_thrust = False
 
     @staticmethod
     def _normalize(comp: dict[str, float],
@@ -444,6 +452,9 @@ class TSystemModel:
                                 'maxiter': 100,
                                 'fatol': self.error_tolerance,     # absolute residual target
                                 # 'xatol': 1e-12,                     # avoid premature "small step" success
+                                'jac_options' :{
+                                    'rdiff': 1e-4,   # larger relative perturbation step
+                                    }
                                 }
                         # options={
                         #     "maxiter": 100,
@@ -480,7 +491,7 @@ class TSystemModel:
         if len(self.input_points) == 0:
             raise RuntimeError("Number of input points cannot be 0")
         elif len(self.input_points) == 1:
-            return self.input_points[0, 1] 
+            return float(self.input_points[0, 1]) 
         else:
             times = self.input_points[:, 0]
             values = self.input_points[:, 1]
@@ -572,7 +583,8 @@ class TSystemModel:
     def PrintPerformance(self, mode, PointTime):
         print(f"System performance ({mode}) Point/Time:{PointTime}")
         print(f"\tFuel flow : {self.WF:.2f} kg/s")
-        if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)):
+        if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)) or self.output_thrust:
+            self.output_thrust = True 
             self.FN = self.FG - self.RD
             print(f"\tGross thrust: {self.FG:.2f} kN")
             print(f"\tRam drag    : {self.RD:.2f} kN")
@@ -585,7 +597,8 @@ class TSystemModel:
         for component in self.component_run_list:
             if isinstance(component, TShaftComponent):
                 self.PW -= component.get_drive_shaft_power()
-        if not math.isclose(self.PW, 0.0, abs_tol=4): # ignoring PW <= 1 W
+        if (not math.isclose(self.PW, 0.0, abs_tol=4)) or self.output_shaft_power_total: # ignoring PW <= 1 W
+            self.output_shaft_power_total = True   
             print(f"\tTotal power output : {self.PW/1000:.3f} kW")
             print(f"\tSFC shaft power    : {self.WF / self.PW  * 1e6:.3f} g/s/kW")
 
@@ -593,7 +606,9 @@ class TSystemModel:
     def get_outputs(self):
         out = {}
         out["WF"] = self.WF
-        if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)):
+        if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)) or self.output_thrust:
+            # flag to indicate thrust has been added to output for subsequent points
+            self.output_thrust = True 
             self.FN = self.FG - self.RD
             out["FG"] = self.FG
             out["FN"] = self.FN
@@ -602,29 +617,33 @@ class TSystemModel:
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW += shaft.PW_sum
-            if not math.isclose(shaft.PW_sum, 0.0, abs_tol=4.0): # ignoring PW <= 4 W
+            if (not math.isclose(shaft.PW_sum, 0.0, abs_tol=4.0)) or self.output_shaft_power: # ignoring PW <= 4 W
+                # flag to indicate thrust has been added to output for subsequent points
+                self.output_shaft_power = True 
                 out[f"PW{shaft.shaft_id}"] = shaft.PW_sum/1000
         for component in self.component_run_list:
             if isinstance(component, TShaftComponent):
                 self.PW -= component.get_drive_shaft_power()
-        if not math.isclose(self.PW, 0.0, abs_tol=4.0): # ignoring PW <= 4 W
+        if (not math.isclose(self.PW, 0.0, abs_tol=4.0)) or self.output_shaft_power_total: # ignoring PW <= 4 W
+            self.output_shaft_power_total = True    
             out["PW"] = self.PW/1000
-            out["SFCshaft"] = self.WF / self.PW * 1e6 # g/s/kW
+            if (not math.isclose(self.PW, 0.0, abs_tol=4.0)):
+                out["SFCshaft"] = self.WF / self.PW * 1e6 # g/s/kW
         return out
 
     def get_output_units(self):
         units = {}
         units["WF"] = "[kg/s]"
-        if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)):
-            units["FG"] = "[kN]"
-            units["FN"] = "[kN]"
-            units["RD"] = "[kN]"
-            units["TSFC"] = "[g/s/kN]"
+        # if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)) or self.output_thrust:
+        units["FG"] = "[kN]"
+        units["FN"] = "[kN]"
+        units["RD"] = "[kN]"
+        units["TSFC"] = "[g/s/kN]"
         for shaft in self.shaft_list:
             units[f"PW{shaft.shaft_id}"] = "[kW]"
-        if not math.isclose(self.PW, 0.0, abs_tol=4.0): # ignoring PW <= 1 W
-            units["PW"] = "[kW]"
-            units["SFCshaft"] = "[g/s/kW]"
+        # if not math.isclose(self.PW, 0.0, abs_tol=4.0): # ignoring PW <= 1 W
+        units["PW"] = "[kW]"
+        units["SFCshaft"] = "[g/s/kW]"
         return units
 
     def print_DP_equation_solution(self):

@@ -40,9 +40,13 @@ import gspy.core.utils as fu
 
 
 def main():
-    turboshaft = TSystemModel("Turboshaft_Single_Spool", 
+    turboshaft = TSystemModel("Turboshaft_Single_Spool_motor_gen", 
                               model_file=__file__,
                               ambient_station_nr = "000")
+
+    # Override ambient object station number to with new station string
+    # obsolete, use TSystemModel argument
+    # turboshaft.ambient.set_station_nr("000")
 
     # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # FuelControl for open loop direct control of fuel flow
@@ -51,9 +55,9 @@ def main():
         name="Fcontrol",          # Component name
         # map_filename = '',        # Optional map file name
         DP_input_value=0.060774,  # Design point (DP) input (Wf)
-        OD_start_value=450, # kW !
-        OD_end_value = 0,
-        OD_point_step_value = -50,     # Off design (OD) input: single input value -> 100 % N1
+        OD_start_value=None,
+        # OD_end_value = None,
+        # OD_step_value = None,     # Off design (OD) input: single input value -> 100 % N1
         OD_controlled_parameter_name="PW",
         # OD control parameter name: must be an output present in the output table
         # If None: the component using it directly takes the value
@@ -200,6 +204,13 @@ def main():
         PRdes=0.924,             # Design diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
     )
 
+    generator_load = TLoad(
+        system=turboshaft,       # Owning system model object
+        name="GeneratorLoad",    # Component name
+        drive_shaft_id=1,        # Shaft number of the load, must be defined in the model file before this load, the shaft could also be created in the model file first
+        power_kw_des=450,        # Design power of the load in kW, used to calculate the power demand of the load at design conditions, and to calculate the power demand at off-design conditions based on the power demand set by the control component
+    )
+
     # create a turbojet system model
     turboshaft.define_comp_run_list(
         fuelcontrol,
@@ -209,6 +220,7 @@ def main():
         turbine,
         duct,
         exhaust_diffuser,
+        generator_load,
     )
 
     # turbojet.error_tolerance = 0.0001   # default iteration equation relative residual tolerance, adjust when needed
@@ -220,18 +232,29 @@ def main():
     print("=========================")
     # Set DP ambient/flight conditions
     turboshaft.ambient.SetConditions("DP", 0, 0, 0, None, None)
-    turboshaft.Run_DP_simulation(descr = 'ISA SL Design point' )
+    turboshaft.Run_DP_simulation( # use target to set design (DP) Wf so that design output power is matched: 
+                                  # varobj, varattr, targetobj, targetattr, targetvalue , normalize with 450000 [W]
+                                 [(combustor,  "Wfdes",  turboshaft.get_shaft(1), "PW_sum", 0, 450000)],
+                                   descr = 'ISA SL Design point 450 kW' )
 
     # Run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
+    turboshaft.input_points = fuelcontrol.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
     # Set OD ambient/flight conditions and operating loads
     turboshaft.ambient.SetConditions('OD', 0, 0, 0, None, None)
-    # set shaft speed (apply variation where needed)
-    turboshaft.get_shaft(1).N = 100 * fu.GetRotorspeedCorrectionFactor(turboshaft.ambient.fs_ambient)
-    turboshaft.input_points = fuelcontrol.get_OD_input_points()
-    # Run OD simulation
-    turboshaft.Run_OD_simulation(f'ISA SL OD {fuelcontrol.OD_start_value} kW')
+    for generator_load_value in [450, 400, 350, 300, 250, 200, 150, 100, 50, 0]:  # kW
+        print(f"\nRunning OD simulation for generator load: {generator_load_value} kW")
+
+        # set shaft speed (apply variation where needed)
+        turboshaft.get_shaft(1).N = 100 * fu.GetRotorspeedCorrectionFactor(turboshaft.ambient.fs_ambient)
+
+        generator_load.set_OD_power_demand(generator_load_value)
+
+        fuelcontrol.OD_start_value = generator_load.power_w / 1000  # convert to kW as the TControl error will compare the power output table value which is in kW
+        turboshaft.input_points = fuelcontrol.get_OD_input_points()
+        # Run OD simulation
+        turboshaft.Run_OD_simulation(f'ISA SL OD {fuelcontrol.OD_start_value} kW')
 
     # Export OutputTable to CSV
     turboshaft.OutputToCSV()
@@ -241,7 +264,7 @@ def main():
                             # suffix for filename to keep multiple plot files apart
                             "_1",
                             # common X parameter column name with label
-                            ("PW", "Generator load [kW]"),
+                            ("PW_GeneratorLoad", "Generator load [kW]"),
                             # 4 Y paramaeter column names with labels and color
                             [   ("T040",              "TIT [K]",                  "blue"),
                                 ("T090",              "EGT [K]",                  "blue"),

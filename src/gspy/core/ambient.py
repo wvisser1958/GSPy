@@ -25,7 +25,7 @@ from gspy.core.flow_state import TFlowState
 class TAmbient(TComponent):
     def __init__(self, 
                  *,
-                 stationnr, 
+                 station_nr, 
                  Altitude, 
                  Macha, 
                  dTs, 
@@ -36,7 +36,7 @@ class TAmbient(TComponent):
                  ambient_output_species = None,
                  **kwargs):
         super().__init__(**kwargs)
-        self.station_nr = stationnr
+        self.station_nr = station_nr
 
         self.humidity_mode_des = None
         self.humidity_value_des = None
@@ -48,7 +48,7 @@ class TAmbient(TComponent):
         
         # GC
         # self.Gas_Ambient = ct.Quantity(self.owner.gas)
-        self.fs_ambient = TFlowState.from_RH(self.system.gas, 1, stationnr,
+        self.fs_ambient = TFlowState.from_RH(self.system.gas, 1, station_nr,
                                             # i_H2O=self.system.i_H2O,
                                             T=288.15, 
                                             P=101325, 
@@ -323,8 +323,9 @@ class TAmbient(TComponent):
             units[f"Y{s}_{sp}"] = "[-]"
         return units      
 
-    def get_station_nr(self):
-        return self.station_nr
+    # obsolete
+    # def get_station_nr(self):
+    #     return self.station_nr
 
-    def set_station_nr(self, station_nr):
-        self.station_nr = station_nr
+    # def set_station_nr(self, station_nr):
+    #     self.station_nr = station_nr

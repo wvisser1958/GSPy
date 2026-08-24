@@ -30,7 +30,13 @@ class TGaspath(TComponent):
                  **kwargs):    # Constructor of the class
         super().__init__(**kwargs)
         self.station_in = station_in
+        # check station nr not equal to ambient
+        if self.station_in == self.system.ambient.station_nr:
+            raise ValueError(f"Component {self.name} cannot have station number equal to system ambient station nr ({self.system.ambient.station_nr})")
         self.station_out = station_out
+        if self.station_out == self.system.ambient.station_nr:
+            raise ValueError(f"Component {self.name} cannot have station number equal to system ambient station nr ({self.system.ambient.station_nr})")
+
         # set design properties to None, if still None in PrintPerformance,
         # then not assigned anywhere so no need to Print/output.
         self.fs_in = None
