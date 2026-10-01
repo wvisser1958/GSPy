@@ -33,7 +33,7 @@ from gspy.core.waterinjector import TWaterInjector
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def main():
-    turbojet = TSystemModel('Turbojet', model_file = __file__)
+    turbojet = TSystemModel('Turbojet_wi', model_file = __file__)
 
     # Uncomment control creation statement for either fuel flow ("Fcontrol"), N1% ("Ncontrol") or EGT aka T5 ("EGTcontrol"):
     # FuelControl for open loop direct control of fuel flow
