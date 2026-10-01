@@ -267,11 +267,20 @@ class TCombustor(TGaspath):
 
                 fuel_moles = self.Wf / CHyOzMoleMass
 
-                O2_in_mass  = w_gas_in * self.gas_in.phase["O2"].Y[0]
-                CO2_in_mass = w_gas_in * self.gas_in.phase["CO2"].Y[0]
-                H2O_in_mass = w_gas_in * self.gas_in.phase["H2O"].Y[0]
-                AR_in_mass  = w_gas_in * self.gas_in.phase["AR"].Y[0]
-                N2_in_mass  = w_gas_in * self.gas_in.phase["N2"].Y[0]
+                # 2.0.0.6
+                # O2_in_mass  = w_gas_in * self.gas_in.phase["O2"].Y[0]
+                # CO2_in_mass = w_gas_in * self.gas_in.phase["CO2"].Y[0]
+                # H2O_in_mass = w_gas_in * self.gas_in.phase["H2O"].Y[0]
+                # AR_in_mass  = w_gas_in * self.gas_in.phase["AR"].Y[0]
+                # N2_in_mass  = w_gas_in * self.gas_in.phase["N2"].Y[0]
+
+                gas = self.gas_in.phase
+                Y = gas.Y
+                O2_in_mass  = w_gas_in * Y[gas.species_index("O2")]
+                CO2_in_mass = w_gas_in * Y[gas.species_index("CO2")]
+                H2O_in_mass = w_gas_in * Y[gas.species_index("H2O")]
+                AR_in_mass  = w_gas_in * Y[gas.species_index("AR")]
+                N2_in_mass  = w_gas_in * Y[gas.species_index("N2")]
 
                 O2_exit_mass = (
                     O2_in_mass

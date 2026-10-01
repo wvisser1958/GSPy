@@ -166,11 +166,8 @@ class TSystemModel:
         return next((obj for obj in self.component_run_list if (isinstance(obj, TGaspath)) and (obj.station_in == astationnr)), None)
 
     def reinit_states_and_errors(self):
-        # global states, errors
-        for state in self.states:
-            state = 1
-        for error in self.errors:
-            state = 0
+        self.states[:] = 1
+        self.errors[:] = 0
 
     def empty_states_and_errors(self):
         self.states = np.empty(0, dtype=self.states.dtype)

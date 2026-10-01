@@ -293,7 +293,10 @@ class TAmbient(TComponent):
         # self.Gas_Ambient.TPY = self.Tta, self.Pta, c.s_air_composition_mass
         # self.V = self.Macha * ac.std_atm.temp2speed_of_sound(self.Tsa, speed_units = 'm/s', temp_units = 'K')
 
-        H2O_in_mass = self.Gas_Ambient.phase["H2O"].Y[0]
+        # 2.0.0.6 (Python 3.14.7)
+        # H2O_in_mass = self.Gas_Ambient.phase["H2O"].Y[0]
+        i_H2O = self.Gas_Ambient.phase.species_index("H2O")
+        H2O_in_mass = self.Gas_Ambient.phase.Y[i_H2O]
         return
 
      # 2.0.0.0
