@@ -40,7 +40,7 @@ See the LICENSE file for details.
 ********************************************************************************
 ### GSPy v2.0.0.6                                                    30-09-2026
 --------------------------------------------------------------------------------
-- Updated to Python 3.14.7
+- Updated to Python 3.14.7.
 - some code in combustor.py and ambient.py updated to comply to new 
   Cantera/Numpy versions.
 - waterinjector.py class added to simulate water injection effect in gas flow
