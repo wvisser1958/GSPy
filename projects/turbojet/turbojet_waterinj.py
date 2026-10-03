@@ -14,6 +14,7 @@
 #   Wilfried Visser
 #   Oscar Kogenhop
 
+import numpy as np
 from gspy.core.system import TSystemModel
 
 from gspy.core.control import TControl
@@ -42,11 +43,11 @@ def main():
                            0.38,                    # design point (DP) input
 
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
-                           0.38, 0.08, -0.01,       # off design (OD) input: starting value, end value and step value OR alternatively:
+                        #    0.38, 0.08, -0.01,       # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
-                           # 0.30, None, None,        # off design (OD) input: single input value
+                           1235.9, None, None,        # off design (OD) input: single input value
 
-                           None                     # OD control parameter name: must be an output present in the output table
+                           'T4'                     # OD control parameter name: must be an output present in the output table
                                                     # if None: the component using it directly takes the value
                                                     # if specified with parameter name, an equation is added forcing the parameter to match the input values
                                                     # and the component using it makes it's input a free state variable
@@ -212,31 +213,29 @@ def main():
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
     # conditions is desired
     turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
-    # Run OD simulation
-    # turbojet.VERBOSE = False # suppress OD output to terminal
-    turbojet.Run_OD_simulation(descr = ' SL ISA OD')
 
-    waterinj.percent_water_injection = 0.25
-    turbojet.Run_OD_simulation(descr = ' SL ISA OD 0.25% water injection')
-
-    waterinj.percent_water_injection = 0.5
-    turbojet.Run_OD_simulation(descr = ' SL ISA OD 0.5% water injection')
-
+    for percwater in np.arange(0, 0.51, 0.1): 
+        # Run OD simulation
+        # turbojet.VERBOSE = False # suppress OD output to terminal
+        waterinj.percent_water_injection = percwater
+        turbojet.Run_OD_simulation(descr = f"\tSL ISA OD {percwater:.1f}% water injection")
     # export OutputTable to CSV
     turbojet.OutputToCSV()
 
     # plot nY vs X parameter
-    turbojet.Plot_X_nY_graph('Engine performance vs. N [%]',
+    turbojet.Plot_X_nY_graph('Engine performance vs. % Water injection at ISA SL, TIT = 1235.9 K',
                             # suffix for filename to keep multiple plot files apart
                             "_1",
                             # common X parameter column name with label
-                            ("N1%",           "Rotor speed [%]"),
+                            ("Perc_water_waterinj",           "Water injection [%]"),
                             # 4 Y paramaeter column names with labels and color
-                            [   ("T4",              "TIT [K]",                  "blue"),
+                            [   ("T21",             "T2 [K]",                   "blue"),
+                                ("N1%",             "N1 [%]",                   "blue"),
                                 ("T5",              "EGT [K]",                  "blue"),
-                                ("W2",              "Inlet mass flow [kg/s]",   "blue"),
+                                ("W2",              "W2 (air)  [kg/s]",         "blue"),
                                 ("Wf_Combustor1",   "Fuel flow [kg/s]",         "blue"),
-                                ("FN",              "Net thrust [kN]",          "blue")            ])
+                                ("FN",              "Net thrust [kN]",          "blue"),
+                                ("TSFC",            "TSFC [kg/s/kN]",           "blue")            ])
 
      # Create component map plots with operating lines if available
     turbojet.PlotMaps()
