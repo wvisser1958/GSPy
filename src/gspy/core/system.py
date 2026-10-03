@@ -284,12 +284,15 @@ class TSystemModel:
         self.error_names.append(error_name)
         return len(self.errors) - 1  # Return the index of the newly added error
 
+    # def reinit_states_and_errors(self):
+    #     # global states, errors
+    #     for state in self.states:
+    #         state = 1
+    #     for error in self.errors:
+    #         error = 0
     def reinit_states_and_errors(self):
-        # global states, errors
-        for state in self.states:
-            state = 1
-        for error in self.errors:
-            error = 0
+        self.states[:] = 1
+        self.errors[:] = 0
 
     # use debug_states property to get states as dictionaries for easier inspection in the Watch window of the debugger
     @property
