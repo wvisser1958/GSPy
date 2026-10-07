@@ -25,6 +25,11 @@ class TCompressor(TTurboComponent):
                  PRdes,
                  SpeedOption,
                  Bleeds=None,
+                 wet_compression_effectiveness=0,   # 0 <= wet_compression_effectiveness <= 1, determines fraction of max compression power reduction
+                                                    # benefit from evaporation during compression.
+                                                    # if >0: in case liquid water present at inlet, allow evaporation during compression, 
+                                                    # otherwise liquid water is incompressible and will kept separately in the flow state and not be compressed
+                 wet_compression_stepcount = 20,    # number of intermediate plytropic compression steps in case of wet compression
                  **kwargs):    # Constructor of the class
         super().__init__(**kwargs)
         # only call SetDPparameters in instantiable classes in init creator
@@ -37,6 +42,9 @@ class TCompressor(TTurboComponent):
                                               station_nr=bleed.station_in,
                                               # we are assuming not liquid water in the bleed flows, so also not in the cooling flows
                                               enable_liquid_water=False)
+        self.wet_compression_effectiveness = wet_compression_effectiveness
+        self.wet_compression_stepcount = wet_compression_stepcount
+        self.fs_tmp_compression = TFlowState.create_empty(self.system.gas, station_nr=0, enable_liquid_water=True)
 
     # 1.6 virtual method CreateMap will be called in ancestor TTurboComponent
     # for either single map or series of maps in case of variable geometry with multipe maps for example
@@ -52,7 +60,10 @@ class TCompressor(TTurboComponent):
                 PR=self.PRdes,
                 out=self.fs_out,
                 eta=self.Etades,
-                Polytropic_Eta=self.Polytropic_DP_eta
+                Polytropic_Eta=self.Polytropic_DP_eta,
+                tmp=self.fs_tmp_compression,
+                wet_effectiveness=self.wet_compression_effectiveness,
+                wet_compression_n_steps=self.wet_compression_stepcount
             )
 
             # 1.6 WV
@@ -95,7 +106,10 @@ class TCompressor(TTurboComponent):
                 PR=self.PR,
                 out=self.fs_out,
                 eta=self.Eta,
-                Polytropic_Eta=False  # OD eta always isentropic
+                Polytropic_Eta=False,  # OD eta always isentropic
+                tmp=self.fs_tmp_compression,                
+                wet_effectiveness=self.wet_compression_effectiveness,
+                wet_compression_n_steps=self.wet_compression_stepcount
             )
 
             self.W_map = self.Wc_map / fu.GetFlowCorrectionFactor(self.fs_in)
@@ -131,7 +145,10 @@ class TCompressor(TTurboComponent):
                     out=bleed.fs_in,
                     eta=self.Eta,
                     W_out=bleed.bleedfraction*self.fs_in.W,
-                    Polytropic_Eta=self.Polytropic_DP_eta if Mode=='DP' else False
+                    Polytropic_Eta=self.Polytropic_DP_eta if Mode=='DP' else False,
+                    tmp=self.fs_tmp_compression,                    
+                    wet_effectiveness=self.wet_compression_effectiveness,
+                    wet_compression_n_steps=self.wet_compression_stepcount
                 )
 
                 #  add to station conditions dictionary

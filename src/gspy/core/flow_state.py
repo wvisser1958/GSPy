@@ -3,7 +3,7 @@ import math
 import cantera as ct
 import gspy.core.constants as c
 from scipy.optimize import root_scalar
-from scipy.optimize import root
+from scipy.optimize import brentq
 import gspy.core.utils as fu
 
 class TFlowState:
@@ -969,9 +969,6 @@ class TFlowState:
         self.gas_q.mass = state["mass"]
 
     def update_static(self, Mach=None, V=None, A=None, mdot=None):
-        import math
-        from scipy.optimize import root_scalar
-
         # default: static = total
         if Mach is None and V is None and A is None:
             self.Ts = self.T
@@ -2309,6 +2306,115 @@ class TFlowState:
 
         out._set_static_equal_total()
 
+    def compressor_eta_is_to_eta_poly(
+        self,
+        *,
+        PR: float,
+        eta_is: float,
+    ) -> float:
+        """
+        Convert overall compressor isentropic efficiency to the
+        equivalent polytropic efficiency for the current gas state.
+
+        Uses actual Cantera gas properties, including variable cp.
+        Liquid water tracked outside gas_q is not included.
+        """
+
+        if PR <= 1.0:
+            raise ValueError("PR must be > 1")
+
+        if not (0.0 < eta_is <= 1.0):
+            raise ValueError("eta_is must be in (0, 1]")
+
+        # Temporary Quantity: independent thermodynamic state,
+        # shared phase definition.
+        q = ct.Quantity(self.gas_q.phase, constant="HP")
+        q.TPY = self.gas_q.TPY
+
+        P1 = q.P
+        P2 = P1 * PR
+
+        h1 = q.enthalpy_mass
+        s1 = q.entropy_mass
+
+        # Isentropic outlet
+        q.SP = s1, P2
+        h2s = q.enthalpy_mass
+
+        # Outlet enthalpy corresponding to supplied eta_is
+        h2_target = h1 + (h2s - h1) / eta_is
+
+        R = ct.gas_constant / q.mean_molecular_weight
+
+        def residual(eta_poly):
+            ds = (
+                R
+                * math.log(PR)
+                * (1.0 / eta_poly - 1.0)
+            )
+
+            q.SP = s1 + ds, P2
+
+            return q.enthalpy_mass - h2_target
+
+        return brentq(
+            residual,
+            0.2,
+            1.0,
+            xtol=1.0e-12,
+            rtol=1.0e-12,
+        )
+
+    def compressor_eta_poly_to_eta_is(
+        self,
+        *,
+        PR: float,
+        eta_poly: float,
+    ) -> float:
+        """
+        Convert compressor polytropic efficiency to the equivalent
+        overall isentropic efficiency for the current gas state.
+
+        Uses actual Cantera gas properties, including variable cp.
+        Liquid water tracked outside gas_q is not included.
+        """
+
+        if PR <= 1.0:
+            raise ValueError("PR must be > 1")
+
+        if not (0.0 < eta_poly <= 1.0):
+            raise ValueError("eta_poly must be in (0, 1]")
+
+        q = ct.Quantity(self.gas_q.phase, constant="HP")
+        q.TPY = self.gas_q.TPY
+
+        P1 = q.P
+        P2 = P1 * PR
+
+        h1 = q.enthalpy_mass
+        s1 = q.entropy_mass
+
+        # Isentropic outlet
+        q.SP = s1, P2
+        h2s = q.enthalpy_mass
+
+        # Real outlet according to polytropic efficiency
+        R = ct.gas_constant / q.mean_molecular_weight
+
+        ds = (
+            R
+            * math.log(PR)
+            * (1.0 / eta_poly - 1.0)
+        )
+
+        q.SP = s1 + ds, P2
+        h2 = q.enthalpy_mass
+
+        # Corresponding overall isentropic efficiency
+        eta_is = (h2s - h1) / (h2 - h1)
+
+        return eta_is
+
     def compress_real_polytropic_eta(self, PR: float, out: "TFlowState",
                             eta_poly: float, tmp: "TFlowState" = None, n_steps: int = 20,
                             W_out = None):
@@ -2537,40 +2643,249 @@ class TFlowState:
 
         return out
 
-    def compress_real_eta(self,
-                      *,
-                      PR: float,
-                      out: "TFlowState",
-                      eta: float,
-                      Polytropic_Eta: bool = False,
-                      tmp: "TFlowState" = None,
-                      n_steps: int = 20,
-                      W_out = None):
+    # def compress_real_eta(self,
+    #                   *,
+    #                   PR: float,
+    #                   out: "TFlowState",
+    #                   eta: float,
+    #                   Polytropic_Eta: bool = False,
+    #                   tmp: "TFlowState" = None,
+    #                   n_steps: int = 20,
+    #                   W_out = None):
 
+    #     H_total_0 = self.H_total
+    #     if W_out is not None:
+    #         H_total_0 = H_total_0 * W_out/self.W
+
+    #     if Polytropic_Eta:
+    #         self.compress_real_polytropic_eta(
+    #             PR=PR,
+    #             out=out,
+    #             eta_poly=eta,
+    #             tmp=tmp,
+    #             n_steps=n_steps,
+    #             W_out=W_out
+    #         )
+    #     else:
+    #         self.compress_real_eta_isentropic(
+    #             PR=PR,
+    #             out=out,
+    #             eta_is=eta,
+    #             W_out=W_out
+    #         )
+
+    #     # PW = out.H_total - self.H_total
+    #     PW = out.H_total - H_total_0
+    #     return out, PW
+
+    def compress_real_eta(
+        self,
+        *,
+        PR: float,
+        out: "TFlowState",
+        eta: float,
+        Polytropic_Eta: bool = False,
+        wet_effectiveness: float = 0.0,
+        tmp: "TFlowState" = None,
+        wet_compression_n_steps: int = 20,
+        W_out=None,
+    ):
+        """
+        Real compressor calculation.
+
+        eta:
+            Overall isentropic efficiency if Polytropic_Eta=False.
+            Polytropic efficiency if Polytropic_Eta=True.
+
+        wet_effectiveness:
+            0.0:
+                No evaporation benefit during compression.
+                If inlet liquid is present, GSP-style wet compression
+                is used; remaining liquid may evaporate at the exit.
+
+            1.0:
+                Maximum equilibrium wet-compression effect:
+                evaporation occurs continuously during stepwise
+                compression.
+
+            0 < value < 1:
+                Fraction of the maximum compressor-power reduction.
+
+            If no liquid water is present at compressor inlet,
+            wet_effectiveness has no effect.
+        """
+
+        if PR <= 1.0:
+            raise ValueError("PR must be > 1")
+
+        if not (0.0 < eta <= 1.0):
+            raise ValueError("eta must be in (0, 1]")
+
+        if not (0.0 <= wet_effectiveness <= 1.0):
+            raise ValueError(
+                "wet_effectiveness must be in [0, 1]"
+            )
+
+        # Inlet total enthalpy on outlet mass-flow basis.
         H_total_0 = self.H_total
+
         if W_out is not None:
-            H_total_0 = H_total_0 * W_out/self.W
+            H_total_0 *= W_out / self.W
+
+        # ==========================================================
+        # DRY COMPRESSION
+        #
+        # No liquid is available for wet compression.
+        # Preserve the existing compressor behaviour.
+        # ==========================================================
+
+        liq_tol = max(
+            self.LIQ_ABS_TOL,
+            self.LIQ_REL_TOL * self.m_total_water,
+        )
+
+        if self.m_liq <= liq_tol:            
+
+            if Polytropic_Eta:
+
+                self.compress_real_polytropic_eta(
+                    PR=PR,
+                    out=out,
+                    eta_poly=eta,
+                    tmp=tmp,
+                    n_steps=wet_compression_n_steps,
+                    W_out=W_out,
+                )
+
+            else:
+
+                self.compress_real_eta_isentropic(
+                    PR=PR,
+                    out=out,
+                    eta_is=eta,
+                    W_out=W_out,
+                )
+
+            PW = out.H_total - H_total_0
+
+            return out, PW
+
+        # ==========================================================
+        # LIQUID WATER PRESENT
+        # ==========================================================
+
+        # We need both efficiency definitions for the two limiting
+        # wet-compression models.
+        #
+        # GSP-style model        -> eta_is
+        # Continuous wet model   -> eta_poly
 
         if Polytropic_Eta:
-            self.compress_real_polytropic_eta(
+
+            eta_poly = eta
+
+            eta_is = self.compressor_eta_poly_to_eta_is(
                 PR=PR,
-                out=out,
-                eta_poly=eta,
-                tmp=tmp,
-                n_steps=n_steps,
-                W_out=W_out
-            )
-        else:
-            self.compress_real_eta_isentropic(
-                PR=PR,
-                out=out,
-                eta_is=eta,
-                W_out=W_out
+                eta_poly=eta_poly,
             )
 
-        # PW = out.H_total - self.H_total
-        PW = out.H_total - H_total_0
+        else:
+
+            eta_is = eta
+
+            eta_poly = self.compressor_eta_is_to_eta_poly(
+                PR=PR,
+                eta_is=eta_is,
+            )
+
+        # ==========================================================
+        # ZERO WET-COMPRESSION EFFECTIVENESS
+        #
+        # No evaporation benefit during compression.
+        # Evaporation may occur at compressor exit.
+        # ==========================================================
+
+        if wet_effectiveness == 0.0:
+
+            self.compress_real_eta_gsp_wet(
+                PR=PR,
+                out=out,
+                eta_is=eta_is,
+                W_out=W_out,
+            )
+
+            PW = out.H_total - H_total_0
+
+            return out, PW
+
+        # ==========================================================
+        # WET COMPRESSION
+        # ==========================================================
+
+        if tmp is None:
+            raise ValueError(
+                "tmp TFlowState required for wet compression"
+            )
+
+        # ----------------------------------------------------------
+        # Maximum equilibrium wet-compression result
+        # ----------------------------------------------------------
+
+        self.compress_real_polytropic_eta(
+            PR=PR,
+            out=out,
+            eta_poly=eta_poly,
+            tmp=tmp,
+            n_steps=wet_compression_n_steps,
+            W_out=W_out,
+        )
+
+        PW_wet_max = out.H_total - H_total_0
+
+        # Full wet-compression effectiveness.
+        if wet_effectiveness == 1.0:
+            return out, PW_wet_max
+
+        # ==========================================================
+        # PARTIAL WET-COMPRESSION EFFECTIVENESS
+        #
+        # Determine zero-effect GSP reference power.
+        # ==========================================================
+
+        self.compress_real_eta_gsp_wet(
+            PR=PR,
+            out=tmp,
+            eta_is=eta_is,
+            W_out=W_out,
+        )
+
+        PW_0 = tmp.H_total - H_total_0
+
+        # Fraction of maximum wet-compression power reduction:
+        #
+        # f = 0 -> PW_0
+        # f = 1 -> PW_wet_max
+
+        PW = (
+            PW_0
+            - wet_effectiveness
+            * (PW_0 - PW_wet_max)
+        )
+
+        H_target = H_total_0 + PW
+
+        # 'out' still contains the maximum-wet result, hence the
+        # correct total water inventory. Determine the effective
+        # outlet equilibrium state corresponding to PW.
+        out.update_HP(
+            H_target=H_target,
+            P_target=self.P * PR,
+        )
+
+        out._set_static_equal_total()
+
         return out, PW
+
 
     # ------------------------------------------------------------------
     # GSP-style wet isentropic compression
@@ -2792,30 +3107,57 @@ class TFlowState:
 
         return out
 
+    def compress_real_eta_gsp_wet(
+        self,
+        *,
+        PR: float,
+        out: "TFlowState",
+        eta_is: float,
+        W_out=None,
+    ):
+        """
+        Real GSP-style wet compression.
 
-    def compress_real_eta_gsp_wet(self,
-                                pressure_ratio: float,
-                                out: "TFlowState",
-                                eta_c: float):
+        No evaporation benefit is obtained during compression.
+        Remaining liquid water may evaporate at the compressor exit.
 
-        if not (0.0 < eta_c <= 1.0):
-            raise ValueError("eta_c must be in (0, 1]")
+        eta_is is the overall compressor isentropic efficiency.
+        """
 
-        # Ideal GSP-style wet compression first
-        self.compress_isentropic_gsp_wet(pressure_ratio, out)
+        if not (0.0 < eta_is <= 1.0):
+            raise ValueError("eta_is must be in (0, 1]")
 
+        # Ideal GSP-style wet compression.
+        self.compress_isentropic_gsp_wet(
+            PR,
+            out,
+        )
+
+        # Put outlet on requested mass-flow basis if required.
+        if W_out is not None:
+            out.scale_mass(W_out / self.W)
+
+        # Inlet enthalpy on the same mass-flow basis.
         H1 = self.H_total
+
+        if W_out is not None:
+            H1 *= W_out / self.W
+
         H2s = out.H_total
 
-        H2_target = H1 + (H2s - H1) / eta_c
+        # Real compressor work from overall isentropic efficiency.
+        H2_target = H1 + (H2s - H1) / eta_is
 
-        # Use ideal result as initial guess, solve final total HP
+        # Final outlet equilibrium:
+        # liquid may evaporate here, but its evaporation did not
+        # reduce the compression work above.
         out.update_HP(
             H_target=H2_target,
-            P_target=self.P * pressure_ratio,
+            P_target=self.P * PR,
         )
 
         out._set_static_equal_total()
+
         return out
 
     # ------------------------------------------------------------------

@@ -33,14 +33,18 @@ from gspy.core.waterinjector import TWaterInjector
 # control to maintain low speed stall margin
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+WI_SPECIES = ['CO2', 'O2', 'H2O', 'H2O_LIQ']
+
 def main():
-    turbojet = TSystemModel('Turbojet_wi', model_file = __file__, sys_enable_liquid_water=True)
+    turbojet = TSystemModel('Turbojet_wi', model_file = __file__, sys_enable_liquid_water=True,
+                            ambient_output_species=WI_SPECIES, verbose=True)
 
     fuelcontrol = TControl(system = turbojet,            # owning system model object
                            name='Fcontrol',             # component name
                            DP_input_value=0.38,         # design point (DP) input
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
                            OD_start_value=1235.9, 
+                            # OD_start_value=0.38,
                            OD_end_value=None,
                            OD_point_step_value=None, 
                            OD_controlled_parameter_name='T4'                     
@@ -52,7 +56,8 @@ def main():
                     station_out = 2,        # station nr out (station strings are also allowed, e.g. '010' and '020')
                     Wdes = 19.9,            # design inlet mass flow
                     PRdes = 1,               # design pressure ratio (PR = 1 - Ploss_relative)
-                    enable_liquid_water = True
+                    enable_liquid_water = True,
+                    fs_out_output_species=WI_SPECIES
                     )
 
     waterinj = TWaterInjector(  system = turbojet,      # owning system model object
@@ -62,7 +67,8 @@ def main():
                                 PRdes = 1,              # design pressure ratio (PR = 1 - Ploss_relative)  w_water_injection_des = 0.0,
                                 percent_water_injection_des = 0.0,
                                 T_water_injection_des = 300.0,
-                                enable_liquid_water = True
+                                enable_liquid_water = True,
+                                fs_out_output_species=WI_SPECIES
                                 )
 
     compressor1 = TCompressor(system=turbojet,               # owning system model object
@@ -79,7 +85,9 @@ def main():
                               SpeedOption='GG',             # speed option
                               Bleeds=None,                  # optional list of bleeds
                               heatpaths = None,
-                              enable_liquid_water = True
+                              enable_liquid_water = True,
+                              wet_compression_effectiveness = 1,
+                              fs_out_output_species=WI_SPECIES
                               )             # optional list of heat path links with heatsinks
 
     combustor1 = TCombustor(system=turbojet,                 # owning system model object
@@ -98,7 +106,8 @@ def main():
                             Cp_fuel_des=2093,           # optional specific heat of the fuel for LVH, H/C and O/C ratio specification, in J/kg-K
                             HCratiodes=1.9167,          # HCratio
                             OCratiodes=0,               # OCratio
-                            A=None                      # Cross flow area to calculate fundamental pressue loss
+                            A=None,                     # Cross flow area to calculate fundamental pressue loss
+                            fs_out_output_species=WI_SPECIES
                             )
 
     turbine1 =    TTurbine(system=turbojet,              # owning system model object
@@ -116,7 +125,8 @@ def main():
                            TurbineType='GG',            # turbine type 'GG' = gas generator delivering all power required by the shaft
                                                         # 'PT' = free power turbine or turbine driving power output shaft
                            CoolingFlows=None,           # optional cooling flows object list
-                           Polytropic_DP_eta=0          # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
+                           Polytropic_DP_eta=0,         # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
+                           fs_out_output_species=WI_SPECIES
                            )
                         
                         
@@ -135,7 +145,8 @@ def main():
                                                         # con-di nozzle model still to be implemented
                                    CXdes=1,             # design CX thrust coefficient
                                    CVdes=1,             # design CV velocity coefficient
-                                   CDdes=1              # design CD discharge coefficient
+                                   CDdes=1,             # design CD discharge coefficient
+                                   fs_out_output_species=WI_SPECIES
                                    )
     
     # create a turbojet system model configuration
@@ -169,11 +180,14 @@ def main():
     # effect of water injection at ISA + 30 !, from 0 to mass 2% water injection in steps of 0.5% (0, 0.5, 1.0, 1.5, 2.0)
     turbojet.ambient.SetConditions('OD', 0, 0, 30, None, None)
 
-    for percwater in np.arange(0, 2.1, 0.5): 
+    for percwater in np.arange(0, 10.1, 0.5): 
         # Run OD simulation
         # turbojet.VERBOSE = False # suppress OD output to terminal
         waterinj.percent_water_injection = percwater
-        turbojet.Run_OD_simulation(descr = f"\tSL ISA OD {percwater:.1f}% water injection")
+        turbojet.Run_OD_simulation(descr = f"\tSL ISA OD {percwater:.1f}% water injection", 
+                                   reinit_states_and_errors = False)# we are running a series of OD point outside the OD loop inside system
+                                                                    # so we do not reinit states and errors, to keep the previous OD solution 
+                                                                    #  as initial guess for the next OD point
     # export OutputTable to CSV
     turbojet.OutputToCSV()
 

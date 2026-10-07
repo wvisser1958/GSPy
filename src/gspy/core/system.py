@@ -217,6 +217,9 @@ class TSystemModel:
         self.output_shaft_power_total = False
         self.output_thrust = False
 
+        self.PW_is_zero_tolerance = 10  # W, below this value, PW is considered zero for output purposes
+        self.F_is_zero_tolerance = 10   # N, below this value, FN, FD, RD is considered zero for output purposes
+
     @staticmethod
     def _normalize(comp: dict[str, float],
                 tol: float = 1e-12) -> dict[str, float]:
@@ -350,7 +353,7 @@ class TSystemModel:
         # Run simulation code of all components in the system model
         for comp in self.component_run_list:
             self.output_dict.update(comp.get_outputs())
-        self.output_dict.update(self.get_outputs())        
+        self.output_dict.update(self.get_outputs(True))        
 
     # # 2.0.0.0 not used
     def define_comp_run_list(self, *component_list):
@@ -392,7 +395,7 @@ class TSystemModel:
         for comp in self.component_run_list:
             self.output_dict.update(comp.get_outputs())
         # load system performance (self) data into the output_dict
-        self.output_dict.update(self.get_outputs())
+        self.output_dict.update(self.get_outputs(False))
 
         # note that anything calculated in PostRun will not end up in the output_dict !
         # but can be added explicitly in PostRun implementations
@@ -500,7 +503,7 @@ class TSystemModel:
             values = self.input_points[:, 1]
             return float(np.interp(a_point_time, times, values))
 
-    def Run_OD_simulation(self, descr = None):
+    def Run_OD_simulation(self, descr = None, reinit_states_and_errors = True):
         def residuals(states):
             # residuals will return residuals of system conservation equations, schedules, limiters etc.
             # the residuals are the errors returned by Do_Run
@@ -514,7 +517,8 @@ class TSystemModel:
         try:
             # start with all states 1 and errors 0
             self.print_states_and_errors()
-            self.reinit_states_and_errors()
+            if reinit_states_and_errors:
+                self.reinit_states_and_errors()
             maxiter=100
             successcount = 0
             failedcount = 0
@@ -583,10 +587,10 @@ class TSystemModel:
         # v1.2 return number of succesfully calculated points
         return successcount
 
-    def PrintPerformance(self, mode, PointTime):
+    def PrintPerformance(self, mode, PointTime, is_final_output = False):
         print(f"System performance ({mode}) Point/Time:{PointTime}")
         print(f"\tFuel flow : {self.WF:.2f} kg/s")
-        if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)) or self.output_thrust:
+        if is_final_output and (not math.isclose(self.FG, 0.0, abs_tol=self.F_is_zero_tolerance)) or (not math.isclose(self.RD, 0.0, abs_tol=self.F_is_zero_tolerance)) or self.output_thrust:
             self.output_thrust = True 
             self.FN = self.FG - self.RD
             print(f"\tGross thrust: {self.FG:.2f} kN")
@@ -600,16 +604,16 @@ class TSystemModel:
         for component in self.component_run_list:
             if isinstance(component, TShaftComponent):
                 self.PW -= component.get_drive_shaft_power()
-        if (not math.isclose(self.PW, 0.0, abs_tol=4)) or self.output_shaft_power_total: # ignoring PW <= 1 W
+        if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)) or self.output_shaft_power_total: # ignoring PW <= 10 W
             self.output_shaft_power_total = True   
             print(f"\tTotal power output : {self.PW/1000:.3f} kW")
             print(f"\tSFC shaft power    : {self.WF / self.PW  * 1e6:.3f} g/s/kW")
 
     # 2.0.0.0
-    def get_outputs(self):
+    def get_outputs(self, is_final_output = False):
         out = {}
         out["WF"] = self.WF
-        if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)) or self.output_thrust:
+        if (not math.isclose(self.FG, 0.0, abs_tol=self.F_is_zero_tolerance)) or (not math.isclose(self.RD, 0.0, abs_tol=self.F_is_zero_tolerance)) or self.output_thrust:
             # flag to indicate thrust has been added to output for subsequent points
             self.output_thrust = True 
             self.FN = self.FG - self.RD
@@ -620,31 +624,29 @@ class TSystemModel:
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW += shaft.PW_sum
-            if (not math.isclose(shaft.PW_sum, 0.0, abs_tol=4.0)) or self.output_shaft_power: # ignoring PW <= 4 W
+            if (not math.isclose(shaft.PW_sum, 0.0, abs_tol=self.PW_is_zero_tolerance)) or self.output_shaft_power: # ignoring PW <= 10 W
                 # flag to indicate thrust has been added to output for subsequent points
                 self.output_shaft_power = True 
                 out[f"PW{shaft.shaft_id}"] = shaft.PW_sum/1000
         for component in self.component_run_list:
             if isinstance(component, TShaftComponent):
                 self.PW -= component.get_drive_shaft_power()
-        if (not math.isclose(self.PW, 0.0, abs_tol=4.0)) or self.output_shaft_power_total: # ignoring PW <= 4 W
+        if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)) or self.output_shaft_power_total: # ignoring PW <= 10 W
             self.output_shaft_power_total = True    
             out["PW"] = self.PW/1000
-            if (not math.isclose(self.PW, 0.0, abs_tol=4.0)):
+            if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)):
                 out["SFCshaft"] = self.WF / self.PW * 1e6 # g/s/kW
         return out
 
     def get_output_units(self):
         units = {}
         units["WF"] = "[kg/s]"
-        # if (not math.isclose(self.FG, 0.0, abs_tol=1e-1)) or (not math.isclose(self.RD, 0.0, abs_tol=1e-1)) or self.output_thrust:
         units["FG"] = "[kN]"
         units["FN"] = "[kN]"
         units["RD"] = "[kN]"
         units["TSFC"] = "[g/s/kN]"
         for shaft in self.shaft_list:
             units[f"PW{shaft.shaft_id}"] = "[kW]"
-        # if not math.isclose(self.PW, 0.0, abs_tol=4.0): # ignoring PW <= 1 W
         units["PW"] = "[kW]"
         units["SFCshaft"] = "[g/s/kW]"
         return units
@@ -668,7 +670,7 @@ class TSystemModel:
 
             for comp in self.component_run_list:
                 comp.PrintPerformance(self.mode, point_time)
-            self.PrintPerformance(self.mode, point_time)
+            self.PrintPerformance(self.mode, point_time, True)
 
         #  2.0
         self.output_dict['Comment'] = self.get_error_text(error_code)
