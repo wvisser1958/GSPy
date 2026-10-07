@@ -387,7 +387,7 @@ class TFlowState:
                 self.gas_q.TPY = T, P, Y_new
                 self.gas_q.mass = m_gas_new
 
-            self.enable_liquid_water = False
+            self.enable_liquid_water = False   # assume that after collapse, the liquid model is no longer needed 
             self.m_total_water = self.gas_q.mass * self._gas_h2o_mass_fraction()
 
             if hasattr(self, "_m_vap"):
@@ -402,7 +402,7 @@ class TFlowState:
                     "Use collapse=True to convert liquid water to gas-phase H2O."
                 )
 
-            self.enable_liquid_water = False
+            self.enable_liquid_water = False    # assume that after collapse, the liquid model is no longer needed 
 
     def maybe_disable_liquid_model(self, T_threshold=700.0):
         if self.T >= T_threshold and self.m_liq <= self.LIQ_ABS_TOL:
@@ -1193,23 +1193,79 @@ class TFlowState:
         self._apply_state(st)
         return st
 
-    def add_liquid_water(self, m_liq_add: float):
+    # def add_liquid_water(self, m_liq_add: float):
+    #     if m_liq_add < 0.0:
+    #         raise ValueError("m_liq_add must be >= 0")
+    #     self.m_total_water += m_liq_add
+
+    # # def set_equivalence_ratio(self, phi, fuel, air, basis="mole", repartition=True):
+    # #     mix_gas = ct.Solution(self.mechanism)
+    # #     mix_gas.TP = self.T, self.P
+    # #     mix_gas.set_equivalence_ratio(phi, fuel=fuel, oxidizer=air, basis=basis)
+
+    # #     liq_old = self.m_liq
+    # #     self.gas_q = ct.Quantity(mix_gas, mass=self.mass)
+    # #     self.m_dry = self.mass * (1.0 - self._gas_h2o_mass_fraction())
+    # #     self.m_total_water = self.m_vap + liq_old
+
+    # #     if repartition:
+    # #         self.repartition_at_TP(self.T, self.P)
+
+    def add_liquid_water(
+        self,
+        m_liq_add: float,
+        T_water: float,
+    ):
+        """
+        Add liquid water at T_water and establish vapor/liquid equilibrium
+        at constant total enthalpy and pressure.
+
+        The added water is retained in m_total_water. The HP flash determines
+        how much becomes vapor and how much remains as liquid.
+
+        Parameters
+        ----------
+        m_liq_add : float
+            Added liquid-water mass [kg].
+
+        T_water : float
+            Temperature of added liquid water [K].
+        """
+
         if m_liq_add < 0.0:
             raise ValueError("m_liq_add must be >= 0")
+
+        if m_liq_add == 0.0:
+            return self
+
+        if not self.enable_liquid_water:
+            raise RuntimeError(
+                "Cannot add liquid water when enable_liquid_water=False."
+            )
+
+        # Save state quantities before changing the water inventory.
+        P = self.P
+        H_old = self.H_total
+
+        # Enthalpy of injected liquid water on the same reference basis
+        # as the gas-phase H2O.
+        h_water = self._liquid_water_h_aligned(T_water, P)
+
+        # Add the complete injected-water inventory.
         self.m_total_water += m_liq_add
 
-    # def set_equivalence_ratio(self, phi, fuel, air, basis="mole", repartition=True):
-    #     mix_gas = ct.Solution(self.mechanism)
-    #     mix_gas.TP = self.T, self.P
-    #     mix_gas.set_equivalence_ratio(phi, fuel=fuel, oxidizer=air, basis=basis)
+        # New total extensive enthalpy.
+        H_target = H_old + m_liq_add * h_water
 
-    #     liq_old = self.m_liq
-    #     self.gas_q = ct.Quantity(mix_gas, mass=self.mass)
-    #     self.m_dry = self.mass * (1.0 - self._gas_h2o_mass_fraction())
-    #     self.m_total_water = self.m_vap + liq_old
+        # Establish final T and vapor/liquid equilibrium.
+        self.update_HP(
+            H_target=H_target,
+            P_target=P,
+        )
 
-    #     if repartition:
-    #         self.repartition_at_TP(self.T, self.P)
+        self._set_static_equal_total()
+
+        return self
 
     def burn_at_equivalence_ratio(self, phi, fuel, air,
                                   basis="mole",
