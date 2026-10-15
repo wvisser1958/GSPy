@@ -44,13 +44,13 @@ def main():
                            name='Fcontrol',             # component name
                            DP_input_value=0.38,         # design point (DP) input
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
-                           OD_start_value=0.38, 
-                           OD_end_value=0.08, 
+                           OD_start_value=0.38,
+                           OD_end_value=0.08,
                            OD_point_step_value=-0.01,   # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
                         #    OD_start_value = 0.30,       # off design (OD) input: single input value
 
-                           OD_controlled_parameter_name=None                     
+                           OD_controlled_parameter_name=None
                             # OD control parameter name: must be an output present in the output table
                             # if None: the component using it directly takes the value
                             # if specified with parameter name, an equation is added forcing the parameter to match the input values
@@ -76,12 +76,12 @@ def main():
                     Wdes = 19.9,            # design inlet mass flow
                     PRdes = 1               # design pressure ratio (PR = 1 - Ploss_relative)
                     )
-    
+
     compressor1 = TCompressor(system=turbojet,               # owning system model object
                               name='Compressor1',           # component name
                               map_filename='compmap.map' ,  # map file name
                               station_in = 2,               # station nr in and out
-                              station_out=3,                
+                              station_out=3,
                               shaft_id=1,                   # shaft id, strings are allowed as well (e.g. 'gg'), but for simplicity we use integers here
                               Ndes=16540,                   # design rpm
                               Etades=0.825,                 # design efficiency
@@ -97,7 +97,7 @@ def main():
                             map_filename = None,            # map file name             # for future use of a combustor efficiency map
                             # OD fuel input from FuelControl
                             control_component = fuelcontrol,# fuel control component    # fuel control component setting fuel flow depending on OD / PointTime point
-                            station_in=3, 
+                            station_in=3,
                             station_out=4,                  # station nr in and out
                             Wfdes=0.38,                     # Design point (DP) fuel flow Wfdes
                             Texitdes=None,                  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
@@ -150,7 +150,7 @@ def main():
                            name='Turbine1',             # component name
                            map_filename='turbimap.map', # map file name
                            control_component=None,      # optional control component
-                           station_in=4, 
+                           station_in=4,
                            station_out=5,               # station nr in and out
                            shaft_id=1,                  # shaft nr
                            Ndes=16540,                  # design point (DP) rpm
@@ -163,19 +163,19 @@ def main():
                            CoolingFlows=None,           # optional cooling flows object list
                            Polytropic_DP_eta=0          # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
                            )
-                        
-                        
+
+
     duct1    = TDuct(system=turbojet,                    # owning system model object
                      name='ExhDuct',                    # component name
-                     station_in=5, 
+                     station_in=5,
                      station_out=7,                     # station nr in and out
                      PRdes=1.0                          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                     )
 
     exhaustnozzle = TExhaustNozzle(system=turbojet,      # owning system model object
                                    name='ExhaustNozzle',# component name
-                                   station_in=7, 
-                                   station_throat=8, 
+                                   station_in=7,
+                                   station_throat=8,
                                    station_out=9,       # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle)
                                                         # con-di nozzle model still to be implemented
                                    CXdes=1,             # design CX thrust coefficient
@@ -204,19 +204,25 @@ def main():
 
     run_OD = True
 
-    if run_OD:
-        # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
-        turbojet.mode = 'OD'
-        turbojet.input_points = fuelcontrol.get_OD_input_points()
-        # turbojet.input_points = np.array([[0, 0.10], [0, 0.09]])        
-        print("\nOff-design (OD) results")
-        print("=======================")
-        # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
-        # conditions is desired
-        turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
-        # Run OD simulation
-        # turbojet.VERBOSE = False # suppress OD output to terminal
-        turbojet.Run_OD_simulation()
+    # Loop over OD ambient conditions
+    altitudes = [0, 100, 200]  # altitude in meters
+
+    for altitude in altitudes:
+        if run_OD:
+            # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
+            turbojet.mode = 'OD'
+            turbojet.input_points = fuelcontrol.get_OD_input_points()
+            # turbojet.input_points = np.array([[0, 0.10], [0, 0.09]])
+            print("\nOff-design (OD) results")
+            print("=======================")
+            # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
+            # conditions is desired
+            turbojet.ambient.SetConditions('OD', altitude, 0, 0, None, None)
+            # Run OD simulation
+            # turbojet.VERBOSE = False # suppress OD output to terminal
+            turbojet.AddOutputBreak()
+            turbojet.Run_OD_simulation()
+            # print(turbojet._output_rows)
 
     # export OutputTable to CSV
     turbojet.OutputToCSV()

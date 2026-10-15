@@ -19,15 +19,15 @@ from typing import Optional
 import warnings
 
 class TComponent(ABC):
-    def __init__(self, 
+    def __init__(self,
                 *,
-                system = None, 
+                system = None,
                 #  owner for backward compatibility, but now deprecated
                 owner = None,
 
-                name, 
-                map_filename = None, 
-                control_component = None, 
+                name,
+                map_filename = None,
+                control_component = None,
                 heatpaths = None,
                 **kwargs):    # Constructor of the class
         if kwargs:
@@ -140,5 +140,3 @@ class TComponent(ABC):
             for heatpath in self.heatpaths:
                 units.update(heatpath.get_output_units())
         return units
-                
-    

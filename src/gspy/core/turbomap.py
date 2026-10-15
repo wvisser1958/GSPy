@@ -130,6 +130,60 @@ class TTurboMap(TMap):
                 label_txt, which=which, color='dimgray', dx=4, dy=dy, fontsize=7
             )
 
+    def _iter_operating_datasets(self):
+        """Yield consecutive result datasets separated by a <break> comment row."""
+        table = self.simresultstable
+
+        if table is None or table.empty:
+            return
+
+        break_rows = (
+            table["Comment"]
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .eq("<break>")
+        )
+
+        dataset_id = break_rows.cumsum()
+
+        for _, dataset in table.loc[~break_rows].groupby(
+            dataset_id[~break_rows],
+            sort=False
+        ):
+            if not dataset.empty:
+                yield dataset
+
+    def _plot_operating_datasets(self, ax, x_getter, y_getter,
+                                 include_design_point=True,
+                                 include_off_design=True):
+        """Plot every break-separated dataset with a different colour."""
+        colors = plt.rcParams['axes.prop_cycle'].by_key().get('color', ['navy'])
+        color_index = 0
+        for dataset in self._iter_operating_datasets():
+            modes = dataset['Mode'].astype(str).str.strip().str.upper()
+            selected = dataset.loc[
+                ((modes == 'DP') & include_design_point) |
+                ((modes == 'OD') & include_off_design)
+            ]
+            if selected.empty:
+                continue
+            x = np.asarray(x_getter(selected), dtype=float)
+            y = np.asarray(y_getter(selected), dtype=float)
+            finite = np.isfinite(x) & np.isfinite(y)
+            x, y = x[finite], y[finite]
+            if x.size == 0:
+                continue
+            color = colors[color_index % len(colors)]
+            color_index += 1
+            if x.size == 1:
+                is_dp = selected.loc[finite, 'Mode'].astype(str).str.strip().str.upper().iloc[0] == 'DP'
+                ax.plot(x, y, linestyle='none', marker='s', markersize=8,
+                        markerfacecolor='yellow' if is_dp else color,
+                        markeredgecolor='black', markeredgewidth=1)
+            else:
+                ax.plot(x, y, linewidth=1.5, linestyle='solid', color=color)
+
     def ReadMap(self, filename):              # Abstract method, defined by convention only
         amaptype, amaptitle, amapfile = super().ReadMap(filename)
         # with self.file:
@@ -294,5 +348,3 @@ class TTurboMap(TMap):
         self.dual_map_figure.suptitle(map_title)
 
         self.set_scaled_arrays(use_scaled_map)
-
-

@@ -53,7 +53,7 @@ class TSystemModel:
         self.model_name = Path(model_file).stem if model_name is None else model_name
         self.params = {}
         self.point_time = 0
-        
+
         # Default to this file's folder if caller doesn't provide a root
         project_dir = Path(model_file).resolve().parent
 
@@ -106,8 +106,8 @@ class TSystemModel:
             for sp in self.air_X
         }
 
-        s_air_composition_moles = '' 
-        s_air_composition_mass = '' 
+        s_air_composition_moles = ''
+        s_air_composition_mass = ''
 
         for species, molefraction in self.air_X.items():
             if s_air_composition_moles != '' :
@@ -163,14 +163,14 @@ class TSystemModel:
         # for hp in self.ambient_heatpaths:
         #     hp.system = self
 
-        self.ambient = TAmbient(system=self, 
-                                name='Ambient', 
-                                station_nr=ambient_station_nr, 
-                                Altitude=0, 
-                                Macha=0,   
+        self.ambient = TAmbient(system=self,
+                                name='Ambient',
+                                station_nr=ambient_station_nr,
+                                Altitude=0,
+                                Macha=0,
                                 dTs=0,
                                 Psa=None,
-                                Tsa=None,   
+                                Tsa=None,
                                 RH=0,
                                 ambient_output_species = ambient_output_species
                                 )
@@ -211,7 +211,7 @@ class TSystemModel:
         self.continue_next_OD_point_on_error = True
 
         # Flags indicating if shaft or power has alreade been printed / added to output DataFrame
-        # is set to True base on FN or PW being non-zero, in subsequent points, FN and/or PW will continue to be outputted 
+        # is set to True base on FN or PW being non-zero, in subsequent points, FN and/or PW will continue to be outputted
         # regardless being 0 for the remainder of the simulation session
         self.output_shaft_power = False
         self.output_shaft_power_total = False
@@ -280,7 +280,7 @@ class TSystemModel:
     def add_state(self, state_name, initial_value):
         self.states = np.append(self.states, initial_value)
         self.state_names.append(state_name)
-        return len(self.states) - 1  # Return the index of the newly added state    
+        return len(self.states) - 1  # Return the index of the newly added state
 
     def add_error(self, error_name, initial_value):
         self.errors = np.append(self.errors, initial_value)
@@ -313,7 +313,7 @@ class TSystemModel:
             for n, v in zip(self.error_names, self.errors, strict=True)
         ]
 
-    # combined: use debug_errors_states property 
+    # combined: use debug_errors_states property
     @property
     def debug_states_errors(self):
         return [
@@ -329,7 +329,7 @@ class TSystemModel:
                     strict=True,
                 )
             ],
-        ]    
+        ]
 
     def reset_output(self):
         self._output_rows = []
@@ -353,7 +353,7 @@ class TSystemModel:
         # Run simulation code of all components in the system model
         for comp in self.component_run_list:
             self.output_dict.update(comp.get_outputs())
-        self.output_dict.update(self.get_outputs(True))        
+        self.output_dict.update(self.get_outputs(True))
 
     # # 2.0.0.0 not used
     def define_comp_run_list(self, *component_list):
@@ -367,7 +367,7 @@ class TSystemModel:
             self.reset_states_and_errors()
 
         # global system_model, states, errors, Ambient, Control
-        # states_par may be None (e.g. in DP mode) 
+        # states_par may be None (e.g. in DP mode)
         if states_par is not None:
             self.states = states_par.copy()
         self.reinit_system()
@@ -390,7 +390,7 @@ class TSystemModel:
             # load comp data into the output_dict
             self.output_dict.update(comp.get_outputs())
 
-        # update again all outputs: in case component properties updated 
+        # update again all outputs: in case component properties updated
         # by other components Run code later in the component list (e.g. heatsing Q_balance)
         for comp in self.component_run_list:
             self.output_dict.update(comp.get_outputs())
@@ -412,13 +412,13 @@ class TSystemModel:
         self.descr = descr
 
         try:
-            # check for Heat sinks: these must add DP equations : 
+            # check for Heat sinks: these must add DP equations :
             # T must be found for which heat flux residual of balance Q_balance = 0
             for comp in self.component_run_list:
                 if isinstance(comp, THeatsink):
                     if targets is None:
                         targets = []
-                    targets.append( (comp, "T", comp, "Q_balance", 0, comp.Q_norm_factor) ) 
+                    targets.append( (comp, "T", comp, "Q_balance", 0, comp.Q_norm_factor) )
                     print(f"DP Target Q=0 for {comp.name} (Q_norm = {comp.Q_norm_factor} [W])")
 
             if targets is None:
@@ -469,8 +469,8 @@ class TSystemModel:
                         #     "line_search": None,
                         #     "jac_options": {
                         #         "rdiff": 1e-4,
-                        #         },                    
-                        #     }   
+                        #         },
+                        #     }
                         )
                 except Exception as e:
                     self.Do_Output('DP', 0, self.exception_error)
@@ -497,7 +497,7 @@ class TSystemModel:
         if len(self.input_points) == 0:
             raise RuntimeError("Number of input points cannot be 0")
         elif len(self.input_points) == 1:
-            return float(self.input_points[0, 1]) 
+            return float(self.input_points[0, 1])
         else:
             times = self.input_points[:, 0]
             values = self.input_points[:, 1]
@@ -526,8 +526,8 @@ class TSystemModel:
                 # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
                 rmax = 0
                 try:
-                    def find_solution(high_gas_fidelity): 
-                        self.high_gas_fidelity = high_gas_fidelity     
+                    def find_solution(high_gas_fidelity):
+                        self.high_gas_fidelity = high_gas_fidelity
 
                         solution = root(residuals,
                                         self.states,
@@ -591,7 +591,7 @@ class TSystemModel:
         print(f"System performance ({mode}) Point/Time:{PointTime}")
         print(f"\tFuel flow : {self.WF:.2f} kg/s")
         if is_final_output and (not math.isclose(self.FG, 0.0, abs_tol=self.F_is_zero_tolerance)) or (not math.isclose(self.RD, 0.0, abs_tol=self.F_is_zero_tolerance)) or self.output_thrust:
-            self.output_thrust = True 
+            self.output_thrust = True
             self.FN = self.FG - self.RD
             print(f"\tGross thrust: {self.FG:.2f} kN")
             print(f"\tRam drag    : {self.RD:.2f} kN")
@@ -605,7 +605,7 @@ class TSystemModel:
             if isinstance(component, TShaftComponent):
                 self.PW -= component.get_drive_shaft_power()
         if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)) or self.output_shaft_power_total: # ignoring PW <= 10 W
-            self.output_shaft_power_total = True   
+            self.output_shaft_power_total = True
             print(f"\tTotal power output : {self.PW/1000:.3f} kW")
             print(f"\tSFC shaft power    : {self.WF / self.PW  * 1e6:.3f} g/s/kW")
 
@@ -615,7 +615,7 @@ class TSystemModel:
         out["WF"] = self.WF
         if (not math.isclose(self.FG, 0.0, abs_tol=self.F_is_zero_tolerance)) or (not math.isclose(self.RD, 0.0, abs_tol=self.F_is_zero_tolerance)) or self.output_thrust:
             # flag to indicate thrust has been added to output for subsequent points
-            self.output_thrust = True 
+            self.output_thrust = True
             self.FN = self.FG - self.RD
             out["FG"] = self.FG
             out["FN"] = self.FN
@@ -626,13 +626,13 @@ class TSystemModel:
             self.PW += shaft.PW_sum
             if (not math.isclose(shaft.PW_sum, 0.0, abs_tol=self.PW_is_zero_tolerance)) or self.output_shaft_power: # ignoring PW <= 10 W
                 # flag to indicate thrust has been added to output for subsequent points
-                self.output_shaft_power = True 
+                self.output_shaft_power = True
                 out[f"PW{shaft.shaft_id}"] = shaft.PW_sum/1000
         for component in self.component_run_list:
             if isinstance(component, TShaftComponent):
                 self.PW -= component.get_drive_shaft_power()
         if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)) or self.output_shaft_power_total: # ignoring PW <= 10 W
-            self.output_shaft_power_total = True    
+            self.output_shaft_power_total = True
             out["PW"] = self.PW/1000
             if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)):
                 out["SFCshaft"] = self.WF / self.PW * 1e6 # g/s/kW
@@ -660,7 +660,7 @@ class TSystemModel:
     def Do_Output(self, mode, point_time, error_code):
 
         # re-generate output_dict based on converged or iteration end model status
-        self.final_output(point_time, mode)        
+        self.final_output(point_time, mode)
 
         # output to terminal
         if self.VERBOSE:
@@ -689,6 +689,16 @@ class TSystemModel:
         #  collect output_rows in dataframe, for processing in OutputToCSV, Plot_X_nY_graph, PlotMaps etc.
         if self.output_table is None:
             self.output_table = pd.DataFrame(self._output_rows)
+
+    def AddOutputBreak(self):
+        break_row = {
+            col: np.nan
+            for col in self.output_dict.keys()
+        }
+
+        break_row["Comment"] = "<break>"
+
+        self._output_rows.append(break_row)
 
     # def OutputToCSV(self):
     #     # Export to Excel

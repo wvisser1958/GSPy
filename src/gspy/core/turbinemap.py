@@ -82,14 +82,14 @@ class TTurbineMap(TTurboMap):
             CS = self.main_plot_axis.contour(self.PRArrayValues,self.WcArrayValues,self.EtaArrayValues,10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
             self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
 
-            # Design point
-            if do_plot_design_point:
-                self.main_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(), markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
-
-            # Operating line
-            if do_plot_series:
-                # Plotting PR - Wc
-                self.main_plot_axis.plot(self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(), self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),  linewidth=1.5, linestyle='solid', color='navy')
+            # Break-separated operating datasets
+            if do_plot_design_point or do_plot_series:
+                self._plot_operating_datasets(
+                    self.main_plot_axis,
+                    lambda data: data[self.PR_comp_param].to_numpy(),
+                    lambda data: data[self.Wc_in_param].to_numpy(),
+                    include_design_point=do_plot_design_point,
+                    include_off_design=do_plot_series)
         else:
             # Plot Nc*Wc - PR
             Nc_times_WcArrayValues = self.WcArrayValues.copy()
@@ -127,22 +127,15 @@ class TTurbineMap(TTurboMap):
             CS = self.main_plot_axis.contour(Nc_times_WcArrayValues,self.PRArrayValues,self.EtaArrayValues,10,colors='slategrey',alpha=0.3,levels = np.linspace(0.64, 0.84, 11))
             self.main_plot_axis.clabel(CS, fontsize=7, inline=True)
 
-            # Design point
-            if do_plot_design_point:
-                self.main_plot_axis.plot(
-                    np.multiply(self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.Wc_in_param].to_numpy(),
-                                self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.Nc_comp_param].to_numpy()),
-                    self.simresultstable[(self.simresultstable['Mode'] == 'DP')][self.PR_comp_param].to_numpy(),
-                    markersize=6.0, linestyle='none', marker='s', markeredgewidth=0.75, markerfacecolor='yellow', markeredgecolor='black')
-
-            # Operating line
-            if do_plot_series:
-                # Plot PR-Nc*Wc
-                self.main_plot_axis.plot(
-                    np.multiply(self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Wc_in_param].to_numpy(),
-                                self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.Nc_comp_param].to_numpy()),
-                    self.simresultstable[(self.simresultstable['Mode'] == 'OD')][self.PR_comp_param].to_numpy(),
-                    linewidth=1.5, linestyle='solid', color='navy')
+            # Break-separated operating datasets
+            if do_plot_design_point or do_plot_series:
+                self._plot_operating_datasets(
+                    self.main_plot_axis,
+                    lambda data: np.multiply(data[self.Wc_in_param].to_numpy(),
+                                             data[self.Nc_comp_param].to_numpy()),
+                    lambda data: data[self.PR_comp_param].to_numpy(),
+                    include_design_point=do_plot_design_point,
+                    include_off_design=do_plot_series)
 
         self.map_figure.savefig(self.map_figure_file_path)
 
