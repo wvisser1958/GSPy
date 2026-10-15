@@ -42,6 +42,12 @@ class TMotor(TOneShaftComponent):
 
         return out
 
+    def get_output_units(self):
+        out = {}
+        out["PW_" + self.name] = "[kW]"
+
+        return out
+    
     def get_drive_shaft_power(self):
         # Power producer, so positive sign: power delivered to shaft
         return self.power_w

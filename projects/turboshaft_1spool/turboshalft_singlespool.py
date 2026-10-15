@@ -40,7 +40,7 @@ import gspy.core.utils as fu
 
 
 def main():
-    turboshaft = TSystemModel("Turboshaft_Single_Spool", 
+    turboshaft = TSystemModel("Turboshaft_Single_Spool",
                               model_file=__file__,
                               ambient_station_nr = "000")
 
@@ -51,9 +51,9 @@ def main():
         name="Fcontrol",          # Component name
         # map_filename = '',        # Optional map file name
         DP_input_value=0.060774,  # Design point (DP) input (Wf)
-        OD_start_value=450, # kW !
+        OD_start_value=450,       # kW !
         OD_end_value = 0,
-        OD_point_step_value = -50,     # Off design (OD) input: single input value -> 100 % N1
+        OD_point_step_value = -50,# Off design (OD) input: single input value -> 100 % N1
         OD_controlled_parameter_name="PW",
         # OD control parameter name: must be an output present in the output table
         # If None: the component using it directly takes the value
@@ -231,7 +231,8 @@ def main():
     turboshaft.get_shaft(1).N = 100 * fu.GetRotorspeedCorrectionFactor(turboshaft.ambient.fs_ambient)
     turboshaft.input_points = fuelcontrol.get_OD_input_points()
     # Run OD simulation
-    turboshaft.Run_OD_simulation(f'ISA SL OD {fuelcontrol.OD_start_value} kW')
+    # turboshaft.Run_OD_simulation(f'ISA SL OD {fuelcontrol.OD_start_value} kW')
+    turboshaft.Run_OD_simulation()
 
     # Export OutputTable to CSV
     turboshaft.OutputToCSV()

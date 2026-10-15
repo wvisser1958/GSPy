@@ -17,14 +17,14 @@ import numpy as np
 from gspy.core.base_component import TComponent
 
 class TControl(TComponent):
-    def __init__(self, 
+    def __init__(self,
                  *,
                  DP_input_value,
-                 OD_start_value, 
-                 OD_end_value = None, 
+                 OD_start_value,
+                 OD_end_value = None,
                  OD_point_step_value = None,
                  OD_controlled_parameter_name=None,
-                 point_time_value_array = None, 
+                 point_time_value_array = None,
                  **kwargs):
         # note that, if OD_controlledparname != None:
         #    OD_startvalue, OD_endvalue, OD_pointstepvalue represent the values of the OD_controlledparname
@@ -35,8 +35,8 @@ class TControl(TComponent):
         # 2.1
         self.re_init_input(self.map_filename,
                     DP_input_value,
-                    OD_start_value, 
-                    OD_end_value, 
+                    OD_start_value,
+                    OD_end_value,
                     OD_point_step_value,
                     OD_controlled_parameter_name,
                     point_time_value_array = point_time_value_array)
@@ -44,13 +44,13 @@ class TControl(TComponent):
     # 2.1
     def re_init_input(self, map_filename,
                             DP_input_value,
-                            OD_start_value, 
-                            OD_end_value = None, 
+                            OD_start_value,
+                            OD_end_value = None,
                             OD_point_step_value = None,
                             OD_controlled_parameter_name = None,
                             *,
-                            # point_time_value_array: 
-                            #   - either an array with control demand/input values 
+                            # point_time_value_array:
+                            #   - either an array with control demand/input values
                             #     (point_time incremented automaticall from OD_start_value)
                             #   - or an array with [point_time, value] pairs, like
                             #       point_values = np.array([
@@ -63,7 +63,7 @@ class TControl(TComponent):
         self.DP_input_value = DP_input_value
         if OD_start_value is None:
             self.OD_start_value = self.system.point_time + 1
-        else:    
+        else:
             self.OD_start_value = OD_start_value
         self.OD_end_value = OD_end_value
         self.OD_point_step_value = OD_point_step_value
@@ -90,13 +90,13 @@ class TControl(TComponent):
                 return arr
 
             else:
-                raise ValueError("input_points must be either [values...] or [[time, value], ...]")            
-        
+                raise ValueError("input_points must be either [values...] or [[time, value], ...]")
+
         if not ((OD_point_step_value == None) and (OD_end_value == None)): # single point input
             if (abs(OD_point_step_value) == 0) or ((OD_end_value - OD_start_value) * OD_point_step_value < 0):
                 raise Exception("Invalid control variable begin, end and step values")
-        
-        return self.get_OD_input_points() 
+
+        return self.get_OD_input_points()
 
     # 2.1
     # def get_OD_input_points(self):
@@ -147,6 +147,10 @@ class TControl(TComponent):
             # 2.0 OK Allow single value input of OD_start_value only
             # self.control_parameter_demand = self.OD_start_value + self.OD_input_points[PointTime] * self.OD_point_step_value
             # self.control_parameter_demand = self.OD_start_value
+
+            # Set description of the control for output table
+            if self.owner.descr is None:
+                self.owner.descr = "Control: " + self.name + ", " + str(self.OD_controlled_parameter_name) + " = " + str(point_time_input_value)
 
             # # if not((self.OD_end_value == None) or (self.OD_point_step_value == None)):
             #     #  2.1

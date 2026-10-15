@@ -40,7 +40,7 @@ import gspy.core.utils as fu
 
 
 def main():
-    turboshaft = TSystemModel("Turboshaft_Single_Spool_motor_gen", 
+    turboshaft = TSystemModel("Turboshaft_Single_Spool_motor_gen",
                               model_file=__file__,
                               ambient_station_nr = "000")
 
@@ -127,7 +127,7 @@ def main():
         station_in="030",          # Station nr in
         station_out="040",         # Station nr out
         Wfdes=0.0637,              # Design point (DP) fuel flow Wfdes
-        # Texitdes=1250,             # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
+        # Texitdes=1245,             # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
         Texitdes=None,             # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
         PRdes=0.96,                # Design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
         Etades=0.985,              # Design combustor efficiency
@@ -157,10 +157,23 @@ def main():
             station_out="041",
             coolingflownumber=1,
             frombleednumber=1,
-            fractiontakendes=1.0,
+            fractiontakendes=0.6,
             dPfraction=1.0,
             W_tur_eff_fraction=1.0,
             Rexit=0,  # pumpin radius (only > 0 for rotor blades)
+        )
+        ,
+        TCoolingFlow(
+            system=turboshaft,
+            name="turb_blade_cooling",
+            station_in="032",
+            station_out="042",
+            coolingflownumber=2,
+            frombleednumber=1,
+            fractiontakendes=0.4,
+            dPfraction=0.5,
+            W_tur_eff_fraction=0.5,
+            Rexit=0.1,  # pumpin radius (only > 0 for rotor blades)
         )
     ]
 
@@ -232,10 +245,11 @@ def main():
     print("=========================")
     # Set DP ambient/flight conditions
     turboshaft.ambient.SetConditions("DP", 0, 0, 0, None, None)
-    turboshaft.Run_DP_simulation( # use target to set design (DP) Wf so that design output power is matched: 
+    turboshaft.Run_DP_simulation( # use target to set design (DP) Wf so that design output power is matched:
                                   # varobj, varattr, targetobj, targetattr, targetvalue , normalize with 450000 [W]
-                                 [(combustor,  "Wfdes",  turboshaft.get_shaft(1), "PW_sum", 0, 450000)],
+                                 [(combustor,  "Wfdes",  turboshaft.get_shaft(1), "PW_sum", 0, 450*1000)],
                                    descr = 'ISA SL Design point 450 kW' )
+    # turboshaft.Run_DP_simulation(descr = 'ISA SL Design point 450 kW')
 
     # Run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turboshaft.input_points = fuelcontrol.get_OD_input_points()
