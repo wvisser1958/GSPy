@@ -213,7 +213,7 @@ class TTurboComponent(TGaspath):
         print(f"\tPW : {self.PW:.1f}")
 
     # 2.0.0.0
-    def get_outputs(self):
+    def get_outputs(self, *, is_final_output=False):
         out = super().get_outputs()
 
         out[f"N{self.shaft_id}"] = self.N

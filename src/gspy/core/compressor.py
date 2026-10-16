@@ -177,7 +177,7 @@ class TCompressor(TTurboComponent):
                 bleed.PrintPerformance(Mode, PointTime)
 
     # 2.0.0.0
-    def get_outputs(self):
+    def get_outputs(self, *, is_final_output=False):
         out = super().get_outputs()
         if self.Bleeds != None:
             for bleed in self.Bleeds:

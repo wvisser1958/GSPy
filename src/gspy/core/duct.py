@@ -51,7 +51,7 @@ class TDuct(TGaspath):
         
         return self.fs_out
     
-    def get_outputs(self):
+    def get_outputs(self, *, is_final_output=False):
         out = super().get_outputs()
         if self.Q is not None:
             out[f"Q{self.id}"] = self.Q / 1000  # kW

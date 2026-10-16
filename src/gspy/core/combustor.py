@@ -555,7 +555,7 @@ class TCombustor(TGaspath):
         print(f"\tCombustion End Temperature: {self.fs_out.T:.2f} K")
 
     # 2.0.0.0
-    def get_outputs(self):
+    def get_outputs(self, *, is_final_output=False):
         out = super().get_outputs()
         out["Wf_"+self.name] = self.Wf
         return out

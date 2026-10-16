@@ -31,6 +31,7 @@ from gspy.core.shaft_component import TShaftComponent
 
 DEFAULT_YAML = "jetsurf.yaml"
 DEFAULT_VERBOSE = True
+OUTPUT_FLOAT_FORMAT_SIGNIFICANT_DIGITS = 8  
 
 class TSystemModel:
     def __init__(self,
@@ -352,8 +353,8 @@ class TSystemModel:
         self.output_dict['Description'] = self.descr
         # Run simulation code of all components in the system model
         for comp in self.component_run_list:
-            self.output_dict.update(comp.get_outputs())
-        self.output_dict.update(self.get_outputs(True))
+            self.output_dict.update(comp.get_outputs(is_final_output=True))
+        self.output_dict.update(self.get_outputs(is_final_output=True))
 
     # # 2.0.0.0 not used
     def define_comp_run_list(self, *component_list):
@@ -388,14 +389,14 @@ class TSystemModel:
         for comp in self.component_run_list:
             comp.Run(mode, point_time)
             # load comp data into the output_dict
-            self.output_dict.update(comp.get_outputs())
+            self.output_dict.update(comp.get_outputs(is_final_output=False))
 
         # update again all outputs: in case component properties updated
         # by other components Run code later in the component list (e.g. heatsing Q_balance)
         for comp in self.component_run_list:
             self.output_dict.update(comp.get_outputs())
         # load system performance (self) data into the output_dict
-        self.output_dict.update(self.get_outputs(False))
+        self.output_dict.update(self.get_outputs(is_final_output=False))
 
         # note that anything calculated in PostRun will not end up in the output_dict !
         # but can be added explicitly in PostRun implementations
@@ -610,7 +611,9 @@ class TSystemModel:
             print(f"\tSFC shaft power    : {self.WF / self.PW  * 1e6:.3f} g/s/kW")
 
     # 2.0.0.0
-    def get_outputs(self, is_final_output = False):
+    def get_outputs(self, 
+                    *,
+                    is_final_output = False):
         out = {}
         out["WF"] = self.WF
         if (not math.isclose(self.FG, 0.0, abs_tol=self.F_is_zero_tolerance)) or (not math.isclose(self.RD, 0.0, abs_tol=self.F_is_zero_tolerance)) or self.output_thrust:

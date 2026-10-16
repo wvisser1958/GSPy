@@ -152,7 +152,7 @@ class TAMcontrol(TComponent):
                 print(f"\t{comp.name}_{attrib_name} {getattr(comp, attrib_name)}")
 
     # 2.0.0.0
-    def get_outputs(self):
+    def get_outputs(self, *, is_final_output=False):
         out = super().get_outputs()
         for i, hp in enumerate(self.health_parameters, start=0):
             comp = hp.component

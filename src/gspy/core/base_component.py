@@ -127,11 +127,13 @@ class TComponent(ABC):
             for heatpath in self.heatpaths:
                 heatpath.PrintPerformance()
 
-    def get_outputs(self):
+    def get_outputs(self, 
+                    *,
+                    is_final_output = False):
         out = {}
         if self.heatpaths:
             for heatpath in self.heatpaths:
-                out.update(heatpath.get_outputs())
+                out.update(heatpath.get_outputs(is_final_output=is_final_output))
         return out
 
     def get_output_units(self):

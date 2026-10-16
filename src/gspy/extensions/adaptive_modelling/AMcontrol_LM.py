@@ -171,7 +171,7 @@ class TAMcontrol(TComponent):
                 print(f"\t{compmap.name}_{SFpar} {getattr(compmap, SFpar)}")
 
     # 2.0.0.0
-    def get_outputs(self):
+    def get_outputs(self, *, is_final_output=False):
         out = super().get_outputs()
         for i, (compmap, SFpar) in enumerate(self.mapmod_comps_pars_list, start=0):
             out[compmap.name+"_"+SFpar] = getattr(compmap, SFpar)

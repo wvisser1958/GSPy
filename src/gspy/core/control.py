@@ -15,6 +15,7 @@
 
 import numpy as np
 from gspy.core.base_component import TComponent
+from gspy.core.system import OUTPUT_FLOAT_FORMAT_SIGNIFICANT_DIGITS
 
 class TControl(TComponent):
     def __init__(self,
@@ -25,6 +26,7 @@ class TControl(TComponent):
                  OD_point_step_value = None,
                  OD_controlled_parameter_name=None,
                  point_time_value_array = None,
+                 replace_point_decription_with_control_value = False,
                  **kwargs):
         # note that, if OD_controlledparname != None:
         #    OD_startvalue, OD_endvalue, OD_pointstepvalue represent the values of the OD_controlledparname
@@ -39,7 +41,8 @@ class TControl(TComponent):
                     OD_end_value,
                     OD_point_step_value,
                     OD_controlled_parameter_name,
-                    point_time_value_array = point_time_value_array)
+                    point_time_value_array = point_time_value_array,
+                    replace_point_decription_with_control_value = replace_point_decription_with_control_value)
 
     # 2.1
     def re_init_input(self, map_filename,
@@ -58,7 +61,8 @@ class TControl(TComponent):
                             #                     [4.5, 10],
                             #                     [5.0, 9]
                             #                 ])
-                            point_time_value_array = None):
+                            point_time_value_array = None,
+                            replace_point_decription_with_control_value = False):
         self.map_filename = map_filename # for use in customized child classes, e.g. with lookup tables
         self.DP_input_value = DP_input_value
         if OD_start_value is None:
@@ -69,6 +73,7 @@ class TControl(TComponent):
         self.OD_point_step_value = OD_point_step_value
         self.OD_controlled_parameter_name = OD_controlled_parameter_name
         self.control_parameter_demand = None
+        self.replace_point_decription_with_control_value = replace_point_decription_with_control_value
         # if point_time_value_array is not None:
         #     self.point_time_value_array = np.asarray(point_time_value_array)
         # self.point_time_value_array = (
@@ -148,9 +153,10 @@ class TControl(TComponent):
             # self.control_parameter_demand = self.OD_start_value + self.OD_input_points[PointTime] * self.OD_point_step_value
             # self.control_parameter_demand = self.OD_start_value
 
-            # Set description of the control for output table
-            if self.owner.descr is None:
-                self.owner.descr = "Control: " + self.name + ", " + str(self.OD_controlled_parameter_name) + " = " + str(point_time_input_value)
+            # moved to get outputs() to allow adding control value to point description in output table
+            # # Set description of the control for output table
+            # if self.owner.descr is None:
+            #     self.owner.descr = self.owner.descr + "Control: " + self.name + ", " + str(self.OD_controlled_parameter_name) + " = " + str(point_time_input_value)
 
             # # if not((self.OD_end_value == None) or (self.OD_point_step_value == None)):
             #     #  2.1
@@ -182,12 +188,21 @@ class TControl(TComponent):
                 self.system.errors[self.ierror_control] = (self.control_parameter_demand - control_parameter_value) / self.DP_control_parameter_value
 
     # 2.0.0.0
-    def get_outputs(self):
-        out = super().get_outputs()
+    def get_outputs(self, is_final_output = False):
+        out = super().get_outputs(is_final_output=is_final_output)
         if self.system.mode == 'DP':
             out[self.name+"_setpoint"] = None
             out[self.name+"_input"] = None
         else:
             out[self.name+"_setpoint"] = self.control_parameter_demand
             out[self.name+"_input"] = self.input_value
+
+            # Set description of the control for output table
+            if self.replace_point_decription_with_control_value:
+                if self.OD_controlled_parameter_name is None:
+                    par_name = "input"
+                else:
+                    par_name = self.OD_controlled_parameter_name
+                self.owner.descr = self.name + "." + str(par_name) + " = " + f"{self.input_value:.{OUTPUT_FLOAT_FORMAT_SIGNIFICANT_DIGITS}g}"
+
         return out

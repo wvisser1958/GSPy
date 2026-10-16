@@ -50,7 +50,8 @@ def main():
                            # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
                         #    OD_start_value = 0.30,       # off design (OD) input: single input value
 
-                           OD_controlled_parameter_name=None
+                           OD_controlled_parameter_name=None,
+                           replace_point_decription_with_control_value=True
                             # OD control parameter name: must be an output present in the output table
                             # if None: the component using it directly takes the value
                             # if specified with parameter name, an equation is added forcing the parameter to match the input values
@@ -216,7 +217,7 @@ def main():
         turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
         # Run OD simulation
         # turbojet.VERBOSE = False # suppress OD output to terminal
-        turbojet.Run_OD_simulation()
+        turbojet.Run_OD_simulation('ISA SL OD')
 
     # export OutputTable to CSV
     turbojet.OutputToCSV()
