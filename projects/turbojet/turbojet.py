@@ -204,25 +204,19 @@ def main():
 
     run_OD = True
 
-    # Loop over OD ambient conditions
-    altitudes = [0, 100, 200]  # altitude in meters
-
-    for altitude in altitudes:
-        if run_OD:
-            # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
-            turbojet.mode = 'OD'
-            turbojet.input_points = fuelcontrol.get_OD_input_points()
-            # turbojet.input_points = np.array([[0, 0.10], [0, 0.09]])
-            print("\nOff-design (OD) results")
-            print("=======================")
-            # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
-            # conditions is desired
-            turbojet.ambient.SetConditions('OD', altitude, 0, 0, None, None)
-            # Run OD simulation
-            # turbojet.VERBOSE = False # suppress OD output to terminal
-            turbojet.AddOutputBreak()
-            turbojet.Run_OD_simulation()
-            # print(turbojet._output_rows)
+    if run_OD:
+        # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
+        turbojet.mode = 'OD'
+        turbojet.input_points = fuelcontrol.get_OD_input_points()
+        # turbojet.input_points = np.array([[0, 0.36]])
+        print("\nOff-design (OD) results")
+        print("=======================")
+        # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
+        # conditions is desired
+        turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
+        # Run OD simulation
+        # turbojet.VERBOSE = False # suppress OD output to terminal
+        turbojet.Run_OD_simulation()
 
     # export OutputTable to CSV
     turbojet.OutputToCSV()
