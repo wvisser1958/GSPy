@@ -596,7 +596,7 @@ class TSystemModel:
             print(f"\tGross thrust: {self.FG:.2f} kN")
             print(f"\tRam drag    : {self.RD:.2f} kN")
             print(f"\tNet thrust  : {self.FN:.2f} kN")
-            print(f"\tTSFC        : {self.WF*1000/self.FN:.5f} g/s/kN")
+            print(f"\tTSFC        : {self.WF / self.FN * 1000 if self.FN != 0 else float('nan')}")
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW += shaft.PW_sum
@@ -607,7 +607,7 @@ class TSystemModel:
         if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)) or self.output_shaft_power_total: # ignoring PW <= 10 W
             self.output_shaft_power_total = True
             print(f"\tTotal power output : {self.PW/1000:.3f} kW")
-            print(f"\tSFC shaft power    : {self.WF / self.PW  * 1e6:.3f} g/s/kW")
+            print(f"\tSFC shaft power    : {self.WF / self.PW  * 1e6:.3f if self.PW != 0 else float('nan')} g/s/kW")
 
     # 2.0.0.0
     def get_outputs(self, is_final_output = False):
@@ -620,7 +620,7 @@ class TSystemModel:
             out["FG"] = self.FG
             out["FN"] = self.FN
             out["RD"] = self.RD
-            out["TSFC"] = self.WF / self.FN * 1000 # g/s/kN
+            out["TSFC"] = self.WF / self.FN * 1000 if self.FN != 0 else float("nan")
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW += shaft.PW_sum
@@ -745,30 +745,66 @@ class TSystemModel:
 
     def Plot_X_nY_graph(self, title, filename_suffix, xcol, ycollist, do_show = False):
         self.prepare_output_table()
-        # Plot output_tableable data
+        # Plot output_table data
         # Create n subplots stacked vertically, sharing the same X-axis
         fig, axes = plt.subplots(nrows=len(ycollist), ncols=1, sharex=True, figsize=(8, 10))
+        axes = np.atleast_1d(axes)
         for ax in axes:
             ax.grid(True, linestyle=':', linewidth=1.0, alpha=1.0)  # add
-
-        # # Plot each variable
+        # Plot each variable
         yaxisnr = 0
         xname, xlabel = xcol
-
         # one-time mask for design points
         dp_mask = (self.output_table["Mode"] == "DP")
+
+        # Split output into datasets using the break rows added by AddOutputBreak().
+        break_rows = (
+            self.output_table["Mode"]
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .eq("<br>")
+        )
+        dataset_id = break_rows.cumsum()
+        operating_datasets = []
+        for _, dataset in self.output_table.loc[~break_rows].groupby(
+                dataset_id[~break_rows], sort=False):
+            od_dataset = dataset.loc[
+                dataset["Mode"].astype(str).str.strip().str.upper().eq("OD")
+            ]
+            if not od_dataset.empty:
+                description = od_dataset["Description"].dropna().astype(str)
+                run_name = (
+                    description.iloc[0].split(",", 1)[0].strip()
+                    if not description.empty
+                    else f"OD run {len(operating_datasets) + 1}"
+                )
+                operating_datasets.append((od_dataset, run_name))
+
+        colors = plt.rcParams['axes.prop_cycle'].by_key().get('color', ['navy'])
 
         for item in ycollist:
             col   = item[0]
             label = item[1] if len(item) > 1 else item[0]
-            color = item[2] if len(item) > 2 else None
-
+            default_color = item[2] if len(item) > 2 else None
             ax = axes[yaxisnr]
 
-            # main line
-            ax.plot(self.output_table[xname], self.output_table[col], color=color, zorder=2)
-            ax.set_ylabel(label)
+            # Plot every break-separated OD run with a different colour.
+            for dataset_index, (dataset, run_name) in enumerate(operating_datasets):
+                color = (
+                    default_color
+                    if len(operating_datasets) == 1 and default_color is not None
+                    else colors[dataset_index % len(colors)]
+                )
+                ax.plot(
+                    dataset[xname],
+                    dataset[col],
+                    color=color,
+                    zorder=2,
+                    label=(run_name if yaxisnr == 0 else None)
+                )
 
+            ax.set_ylabel(label)
             # screen-fixed squares at design points (only for rows where Mode == "DP")
             ax.scatter(
                 self.output_table.loc[dp_mask, xname],
@@ -778,19 +814,15 @@ class TSystemModel:
                 facecolors="yellow",
                 edgecolors="black",
                 linewidths=0.8,
-                zorder=1,
+                zorder=3,
                 label="Design point" if yaxisnr == 0 else None  # add legend label once
             )
-
             yaxisnr += 1
-
         axes[yaxisnr - 1].set_xlabel(xlabel)
-
         # optional: show a single legend (pull handles/labels from the first axes)
         handles, labels = axes[0].get_legend_handles_labels()
         if handles:
             axes[0].legend(handles, labels, loc="best")
-
         # Optional: improve layout
         fig.suptitle(title, fontsize=14)
         fig.tight_layout(rect=[0, 0, 1, 0.96])

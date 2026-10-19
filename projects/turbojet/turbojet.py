@@ -48,7 +48,6 @@ def main():
                            OD_end_value=0.08,
                            OD_point_step_value=-0.01,   # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
-                        #    OD_start_value = 0.30,       # off design (OD) input: single input value
 
                            OD_controlled_parameter_name=None
                             # OD control parameter name: must be an output present in the output table

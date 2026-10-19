@@ -138,11 +138,11 @@ class TTurboMap(TMap):
             return
 
         break_rows = (
-            table["Comment"]
+            table["Mode"]
             .astype(str)
             .str.strip()
             .str.lower()
-            .eq("<break>")
+            .eq("<br>")
         )
 
         dataset_id = break_rows.cumsum()
