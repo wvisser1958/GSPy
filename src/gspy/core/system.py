@@ -690,13 +690,14 @@ class TSystemModel:
         if self.output_table is None:
             self.output_table = pd.DataFrame(self._output_rows)
 
-    def AddOutputBreak(self):
+    def AddOutputBreak(self, break_mode = "<br>", break_comment = ""):
         break_row = {
             col: np.nan
             for col in self.output_dict.keys()
         }
 
-        break_row["Comment"] = "<break>"
+        break_row["Mode"] = break_mode
+        break_row["Comment"] = break_comment
 
         self._output_rows.append(break_row)
 
