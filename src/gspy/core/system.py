@@ -607,7 +607,7 @@ class TSystemModel:
         if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)) or self.output_shaft_power_total: # ignoring PW <= 10 W
             self.output_shaft_power_total = True
             print(f"\tTotal power output : {self.PW/1000:.3f} kW")
-            print(f"\tSFC shaft power    : {self.WF / self.PW  * 1e6:.3f if self.PW != 0 else float('nan')} g/s/kW")
+            print(f"\tSFC shaft power    : {self.WF / self.PW  * 1e6:.3f} g/s/kW" if self.PW != 0 else f"{float('nan')}")
 
     # 2.0.0.0
     def get_outputs(self, is_final_output = False):
