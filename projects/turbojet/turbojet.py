@@ -48,10 +48,8 @@ def main():
                            OD_end_value=0.08,
                            OD_point_step_value=-0.01,   # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
-                        #    OD_start_value = 0.30,       # off design (OD) input: single input value
 
-                           OD_controlled_parameter_name=None,
-                           replace_point_decription_with_control_value=True
+                           OD_controlled_parameter_name=None
                             # OD control parameter name: must be an output present in the output table
                             # if None: the component using it directly takes the value
                             # if specified with parameter name, an equation is added forcing the parameter to match the input values
@@ -209,7 +207,7 @@ def main():
         # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
         turbojet.mode = 'OD'
         turbojet.input_points = fuelcontrol.get_OD_input_points()
-        # turbojet.input_points = np.array([[0, 0.10], [0, 0.09]])        
+        # turbojet.input_points = np.array([[0, 0.36]])
         print("\nOff-design (OD) results")
         print("=======================")
         # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
@@ -217,7 +215,7 @@ def main():
         turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
         # Run OD simulation
         # turbojet.VERBOSE = False # suppress OD output to terminal
-        turbojet.Run_OD_simulation('ISA SL OD')
+        turbojet.Run_OD_simulation()
 
     # export OutputTable to CSV
     turbojet.OutputToCSV()
