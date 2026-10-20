@@ -743,98 +743,195 @@ class TSystemModel:
 
         self.vprint("output saved in " + outputcsvfilename)
 
-    def Plot_X_nY_graph(self, title, filename_suffix, xcol, ycollist, do_show = False):
-        self.prepare_output_table()
-        # Plot output_table data
-        # Create n subplots stacked vertically, sharing the same X-axis
-        fig, axes = plt.subplots(nrows=len(ycollist), ncols=1, sharex=True, figsize=(8, 10))
-        axes = np.atleast_1d(axes)
-        for ax in axes:
-            ax.grid(True, linestyle=':', linewidth=1.0, alpha=1.0)  # add
-        # Plot each variable
-        yaxisnr = 0
-        xname, xlabel = xcol
-        # one-time mask for design points
-        dp_mask = (self.output_table["Mode"] == "DP")
+    def Plot_X_nY_graph(
+            self,
+            title,
+            filename_suffix,
+            xcol,
+            ycollist,
+            do_show=False):
 
-        # Split output into datasets using the break rows added by AddOutputBreak().
-        break_rows = (
+        self.prepare_output_table()
+
+        # Create n subplots stacked vertically, sharing the same X-axis.
+        fig, axes = plt.subplots(
+            nrows=len(ycollist),
+            ncols=1,
+            sharex=True,
+            figsize=(8, 10)
+        )
+
+        axes = np.atleast_1d(axes)
+
+        for ax in axes:
+            ax.grid(
+                True,
+                linestyle=':',
+                linewidth=1.0,
+                alpha=1.0
+            )
+
+        xname, xlabel = xcol
+
+        # Normalize Mode once for consistent comparisons.
+        modes = (
             self.output_table["Mode"]
             .astype(str)
             .str.strip()
-            .str.lower()
-            .eq("<br>")
+            .str.upper()
         )
+
+        dp_mask = modes.eq("DP")
+
+        # Split output into datasets using break rows added by AddOutputBreak().
+        break_rows = modes.eq("<BR>")
         dataset_id = break_rows.cumsum()
+
         operating_datasets = []
+
         for _, dataset in self.output_table.loc[~break_rows].groupby(
-                dataset_id[~break_rows], sort=False):
-            od_dataset = dataset.loc[
-                dataset["Mode"].astype(str).str.strip().str.upper().eq("OD")
-            ]
+                dataset_id[~break_rows],
+                sort=False):
+
+            dataset_modes = (
+                dataset["Mode"]
+                .astype(str)
+                .str.strip()
+                .str.upper()
+            )
+
+            od_dataset = dataset.loc[dataset_modes.eq("OD")]
+
             if not od_dataset.empty:
-                description = od_dataset["Description"].dropna().astype(str)
+                description = (
+                    od_dataset["Description"]
+                    .dropna()
+                    .astype(str)
+                )
+
                 run_name = (
                     description.iloc[0].split(",", 1)[0].strip()
                     if not description.empty
                     else f"OD run {len(operating_datasets) + 1}"
                 )
-                operating_datasets.append((od_dataset, run_name))
 
-        colors = plt.rcParams['axes.prop_cycle'].by_key().get('color', ['navy'])
+                # Retain the first source-row index for legend sorting.
+                source_index = od_dataset.index[0]
 
-        for item in ycollist:
-            col   = item[0]
+                operating_datasets.append(
+                    (source_index, od_dataset, run_name)
+                )
+
+        colors = (
+            plt.rcParams["axes.prop_cycle"]
+            .by_key()
+            .get("color", ["navy"])
+        )
+
+        # Legend entries stored as:
+        # (first source-row index, Matplotlib handle, legend label)
+        legend_entries = []
+
+        for yaxisnr, item in enumerate(ycollist):
+            col = item[0]
             label = item[1] if len(item) > 1 else item[0]
             default_color = item[2] if len(item) > 2 else None
+
             ax = axes[yaxisnr]
 
-            # Plot every break-separated OD run with a different colour.
-            for dataset_index, (dataset, run_name) in enumerate(operating_datasets):
+            # Plot every break-separated OD run using a different color.
+            for dataset_index, (
+                    source_index,
+                    dataset,
+                    run_name) in enumerate(operating_datasets):
+
                 color = (
                     default_color
-                    if len(operating_datasets) == 1 and default_color is not None
+                    if (
+                        len(operating_datasets) == 1
+                        and default_color is not None
+                    )
                     else colors[dataset_index % len(colors)]
                 )
-                ax.plot(
+
+                line, = ax.plot(
                     dataset[xname],
                     dataset[col],
                     color=color,
-                    zorder=2,
-                    label=(run_name if yaxisnr == 0 else None)
+                    zorder=2
                 )
 
+                # Legend entries are only required for the first subplot.
+                if yaxisnr == 0:
+                    legend_entries.append(
+                        (source_index, line, run_name)
+                    )
+
             ax.set_ylabel(label)
-            # screen-fixed squares at design points (only for rows where Mode == "DP")
-            ax.scatter(
+
+            # Plot design points.
+            design_point_handle = ax.scatter(
                 self.output_table.loc[dp_mask, xname],
                 self.output_table.loc[dp_mask, col],
-                s=40,                    # points^2, screen-fixed size
+                s=40,
                 marker="s",
                 facecolors="yellow",
                 edgecolors="black",
                 linewidths=0.8,
-                zorder=3,
-                label="Design point" if yaxisnr == 0 else None  # add legend label once
+                zorder=3
             )
-            yaxisnr += 1
-        axes[yaxisnr - 1].set_xlabel(xlabel)
-        # optional: show a single legend (pull handles/labels from the first axes)
-        handles, labels = axes[0].get_legend_handles_labels()
-        if handles:
-            axes[0].legend(handles, labels, loc="best")
-        # Optional: improve layout
+
+            # Add the design-point legend entry at the position of the first
+            # design-point row in output_table.
+            if yaxisnr == 0 and dp_mask.any():
+                first_dp_index = self.output_table.index[dp_mask][0]
+
+                legend_entries.append(
+                    (
+                        first_dp_index,
+                        design_point_handle,
+                        "Design point"
+                    )
+                )
+
+        axes[-1].set_xlabel(xlabel)
+
+        # Sort legend items according to their first occurrence in output_table.
+        legend_entries.sort(key=lambda entry: entry[0])
+
+        if legend_entries:
+            legend_handles = [
+                entry[1]
+                for entry in legend_entries
+            ]
+
+            legend_labels = [
+                entry[2]
+                for entry in legend_entries
+            ]
+
+            axes[0].legend(
+                legend_handles,
+                legend_labels,
+                loc="best"
+            )
+
         fig.suptitle(title, fontsize=14)
         fig.tight_layout(rect=[0, 0, 1, 0.96])
-        # 2.0.0.0
+
         if do_show:
             plt.show()
-        # xyplotfilename = os.path.join(output_directory, os.path.splitext(os.path.basename(__file__))[0]) + ".jpg"
-        # 2.0.0.0
-        # jpg_filename = self.model_name + filename_suffix + ".jpg"
-        jpg_filename = os.path.join(self.output_dir_path, self.model_name + filename_suffix + ".jpg")
+
+        jpg_filename = os.path.join(
+            self.output_dir_path,
+            self.model_name + filename_suffix + ".jpg"
+        )
+
         fig.savefig(jpg_filename)
-        self.vprint("x-4y plot saved in " + jpg_filename)
+
+        self.vprint(
+            "x-4y plot saved in " + jpg_filename
+        )
 
     def PlotMaps(self):
         self.prepare_output_table()
