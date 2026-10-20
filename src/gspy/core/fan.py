@@ -330,7 +330,7 @@ class TFan(TTurboComponent):
         return column_list
 
     # 2.0.0.0
-    def get_outputs(self, *, is_final_output=False):
+    def get_outputs(self):
         out = super().get_outputs()
 
         self.get_flowstate_mass_fractions(out, self.fs_out_duct, self.station_out_duct)

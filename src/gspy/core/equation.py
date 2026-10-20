@@ -69,6 +69,6 @@ class TEquation(TComponent):
     def PrintPerformance(self, Mode, PointTime):
         pass
 
-    def get_outputs(self, *, is_final_output=False):
+    def get_outputs(self):
         out = super().get_outputs()
         return out

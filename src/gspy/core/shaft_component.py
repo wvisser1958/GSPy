@@ -63,7 +63,7 @@ class TShaftComponent(TComponent, ABC):
                     f"cannot be resolved to an object. ({e})"
                 )
 
-    def get_outputs(self, *, is_final_output=False):
+    def get_outputs(self):
         """
         Default outputs for shaft-connected devices.
 

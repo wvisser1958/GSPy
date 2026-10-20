@@ -420,7 +420,7 @@ class THeatpath(ABC):
             out[f"Q_rad_{loc_value} {self.name}"] = ht.Q_rad
         out[f"Q_{loc_value} {self.name}"] = ht.Q
 
-    def get_outputs(self, *, is_final_output=False):
+    def get_outputs(self):
         out = {}
 
         if self.system.debug_output:

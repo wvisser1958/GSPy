@@ -68,7 +68,7 @@ class THeatsink(TComponent):
         print(f"\t\tT        : {self.T:.1f} K")
         print(f"\t\tQ_balance: {self.Q_balance:.0f} W")
 
-    def get_outputs(self, *, is_final_output=False):
+    def get_outputs(self):
         out = super().get_outputs()
         out[f"T{self.id}"] = self.T
         out[f"Q_balance{self.id}"] = self.Q_balance

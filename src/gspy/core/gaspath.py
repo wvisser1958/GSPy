@@ -188,7 +188,7 @@ class TGaspath(TComponent):
             for sp in self.fs_out_output_species:
                 out[f"Y{station_nr}_{sp}"] = 0.0
 
-    def get_outputs(self, *, is_final_output=False):
+    def get_outputs(self):
         out = super().get_outputs()
 
         s_in = self.station_in

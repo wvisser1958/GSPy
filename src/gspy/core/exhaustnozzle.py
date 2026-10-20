@@ -1114,9 +1114,7 @@ class TExhaustNozzle(TGaspath):
 
         # self.fs_out.TP = self.Tthroat, Pout # assume no further expansion
         self.V_exit = result["V_exit"] * self.CVdes
-        # bug fix, thanks Immanuel
-        # self.P_exit = result["P_exit"] * self.CVdes
-        self.P_exit = result["P_exit"]
+        self.P_exit = result["P_exit"] * self.CVdes
 
         self.T_throat = result["T_throat"] 
         self.P_throat = result["P_throat"] 
@@ -1143,7 +1141,7 @@ class TExhaustNozzle(TGaspath):
         print(f"\tGross thrust: {self.FG:.2f} kN")
 
     # 2.0.0.0
-    def get_outputs(self, *, is_final_output=False):
+    def get_outputs(self):
         out = super().get_outputs()
 
         sthr = self.station_throat

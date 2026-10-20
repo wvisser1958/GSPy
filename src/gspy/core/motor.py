@@ -36,7 +36,7 @@ class TMotor(TOneShaftComponent):
         self.power_w_des = power_kw_des * 1000  # convert kW to W
         self.power_w = self.power_w_des
 
-    def get_outputs(self, *, is_final_output=False):
+    def get_outputs(self):
         out = {}
         out["PW_" + self.name] = self.power_w / 1000  # convert W to kW for output
 

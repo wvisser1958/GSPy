@@ -76,7 +76,7 @@ class TCoolingFlow(TGaspath):
             print(f"\t\tDHW expansion: {self.DHWexp:.1f} kW")
 
     # 2.0.0.0
-    def get_outputs(self, *, is_final_output=False):
+    def get_outputs(self):
         out = super().get_outputs()
 
         out[f"Fraction from bleed nr {self.frombleednumber}"]  = self.fractiontaken

@@ -71,7 +71,7 @@ class TExhaustDiffuser(TGaspath):
         print(f"\t\tExit static temperature: {self.fs_out.T:.1f} K")
         print(f"\t\tExit static pressure: {self.fs_out.P:.0f} Pa")
 
-    def get_outputs(self, *, is_final_output=False):
+    def get_outputs(self):
         out = super().get_outputs()
         sout = self.station_out
         out[f"T{sout}"]  = self.fs_out.T

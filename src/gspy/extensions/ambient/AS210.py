@@ -1733,7 +1733,7 @@ if TComponent is not None:
 
             return out
         
-        def get_outputs(self, *, is_final_output=False):
+        def get_outputs(self):
             s = self.station_nr
             active_inputs = self._active_input_values()
             O = self.outputs
