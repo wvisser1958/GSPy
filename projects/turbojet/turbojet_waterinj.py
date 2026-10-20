@@ -199,12 +199,11 @@ def main():
                             ("Perc_water_waterinj",           "Water injection [%]"),
                             # 4 Y paramaeter column names with labels and color
                             [   ("T21",             "T2 [K]",                   "blue"),
-                                ("Y21_H2O_LIQ",     "Y21_Lh2o[-]",                      "blue"),
                                 ("N1%",             "N1 [%]",                   "blue"),
                                 ("T5",              "EGT [K]",                  "blue"),
-                                ("W2",              "W2  [kg/s]",         "blue"),
-                                ("Wf_Combustor1",   "FF [kg/s]",         "blue"),
-                                ("FN",              "FN [kN]",          "blue"),
+                                ("W2",              "W2 (air)  [kg/s]",         "blue"),
+                                ("Wf_Combustor1",   "Fuel flow [kg/s]",         "blue"),
+                                ("FN",              "Net thrust [kN]",          "blue"),
                                 ("TSFC",            "TSFC [kg/s/kN]",           "blue")            ])
 
      # Create component map plots with operating lines if available
