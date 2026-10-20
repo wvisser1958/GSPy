@@ -232,7 +232,7 @@ def main():
     turboshaft.input_points = fuelcontrol.get_OD_input_points()
     # Run OD simulation
     # turboshaft.Run_OD_simulation(f'ISA SL OD {fuelcontrol.OD_start_value} kW')
-    turboshaft.Run_OD_simulation('ISA SL OD')
+    turboshaft.Run_OD_simulation()
 
     # Export OutputTable to CSV
     turboshaft.OutputToCSV()
