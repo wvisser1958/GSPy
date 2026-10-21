@@ -239,11 +239,11 @@ def main():
     turbojet.OutputToCSV()
 
     # plot nY vs X parameter
-                            ("N1%",           "Rotor speed [%]"),
     turbojet.Plot_X_nY_graph('Engine performance vs. N [%]',
                             # suffix for filename to keep multiple plot files apart
                             "_1",
                             # common X parameter column name with label
+                            ("N1%",           "Rotor speed [%]"),
                             # 4 Y paramaeter column names with labels and color
                             [   ("T4",              "TIT [K]",                  "blue"),
                                 ("T5",              "EGT [K]",                  "blue"),
