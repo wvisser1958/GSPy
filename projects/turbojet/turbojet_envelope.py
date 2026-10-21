@@ -211,8 +211,14 @@ def main():
     for altitude in altitudes:
         # Add a break in between data sets in the output table to separate different ambient conditions
         turbojet.AddOutputBreak()
-        print("\nOff-design (OD) results")
-        print("=======================")
+        # Suppress the output printing to terminal for each altitude/T4 if desired
+        turbojet.VERBOSE = False # suppress OD output to terminal
+        # Print OD results or OD run name for each altitude and TIT value
+        printheader = "Off-design (OD) results"
+        if turbojet.VERBOSE:
+            printheader = "Off-design (OD) results (altitude = " + str(altitude) + " m)"
+        print("\n" + printheader)
+        print("=" * len(printheader))
         for TIT_value in TIT_values:
             turbojet.get_comp("Fcontrol").OD_start_value = TIT_value  # reset OD start value for each altitude
             # fuelcontrol.OD_start_value = TIT_value  # reset OD start value for each altitude
@@ -220,24 +226,24 @@ def main():
                 # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
                 turbojet.mode = 'OD'
                 turbojet.input_points = fuelcontrol.get_OD_input_points()
-                print("altitude = " + str(altitude) + " m, TIT = " + str(TIT_value) + " K")
+                # Print the current altitude and TIT value for each OD run
+                if not turbojet.VERBOSE:
+                    print("altitude = " + str(altitude) + " m, TIT = " + str(TIT_value) + " K")
                 # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
                 # conditions is desired
                 turbojet.ambient.SetConditions('OD', altitude, 0, 0, None, None)
                 # Run OD simulation
-                turbojet.VERBOSE = False # suppress OD output to terminal
                 turbojet.Run_OD_simulation("altitude = " + str(altitude) + " m, TIT = " + str(TIT_value) + " K")
-                # print(turbojet._output_rows)
 
     # export OutputTable to CSV
     turbojet.OutputToCSV()
 
     # plot nY vs X parameter
+                            ("N1%",           "Rotor speed [%]"),
     turbojet.Plot_X_nY_graph('Engine performance vs. N [%]',
                             # suffix for filename to keep multiple plot files apart
                             "_1",
                             # common X parameter column name with label
-                            ("N1%",           "Rotor speed [%]"),
                             # 4 Y paramaeter column names with labels and color
                             [   ("T4",              "TIT [K]",                  "blue"),
                                 ("T5",              "EGT [K]",                  "blue"),
