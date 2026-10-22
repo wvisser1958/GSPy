@@ -61,12 +61,14 @@ class TFan(TTurboComponent):
         #  1.5 set self.Etades to None, use Etadec_core instead to avoid duplicate in output
         #      checking if self.Etades non None in TTurboComponent
         self.Etades_core = self.Etades
+        self.Eta_core = self.Etades_core
         self.Etades = None
 
         # duct side map
         self.map_duct = TCompressorMap(self, name + '_map_duct', MapFileName_duct, "Wc_duct_"+self.name, "PR_duct_"+self.name, shaft_id, Ncmapdes_duct, Betamapdes_duct)
         self.PRdes_duct = PRdes_duct
         self.Etades_duct = Etades_duct
+        self.Eta_duct = self.Etades_duct
 
         # 1.6
         self.cf = cf
