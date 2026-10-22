@@ -39,9 +39,9 @@ class TFan(TTurboComponent):
                 # default value for cf = 1 : most stable, assuming the duct-core dividing stream line remains the same as with BPRdes
                 cf = 1,
                 *,
-                 gas_out_output_species = None  
-                 # just do only core exit species mass fraction output, no need for duct side mass fraction output, 
-                 # as the duct side flow is usually not the main flow and the species mass fractions are not changing 
+                 gas_out_output_species = None
+                 # just do only core exit species mass fraction output, no need for duct side mass fraction output,
+                 # as the duct side flow is usually not the main flow and the species mass fractions are not changing
                  # much in the duct, so just use the core exit gas for output of species mass fractions
                 ):
 
@@ -240,7 +240,8 @@ class TFan(TTurboComponent):
         print(f"\tEta des_duct : {self.Etades_duct:.4f}")
         print(f"\tEta duct    : {self.Eta_duct:.4f}")
 
-        print(f"\tPW : {self.PW:.1f}")
+        if self.PW != None:
+            print(f"\tPW : {self.PW:.1f}")
 
     def GetOutputTableColumnNames(self):
         # override the super.., delete unused PR..., Eta_is: now separate PR and Eta for core and duct
