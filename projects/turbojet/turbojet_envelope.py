@@ -14,6 +14,8 @@
 #   Wilfried Visser
 #   Oscar Kogenhop
 
+from ast import Add
+
 from numpy.char import array
 import numpy as np
 
@@ -44,13 +46,12 @@ def main():
                            name='Fcontrol',             # component name
                            DP_input_value=0.38,         # design point (DP) input
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
-                           OD_start_value=0.38,
-                           OD_end_value=0.08,
-                           OD_point_step_value=-0.01,   # off design (OD) input: starting value, end value and step value OR alternatively:
-                           # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
-                        #    OD_start_value = 0.30,       # off design (OD) input: single input value
-
-                           OD_controlled_parameter_name=None
+                           OD_start_value=1235.9, # off design (OD) input: single input value
+                        #    OD_start_value=0.38,
+                        #    OD_end_value=0.08,
+                        #    OD_point_step_value=-0.01,   # off design (OD) input: starting value, end value and step value OR alternatively:
+                        #    OD_controlled_parameter_name=None
+                           OD_controlled_parameter_name='T4'
                             # OD control parameter name: must be an output present in the output table
                             # if None: the component using it directly takes the value
                             # if specified with parameter name, an equation is added forcing the parameter to match the input values
@@ -164,7 +165,6 @@ def main():
                            Polytropic_DP_eta=0          # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
                            )
 
-
     duct1    = TDuct(system=turbojet,                    # owning system model object
                      name='ExhDuct',                    # component name
                      station_in=5,
@@ -205,24 +205,35 @@ def main():
     run_OD = True
 
     # Loop over OD ambient conditions
-    altitudes = [0, 100, 200]  # altitude in meters
+    altitudes = [0, 1000, 2000, 5000]  # altitude in meters
+    TIT_values = [1235.9, 1200, 1150, 1100, 1050]  # TIT values in Kelvin
 
     for altitude in altitudes:
-        if run_OD:
-            # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
-            turbojet.mode = 'OD'
-            turbojet.input_points = fuelcontrol.get_OD_input_points()
-            # turbojet.input_points = np.array([[0, 0.10], [0, 0.09]])
-            print("\nOff-design (OD) results")
-            print("=======================")
-            # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
-            # conditions is desired
-            turbojet.ambient.SetConditions('OD', altitude, 0, 0, None, None)
-            # Run OD simulation
-            # turbojet.VERBOSE = False # suppress OD output to terminal
-            turbojet.AddOutputBreak()
-            turbojet.Run_OD_simulation()
-            # print(turbojet._output_rows)
+        # Add a break in between data sets in the output table to separate different ambient conditions
+        turbojet.AddOutputBreak()
+        # Suppress the output printing to terminal for each altitude/T4 if desired
+        turbojet.VERBOSE = False # suppress OD output to terminal
+        # Print OD results or OD run name for each altitude and TIT value
+        printheader = "Off-design (OD) results"
+        if turbojet.VERBOSE:
+            printheader = "Off-design (OD) results (altitude = " + str(altitude) + " m)"
+        print("\n" + printheader)
+        print("=" * len(printheader))
+        for TIT_value in TIT_values:
+            turbojet.get_comp("Fcontrol").OD_start_value = TIT_value  # reset OD start value for each altitude
+            # fuelcontrol.OD_start_value = TIT_value  # reset OD start value for each altitude
+            if run_OD:
+                # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
+                turbojet.mode = 'OD'
+                turbojet.input_points = fuelcontrol.get_OD_input_points()
+                # Print the current altitude and TIT value for each OD run
+                if not turbojet.VERBOSE:
+                    print("altitude = " + str(altitude) + " m, TIT = " + str(TIT_value) + " K")
+                # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
+                # conditions is desired
+                turbojet.ambient.SetConditions('OD', altitude, 0, 0, None, None)
+                # Run OD simulation
+                turbojet.Run_OD_simulation("altitude = " + str(altitude) + " m, TIT = " + str(TIT_value) + " K")
 
     # export OutputTable to CSV
     turbojet.OutputToCSV()

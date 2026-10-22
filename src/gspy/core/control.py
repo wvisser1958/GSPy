@@ -149,8 +149,8 @@ class TControl(TComponent):
             # self.control_parameter_demand = self.OD_start_value
 
             # Set description of the control for output table
-            if self.owner.descr is None:
-                self.owner.descr = "Control: " + self.name + ", " + str(self.OD_controlled_parameter_name) + " = " + str(point_time_input_value)
+            if self.system.descr is None:
+                self.system.descr = "Control: " + self.name + ", " + str(self.OD_controlled_parameter_name) + " = " + str(point_time_input_value)
 
             # # if not((self.OD_end_value == None) or (self.OD_point_step_value == None)):
             #     #  2.1
