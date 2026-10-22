@@ -20,7 +20,10 @@ from gspy.core.base_component import TComponent
 import gspy.core.utils as fu
 
 class TGaspath(TComponent):
-    def __init__(self, owner, name, map_filename, control_component, station_in, station_out):    # Constructor of the class
+    def __init__(self, owner, name, map_filename, control_component, station_in, station_out,
+                #  2.0.0.2
+                 *,
+                 gas_out_output_species = None):    # Constructor of the class
         super().__init__(owner, name, map_filename, control_component)
         self.station_in = station_in
         self.station_out = station_out
@@ -31,12 +34,17 @@ class TGaspath(TComponent):
         self.Wc = None
         self.PRdes = 1
         self.PR = None
-        # 1.6.0.5
         self.W = None
+        # 2.0.0.2
+        self.gas_out_output_species = list(gas_out_output_species or [])
+        self.gas_out_output_species_indices = [
+            self.owner.gas.species_index(sp)
+            for sp in self.gas_out_output_species
+            ]
 
     def Run(self, Mode, PointTime):
         self.gas_in = self.owner.gaspath_conditions[self.station_in]
-
+        
         if Mode == 'DP':
             # create gas_inDes, gas_out cantera Quantity (gas_in already created)
             self.gas_inDes = ct.Quantity(self.gas_in.phase, mass = self.gas_in.mass)
@@ -46,10 +54,8 @@ class TGaspath(TComponent):
             self.W = self.Wdes
             self.Wc = self.Wcdes
         else:
-            # v1.2
             self.W = fu.scalar(self.gas_in.mass)
             self.Wc = self.W * fu.GetFlowCorrectionFactor(self.gas_in)
-
             self.gas_out.TPY = self.gas_in.TPY
             self.gas_out.mass = self.gas_in.mass
 
@@ -111,6 +117,14 @@ class TGaspath(TComponent):
 
         if self.PR is not None:
             out[f"PR_{self.name}"] = self.PR
+
+        # 2.0.0.2
+        s_out = self.station_out
+        gas = self.gas_out.phase
+        Y = gas.Y
+        for sp, i in zip(self.gas_out_output_species,
+                        self.gas_out_output_species_indices):
+            out[f"Y{s_out}_{sp}"] = Y[i]            
 
         # out.update(self._get_species_outputs(self.gas_in, s_in, basis="mass"))
 

@@ -1,5 +1,14 @@
-# GSPy
-GSPy is a Python-based tool for modelling and simulating propulsion and power system performance. Developed by the creators of GSP, this implementation demonstrates how leveraging robust existing libraries can significantly reduce the need for writing large amounts of custom code.
+<table>
+  <tr>
+    <td width="180">
+      <img src="docs/logos/GSPy_logo_final.png" width="160">
+    </td>
+    <td>
+      GSPy is a Python-based tool for modelling and simulating propulsion and power system performance.
+      Developed by the creators of GSP, it reduces the need for large amounts of custom code.
+    </td>
+  </tr>
+</table>
 
 ### Authors:
 - Wilfried Visser
@@ -29,6 +38,58 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 2. VERSION HISTORY
 ********************************************************************************
+### GSPy v2.0.0.6                                                    30-09-2026
+--------------------------------------------------------------------------------
+- Updated to Python 3.14.7.
+- some code in combustor.py and ambient.py updated to comply to new 
+  Cantera/Numpy versions.
+- waterinjector.py class added to simulate water injection effect in gas flow
+  (evaporative cooling)
+- added turbojet_waterinj.py demo model script
+
+### Fixes
+--------------------------------------------------------------------------------
+- fixed bug in system.py (reinit_states_and_errors not resetting states and 
+  errors)
+
+### GSPy v2.0.0.5                                                    12-08-2026
+--------------------------------------------------------------------------------
+### Fixes
+--------------------------------------------------------------------------------
+- Bug in TFan: composition for duct flow not coppied from inlet flow, causing
+  errors when changing inlet air composition from standard (e.g. RH>0)
+
+### GSPy v2.0.0.4                                                     05-06-2026
+--------------------------------------------------------------------------------
+### Fixes
+--------------------------------------------------------------------------------
+- Demo model scripts (in projects) updated to this version
+- small fixes enabling multiple DP runs
+
+### GSPy v2.0.0.3                                                     05-06-2026
+--------------------------------------------------------------------------------
+### Improvements/extensions
+--------------------------------------------------------------------------------
+- system.py series calculation poin_time handling improved (allow float 
+  point_time values)
+- added description column in output (set in Run_DP/OD 'descr = "....")
+
+### GSPy v2.0.0.2                                                     04-06-2026
+--------------------------------------------------------------------------------
+### Improvements/extensions
+--------------------------------------------------------------------------------
+- Gas path components can now specify exit station gas species mass fractionss 
+  to be output to the output table in the form of "Y4_H2O" for water vapor mass 
+  fraction at combustor output (station 4) for example. 
+  See the example project turbojet.py.
+
+### GSPy v2.0.0.1                                                     03-06-2026
+--------------------------------------------------------------------------------
+### Fixed
+--------------------------------------------------------------------------------
+- Several bugs causing faulty effects of humidity on combustion.
+- ambient, system, combustor and constants .py code files streamlined.
+
 ### GSPy v2.0.0.0                                                     14-04-2026
 --------------------------------------------------------------------------------
 ### Improvements
@@ -98,6 +159,17 @@ See the LICENSE file for details.
     source code folder. The script is per default configured to generate
     the class hierarchy diagram of the .\src\gspy\core folder.
     The resulting class_diagram.md file is created in the .\docs folder.
+- The .\src\gspy\core folder is meant to contain the core component files,
+  adaptions and derivatives should be placed in .\src\gspy\extentions:
+  └── src/
+      └── gspy/
+          ├── core/
+          │   └── ...
+          └── extensions/
+              ├── adaptive_modelling/
+              │   └── ...
+              └── ambient/
+                  └── AS210.py
 - Shaft component classes are introduced to model components producing or
   consuming power and/or torque, like electric motors, generators etc.
   Class hierarchy:
@@ -396,10 +468,24 @@ See the LICENSE file for details.
 ********************************************************************************
 ## 4. KNOWN ISSUES
 ********************************************************************************
+- The GSPy API is a primer and should be developed further, many functions are
+  stubs. It is merely showing the potential.
+- The current API implementation is not fully upgraded to the new GSPy 2.0
+  version; this implies that the new TSystemModel class potential is not used.
+  We are in the process of developing an upgraded GSPy API version.
 
 ********************************************************************************
 ## 5. OTHER
 ********************************************************************************
+## Star History
+
+<a href="https://www.star-history.com/?repos=wvisser1958%2FGSPy&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=wvisser1958/GSPy&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=wvisser1958/GSPy&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=wvisser1958/GSPy&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ********************************************************************************
 ## 6. GSPy DEVELOPMENT TEAM

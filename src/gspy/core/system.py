@@ -21,6 +21,7 @@ import os
 import cantera as ct
 import matplotlib.pyplot as plt
 import cantera as ct
+import gspy.core.constants as c
 from pathlib import Path
 from scipy.optimize import root
 from gspy.core.ambient import TAmbient
@@ -42,7 +43,8 @@ class TSystemModel:
         self.initialized = False
         self.model_name = Path(model_file).stem if model_name is None else model_name
         self.params = {}
-
+        self.point_time = 0
+        
         # Default to this file's folder if caller doesn't provide a root
         project_dir = Path(model_file).resolve().parent
 
@@ -73,10 +75,14 @@ class TSystemModel:
                     f"Tried global fallback:\n  {global_yaml}"
                 )
 
+        self.vprint(f"Cantera version: {ct.__version__}")
         self.cantera_yaml_filename = cantera_yaml_filename
         self.cantera_yaml_path = use_yaml
         self.vprint(f"Using Cantera YAML file {use_yaml}")
         self.gas = ct.Solution(str(use_yaml))
+
+        # 2.0.0.1 moved here from TCombustor
+        self.gas.TPY = c.T_standard_ref, c.P_standard_ref, c.s_air_composition_mass
 
         self.vprint("phase Tmin, Tmax =", self.gas.min_temp, self.gas.max_temp)
         for sp in self.gas.species():
@@ -85,10 +91,9 @@ class TSystemModel:
                 if thermo.max_temp <= 2200:
                     self.vprint(sp.name, thermo.min_temp, thermo.max_temp)
 
-        self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
-
         # use dictionary for gas path conditions oriented by gas path station number
         self.gaspath_conditions = {}
+        self.ambient = TAmbient(self, 'Ambient', 'a', 0, 0,   0,   None,   None)
 
         # 1.1 WV dictionary for output during iteration (e.g. for control equations)
         self.output_dict = {}
@@ -96,8 +101,8 @@ class TSystemModel:
         self.component_run_list = [self.ambient] # system model component list, always starting with ambient
         self.shaft_list = []
 
-        self.inputpoints = np.array([], dtype=float)
-        self.points_output_interval = 1
+        self.input_points = np.array([], dtype=float)
+        # self.points_output_interval = 1
 
         self.states = np.array([], dtype=float)
         self.errors = np.array([], dtype=float)
@@ -126,7 +131,7 @@ class TSystemModel:
     def vprint(self, *args, **kwargs):
         if self.VERBOSE:
             print(*args, **kwargs)
-            
+
     def get_error_text(self, error_code):
         if error_code == self.no_convergence_error:
             return 'Not converged'
@@ -161,11 +166,12 @@ class TSystemModel:
         return next((obj for obj in self.component_run_list if (isinstance(obj, TGaspath)) and (obj.station_in == astationnr)), None)
 
     def reinit_states_and_errors(self):
-        # global states, errors
-        for state in self.states:
-            state = 1
-        for error in self.errors:
-            state = 0
+        self.states[:] = 1
+        self.errors[:] = 0
+
+    def empty_states_and_errors(self):
+        self.states = np.empty(0, dtype=self.states.dtype)
+        self.errors = np.empty(0, dtype=self.errors.dtype)
 
     def reset_output(self):
         self._output_rows = []
@@ -190,10 +196,15 @@ class TSystemModel:
 
         self.output_dict['Point/Time'] = point_time
         self.output_dict['Mode'] = mode
+        self.output_dict['Description'] = self.descr
 
         # 1.6 new PreRun virtual method
         for comp in self.component_run_list:
             comp.PreRun(mode, point_time)
+
+        # 2.1
+        for shaft in self.shaft_list:
+            shaft.Run(mode, point_time)
 
         # Run simulation code of all components in the system model
         for comp in self.component_run_list:
@@ -205,6 +216,7 @@ class TSystemModel:
         self.output_dict.update(self.get_outputs())
 
         # note that anything calculated in PostRun will not end up in the output_dict !
+        # but can be added explicitly in PostRun implementations
         for comp in self.component_run_list:
             comp.PostRun(mode, point_time)
 
@@ -217,9 +229,17 @@ class TSystemModel:
 
     # 1.6.0.1.8 dictionary with design targets and variables
     # def Run_DP_simulation():
-    def Run_DP_simulation(self, targets = None):
+    def Run_DP_simulation(self, targets = None, *, descr = None):
+
+        #  2.1
+        self.descr = descr
+
         try:
-            self.reinit_states_and_errors()
+            # empty states and errors, so they can be added again for OD simulation after DP simulation 
+            self.empty_states_and_errors()
+            # reset shaft states (avoid skipping initialization of shaft states in case of multiple DP runs)
+            for shaft in self.shaft_list:
+                shaft.istate = None
 
             if targets is None:
                 self.Do_Run('DP', 0, self.states)
@@ -274,11 +294,27 @@ class TSystemModel:
             for i, (varobj, varattr, targetobj, targetattr, targetvalue) in enumerate(self.targets):
                 self.vprint(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
 
-    def Run_OD_simulation(self):
+    # 2.1
+    def get_value_at_point_time(self, a_point_time):
+        if len(self.input_points) == 0:
+            raise RuntimeError("Number of input points cannot be 0")
+        elif len(self.input_points) == 1:
+            return self.input_points[0, 1] 
+        else:
+            times = self.input_points[:, 0]
+            values = self.input_points[:, 1]
+            return float(np.interp(a_point_time, times, values))
+
+    def Run_OD_simulation(self, descr = None):
         def residuals(states):
             # residuals will return residuals of system conservation equations, schedules, limiters etc.
             # the residuals are the errors returned by Do_Run
-            return self.Do_Run('OD', self.inputpoints[ipoint], states)
+            # 2.1
+            return self.Do_Run('OD', point_time, states)
+            # return self.Do_Run('OD', ipoint, states)
+
+        #  2.1
+        self.descr = descr
 
         try:
             # start with all states 1 and errors 0
@@ -287,9 +323,9 @@ class TSystemModel:
             maxiter=100
             successcount = 0
             failedcount = 0
-            for ipoint in self.inputpoints:
+            for point_time in self.input_points:
                 # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
-                # fsys.Do_Output(Mode, inputpoints[ipoint])
+                # fsys.Do_Output(Mode, input_points[ipoint])
                 rmax = 0
                 try:
                     solution = root(residuals,
@@ -311,26 +347,28 @@ class TSystemModel:
                     if rmax > self.error_tolerance:
                         raise RuntimeError(f"{self.get_error_text(self.false_convergence_error)}: residual {rmax}")
 
-                    if ipoint % self.points_output_interval == 0:
-                        self.Do_Output(self.inputpoints[ipoint], self.no_error if solution.success else self.convergence_error)
+                    # if ipoint % self.points_output_interval == 0:
+
+                    self.Do_Output(point_time, self.no_error if solution.success else self.convergence_error)
+
                     if solution.success:
                         successcount = successcount + 1
                     else:
                         failedcount = failedcount + 1
-                        print(f"Could not find a solution for point {ipoint} with max {maxiter} iterations")
+                        print(f"Could not find a solution for point {point_time} with max {maxiter} iterations")
                 except Exception as e:
                     if rmax > self.error_tolerance:
                         error_index = self.false_convergence_error
                     else:
                         error_index = self.exception_error
-                    self.Do_Output(self.inputpoints[ipoint], error_index)
+                    self.Do_Output(point_time, error_index)
                     failedcount = failedcount + 1
-                    print(f"OD simulation: Error at point {ipoint}: {e}")
+                    print(f"OD simulation: Error at point {point_time}: {e}")
                     if not self.continue_next_OD_point_on_error:
                         break
 
         except Exception as e:
-            self.Do_Output(self.inputpoints[ipoint], self.exception_error)
+            self.Do_Output(point_time, self.exception_error)
             failedcount = failedcount + 1
             print(f"OD simulation: exception error: {e}")
 
@@ -366,7 +404,7 @@ class TSystemModel:
             out["FG"] = self.FG
             out["FN"] = self.FN
             out["RD"] = self.RD
-            # out["TSFC"] = self.WF / self.FN * 1000 # g/s/kN
+            out["TSFC"] = self.WF / self.FN * 1000 # g/s/kN
         self.PW = 0
         for shaft in self.shaft_list:
             self.PW = self.PW + shaft.PW_sum
@@ -376,16 +414,16 @@ class TSystemModel:
         #     out["SFCshaft"] = self.WF / self.PW * 1000 # kg/s/kW
         return out
 
-    def Do_Output(self, PointTime, error_code):
+    def Do_Output(self, point_time, error_code):
         # output to terminal
         if self.VERBOSE:
             # 1.4
             print(f"")
-            print(f"Point {PointTime}:")
+            print(f"Point {point_time}:")
 
             for comp in self.component_run_list:
-                comp.PrintPerformance(self.mode, PointTime)
-            self.PrintPerformance(self.mode, PointTime)
+                comp.PrintPerformance(self.mode, point_time)
+            self.PrintPerformance(self.mode, point_time)
 
         #  2.0
         self.output_dict['Comment'] = self.get_error_text(error_code)
@@ -393,6 +431,9 @@ class TSystemModel:
         #  2.0
         # add output of this point (ouptut_dict) to output_rows dictionary
         self._output_rows.append(self.output_dict.copy())
+
+        # 2.1 keep track of last point_time value
+        self.point_time = point_time
 
     def print_states_and_errors(self):
         self.vprint(f"Nr. of state variables: {len(self.states)}\nNr. of error equations: {len(self.errors)}")

@@ -45,7 +45,7 @@ def main():
                            0.38,                    # design point (DP) input
 
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
-                           0.38, 0.08, -0.01,       # off design (OD) input: starting value, end value and step value OR alternatively:
+                           0.38, 0.18, -0.01,       # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 0.30, None, None,        # off design (OD) input: single input value
 
@@ -254,7 +254,7 @@ def main():
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turbojet.mode = 'OD'
-    turbojet.inputpoints = fuelcontrol.get_OD_input_points()
+    turbojet.input_points = fuelcontrol.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet

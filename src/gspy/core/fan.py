@@ -37,11 +37,18 @@ class TFan(TTurboComponent):
                 # cf = 1 :  no cross flow between duct/bypass and core sections (with different maps used for compression calculation)
                 #           the flow distribution to core and duct/bypass maps remains corresponding to design BPR (BPRdes)
                 # default value for cf = 1 : most stable, assuming the duct-core dividing stream line remains the same as with BPRdes
-                cf = 1):
+                cf = 1,
+                *,
+                 gas_out_output_species = None  
+                 # just do only core exit species mass fraction output, no need for duct side mass fraction output, 
+                 # as the duct side flow is usually not the main flow and the species mass fractions are not changing 
+                 # much in the duct, so just use the core exit gas for output of species mass fractions
+                ):
 
         # TTurboComponent parent class creator    no control link
         # 1.6 WV at this stage no variable geometry in this fan model, so VGparvaluedes = None and only a single map file for core and one for duct
-        super().__init__(owner, name, MapFileName_core, '', station_in, station_out_core, shaft_id, Ndes_core, Etades_core, Ncmapdes_core, Betamapdes_core)
+        super().__init__(owner, name, MapFileName_core, '', station_in, station_out_core, shaft_id, Ndes_core, Etades_core, Ncmapdes_core, Betamapdes_core,
+                         gas_out_output_species = gas_out_output_species)
 
         self.station_out_duct = station_out_duct
 
@@ -81,6 +88,8 @@ class TFan(TTurboComponent):
             self.OD_crossFlow = ct.Quantity(self.gas_in.phase, mass = 1)
         else:
             self.BPR = self.owner.states[self.istate_BPR] * self.BPRdes
+            # 2.0.0.5
+            self.gas_out_duct.TPY = self.gas_in.TPY
 
         # 1.5 bug fix !!!! 20-12-2025 W. Visser
         # W_core_in and W_duct_in are always the part corresponding to BPRdes  (design value!, we split the core and duct/bypass corresponding to BPRdes)

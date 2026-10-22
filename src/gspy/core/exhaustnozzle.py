@@ -22,12 +22,16 @@ from gspy.core.gaspath import TGaspath
 # import gspy.core.sys_global as fg
 
 class TExhaustNozzle(TGaspath):
-    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, stationthroat, station_out, CXdes, CVdes, CDdes):    # Constructor of the class
+    def __init__(self, owner, name, MapFileName, ControlComponent, station_in, stationthroat, station_out, CXdes, CVdes, CDdes,
+                 *,
+                 gas_out_output_species = None
+                 ):    # Constructor of the class
         # CXdes, CVdes, CDdes are for propelling nozzle
         # PRdes = diffuser pressure loss (Psout/Ptin) in case of a (divergent) exhaust diffuser
         # If PRdes <> None then a divergent diffuser expansion is calculated, with PRdes as the diffuser
         # pressure loss. PRdes must be < 1. Psout then determines the diffuser exit area A9.
-        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out)
+        super().__init__(owner, name, MapFileName, ControlComponent, station_in, station_out,
+                         gas_out_output_species = gas_out_output_species)
         self.stationthroat = stationthroat
         self.CXdes = CXdes
         self.CVdes = CVdes

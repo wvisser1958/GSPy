@@ -115,8 +115,8 @@ def main():
                             1.9167,         # HCratio
                             0,              # OCratio
                             None,           # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
-                            None            # Cross flow area to calculate fundamental pressue loss
-                            )
+                            None,           # Cross flow area to calculate fundamental pressue loss
+                            gas_out_output_species = ["CO2", "H2O", "O2"] )
                             # wxample with Texit as input:
                             # TCombustor(turbojet, 'combustor1',  '', None,           3, 4, 0.38, 1200, 1, 1,
 
@@ -189,11 +189,11 @@ def main():
     print("=========================")
     # set DP ambient/flight conditions
     turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
-    turbojet.Run_DP_simulation()
+    turbojet.Run_DP_simulation(descr = 'DP ISA SL')
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
     turbojet.mode = 'OD'
-    turbojet.inputpoints = fuelcontrol.get_OD_input_points()
+    turbojet.input_points = fuelcontrol.get_OD_input_points()
     print("\nOff-design (OD) results")
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
@@ -201,7 +201,7 @@ def main():
     turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
     # Run OD simulation
     # turbojet.VERBOSE = False # suppress OD output to terminal
-    turbojet.Run_OD_simulation()
+    turbojet.Run_OD_simulation(descr = ' SL ISA OD')
 
     # export OutputTable to CSV
     turbojet.OutputToCSV()
