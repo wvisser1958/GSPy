@@ -206,7 +206,8 @@ class TTurboComponent(TGaspath):
             print(f"\tEta des : {self.Etades:.4f}")
             print(f"\tEta     : {self.Eta:.4f}")
 
-        print(f"\tPW : {self.PW:.1f}")
+        if self.PW != None:
+            print(f"\tPW : {self.PW:.1f}")
 
     # 2.0.0.0
     def get_outputs(self):
