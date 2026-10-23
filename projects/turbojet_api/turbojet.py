@@ -26,7 +26,7 @@ class Turbojet(BaseGasTurbineModel):
     def run(self):
         super().run()
         self.save_output_csv()
-        print("end of running turbojet simulation")
+        # print("end of running turbojet simulation")
 
     def build_model(self):
         # TSystemModel owns the project paths; maps live in data/maps
