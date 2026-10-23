@@ -18,10 +18,10 @@ from gspy.core.map import TMap
 from typing import Optional
 
 class TComponent(ABC):
-    def __init__(self, owner, name, map_filename, control_component):    # Constructor of the class
+    def __init__(self, owner, name, map_file_name, control_component):    # Constructor of the class
         self.owner = owner
         self.name = name
-        self.map_filename = map_filename
+        self.map_filename = map_file_name
         # assume in most cases single map in instantiable child classes
         # (add extra map if necessary, e.g. with f_fan)
         self.map: Optional[TMap] = None
