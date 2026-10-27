@@ -701,6 +701,9 @@ class TSystemModel:
 
         self._output_rows.append(break_row)
 
+    def AddOutputGroupBreak(self, break_mode = "<grbr>", break_comment = ""):
+        self.AddOutputBreak(break_mode = break_mode, break_comment = break_comment)
+
     # def OutputToCSV(self):
     #     # Export to Excel
     #     os.makedirs(self.output_dir_path, exist_ok=True)
@@ -784,7 +787,7 @@ class TSystemModel:
         dp_mask = modes.eq("DP")
 
         # Split output into datasets using break rows added by AddOutputBreak().
-        break_rows = modes.eq("<BR>")
+        break_rows = modes.eq("<br>")
         dataset_id = break_rows.cumsum()
 
         operating_datasets = []
