@@ -210,7 +210,7 @@ def main():
 
     for altitude in altitudes:
         # Add a break in between data sets in the output table to separate different ambient conditions
-        turbojet.AddOutputBreak()
+        turbojet.AddOutputBreak(break_comment=f"Altitude = {altitude} m")
         # Suppress the output printing to terminal for each altitude/T4 if desired
         turbojet.VERBOSE = False # suppress OD output to terminal
         # Print OD results or OD run name for each altitude and TIT value
