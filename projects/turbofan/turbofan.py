@@ -35,15 +35,15 @@ from gspy.core.exhaustnozzle import TExhaustNozzle
 
 def main():
     turbofan = TSystemModel('Turbofan', model_file = __file__,
-                            sys_enable_liquid_water=True)
+                            sys_enable_liquid_water=False)
 
     # create a control (controlling all inputs to the system model)
     # combustor Texit input, with Wf 1.11 as first guess for 1600 K DP combustor exit temperature
-    fuel_control = TControl(system=turbofan, 
-                           name='Fcontrol', 
+    fuel_control = TControl(system=turbofan,
+                           name='Fcontrol',
                            DP_input_value=1.11,                # design point (DP) input for combustor
-                           OD_start_value=1600, 
-                           OD_end_value=1100, 
+                           OD_start_value=1600,
+                           OD_end_value=1100,
                            OD_point_step_value=-50,             # off design (OD) input: starting value, end value and step value OR alternatively:
                            OD_controlled_parameter_name='T4'  # OD control parameter name: must be an output present in the output table
                                                     # if None: the component using it directly takes the value
@@ -60,8 +60,8 @@ def main():
                    station_in  = 1,        # station nr in
                    station_out = 2,        # station nr out (station strings are also allowed, e.g. '010' and '020')
                    Wdes = 337,            # design inlet mass flow
-                   PRdes = 1,               # design pressure ratio (PR = 1 - Ploss_relative)                    
-                   fs_out_output_species = ["H2O", "H2O_LIQ"] 
+                   PRdes = 1,               # design pressure ratio (PR = 1 - Ploss_relative)
+                   fs_out_output_species = ["H2O", "H2O_LIQ"]
                    )
 
     # for turbofan, note that fan has 2 GasOut outputs
@@ -71,17 +71,17 @@ def main():
                shaft_id=1,             # shaft nr
                Ndes=4880,              # design rpm
                BPRdes=5.3,             # design bypass ratio BPR
-               PRdes_core=2.33, 
-               Etades_core=0.8696, 
-               Ncmapdes_core=0.95, 
+               PRdes_core=2.33,
+               Etades_core=0.8696,
+               Ncmapdes_core=0.95,
                Betamapdes_core=0.7,
-               PRdes_duct=1.65, 
-               Etades_duct=0.8606, 
-               Ncmapdes_duct=0.95, 
+               PRdes_duct=1.65,
+               Etades_duct=0.8606,
+               Ncmapdes_duct=0.95,
                Betamapdes_duct=0.7,
-               map_filename='', # set tp '' intentionally, to avoid error message and avoid reading of a map file, because we have 2 maps for the fan, one for core and one for duct    
-               map_filename_core='bigfanc.map',    
-               map_filename_duct='bigfand.map',    
+               map_filename='', # set tp '' intentionally, to avoid error message and avoid reading of a map file, because we have 2 maps for the fan, one for core and one for duct
+               map_filename_core='bigfanc.map',
+               map_filename_duct='bigfand.map',
                fs_out_output_species = ["H2O", "H2O_LIQ"],
                cf=1                                # cross flow control factor (see fan.py code)
                )
@@ -90,7 +90,7 @@ def main():
                               name='HPC',           # component name
                               map_filename='compmap.map' ,  # map file name
                               station_in = 25,               # station nr in and out
-                              station_out=3,                
+                              station_out=3,
                               shaft_id=2,                   # shaft id, strings are allowed as well (e.g. 'gg'), but for simplicity we use integers here
                               Ndes=14000,                   # design rpm
                               Etades=0.8433,                # design efficiency
@@ -98,7 +98,7 @@ def main():
                               Betamapdes=0.8,               # map design Beta (for scaling)
                               PRdes=10.9,                   # design pressure ratio
                               SpeedOption='GG',             # speed option
-                              fs_out_output_species = ["H2O", "H2O_LIQ"] 
+                              fs_out_output_species = ["H2O", "H2O_LIQ"]
                     )
 
     # ***************** Combustor ******************************************************
@@ -107,7 +107,7 @@ def main():
     combustor = TCombustor(system=turbofan,                 # owning system model object
                             name='combustor',               # component name
                             control_component = fuel_control,# fuel control component    # fuel control component setting fuel flow depending on OD / PointTime point
-                            station_in=3, 
+                            station_in=3,
                             station_out=4,                  # station nr in and out
                             Wfdes=1.1,                      # Design point (DP) fuel flow Wfdes
                             Texitdes=1500,                  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
@@ -124,7 +124,7 @@ def main():
     hpt =    TTurbine(system=turbofan,              # owning system model object
                            name='HPT',                  # component name
                            map_filename='turbimap.map', # map file name
-                           station_in=4, 
+                           station_in=4,
                            station_out=45,              # station nr in and out
                            shaft_id=2,                  # shaft nr
                            Ndes=14000,                  # design point (DP) rpm
@@ -139,7 +139,7 @@ def main():
     lpt =    TTurbine(system=turbofan,              # owning system model object
                            name='LPT',                  # component name
                            map_filename='turbimap.map', # map file name
-                           station_in=45, 
+                           station_in=45,
                            station_out=5,               # station nr in and out
                            shaft_id=1,                  # shaft nr
                            Ndes=4480,                   # design point (DP) rpm
@@ -151,18 +151,18 @@ def main():
                                                         # 'PT' = free power turbine or turbine driving power output shaft
                            )
 
-    hot_duct = TDuct(system = turbofan,  
+    hot_duct = TDuct(system = turbofan,
                      name = 'Exhduct_hot',      # component name
                      station_in = 5,
                      station_out = 7,
                      PRdes = 1.0                 # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                                 )
 
-    hot_nozzle= TExhaustNozzle(system=turbofan,    
+    hot_nozzle= TExhaustNozzle(system=turbofan,
                                name='HotNozzle', # component name
                                station_in=7,
                                station_throat=8,
-                               station_out=9,           
+                               station_out=9,
                                # con-di nozzle model still to be implemented
                                CXdes=             1,               # design CX thrust coefficient
                                CVdes=             1,               # design CV velocity coefficient
@@ -170,7 +170,7 @@ def main():
                                )
 
     # now add the list with components following the 2nd fan GasOut (i.e. the bypass duct)
-    cold_duct = TDuct(system=turbofan, 
+    cold_duct = TDuct(system=turbofan,
                       name='Exhduct_cold',     # component name
                       station_in=21,
                       station_out=23,
@@ -178,7 +178,7 @@ def main():
                       fs_out_output_species = ["H2O", "H2O_LIQ"]                  # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                       )
 
-    cold_nozzle = TExhaustNozzle(system=turbofan, 
+    cold_nozzle = TExhaustNozzle(system=turbofan,
                                 name='ColdNozzle',
                                 station_in=23,
                                 station_throat=18,
@@ -187,7 +187,7 @@ def main():
                                 CVdes=1,
                                 CDdes=1,
                                 enable_liquid_water = True,
-                                fs_out_output_species = ["H2O", "H2O_LIQ"] 
+                                fs_out_output_species = ["H2O", "H2O_LIQ"]
                                 )
     # create a turbojet system model
     turbofan.define_comp_run_list(  fuel_control,
@@ -217,13 +217,13 @@ def main():
         print("\nOff-design (OD) results")
         print("=======================")
 
-        # # test OD simulation at Design conditions 
-        # turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None)
-        # turbofan.input_points = fuel_control.re_init_input(None,
-        #                                                         1.11,
-        #                                                         1600, 1200, -50,
-        #                                                         'T4')    
-        # turbofan.Run_OD_simulation('Test step at 0m / Ma 0.0 Design conditions')
+        # test OD simulation at Design conditions
+        turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None)
+        turbofan.input_points = fuel_control.re_init_input(None,
+                                                                1.11,
+                                                                1600, 1200, -50,
+                                                                'T4')
+        turbofan.Run_OD_simulation('Test step at 0m / Ma 0.0 Design conditions')
 
         # # intermediate step at design T4 to help iteration towards point far from DP
         # # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
@@ -233,7 +233,7 @@ def main():
         #                                                         0.7,
         #                                                         None, None, None,
         #                                                         'T4',
-        #                                                         point_time_value_array = [combustor.Texitdes])    
+        #                                                         point_time_value_array = [combustor.Texitdes])
         # turbofan.Run_OD_simulation('Intermediate step at 5000m / Ma 0.8')
 
 
@@ -243,24 +243,24 @@ def main():
         # turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None, RH=0)
         # turbofan.input_points = fuel_control.re_init_input(None, 0.7,
         #                                                          1600, 1200, -50,
-        #                                                          'T4'                                                                
-        #                                                     )   
+        #                                                          'T4'
+        #                                                     )
         # turbofan.Run_OD_simulation('Intermediate step at 5000m / Ma 0.8')
 
-        turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None, RH=360)
-        # turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None, RH=100)
-        turbofan.input_points = fuel_control.re_init_input(None, 0.5,
-                                                                 1600, 1200, -50,
-                                                                 'T4'
-                                                            )   
-        turbofan.Run_OD_simulation('10000m / Ma 0.8')
+        # turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None, RH=360)
+        # # turbofan.ambient.SetConditions('OD', 10000, 0.8, 0, None, None, RH=100)
+        # turbofan.input_points = fuel_control.re_init_input(None, 0.5,
+        #                                                          1600, 1200, -50,
+        #                                                          'T4'
+        #                                                     )
+        # turbofan.Run_OD_simulation('10000m / Ma 0.8')
 
         # # sweep T4 at typical cruise condition 10k / Ma 0.8:
         # turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None)
         # turbofan.input_points = fuel_control.re_init_input(None,
         #                                                         0.7,
         #                                                         1600, 1100, -50,
-        #                                                         'T4')    
+        #                                                         'T4')
         # turbofan.Run_OD_simulation('Performance at 5000m / Ma 0.8')
 
         # turbofan.ambient.SetConditions('DP', 0, 0, 0, None, None)
@@ -271,7 +271,7 @@ def main():
         # turbofan.input_points = fuel_control.re_init_input(None,
         #                                                         0.5,
         #                                                         1600, 1100, -50,
-        #                                                         'T4')    
+        #                                                         'T4')
         # turbofan.Run_OD_simulation('Performance at 11000m / Ma 0.8')
 
     # export OutputTable to CSV
