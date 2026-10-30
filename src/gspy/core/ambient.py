@@ -23,14 +23,14 @@ import gspy.core.constants as c
 from gspy.core.flow_state import TFlowState
 
 class TAmbient(TComponent):
-    def __init__(self, 
+    def __init__(self,
                  *,
-                 station_nr, 
-                 Altitude, 
-                 Macha, 
-                 dTs, 
-                 Psa, 
-                 Tsa, 
+                 station_nr=None,
+                 Altitude=0,
+                 Macha=0,
+                 dTs=None,
+                 Psa=None,
+                 Tsa=None,
                  RH=None,
                 #  RH=0,
                  ambient_output_species = None,
@@ -45,14 +45,14 @@ class TAmbient(TComponent):
 
         # create Cantera quantity object for Ambient (mass = 1 per default)
         # this quantity is then further copied along the gaspath in the system model
-        
+
         # GC
         # self.Gas_Ambient = ct.Quantity(self.owner.gas)
         self.fs_ambient = TFlowState.from_RH(self.system.gas, 1, station_nr,
                                             # i_H2O=self.system.i_H2O,
-                                            T=288.15, 
-                                            P=101325, 
-                                            RH=RH, 
+                                            T=288.15,
+                                            P=101325,
+                                            RH=RH,
                                             dry_X=self.system.air_X)
 
         self.system.gaspath_conditions[self.station_nr] = self.fs_ambient
@@ -64,7 +64,7 @@ class TAmbient(TComponent):
             for sp in self.fs_out_output_species
         ]
 
-        self.SetConditions('Init', Altitude, Macha, dTs, Psa, Tsa, RH=RH)
+        self.SetConditions('Init', Altitude=Altitude, Macha=Macha, dTs=dTs, Psa=Psa, Tsa=Tsa, RH=RH)
 
         self.system.ambient = self
 
@@ -132,10 +132,16 @@ class TAmbient(TComponent):
         raise ValueError(f"Unknown humidity_mode '{self.humidity_mode}'")
 
 
-    def SetConditions(self, Mode, Altitude, Macha, dTs, Psa, Tsa,
-                      *, 
-                      RH=None, 
-                      H2O_mass_pct=None, 
+    def SetConditions(self,
+                      Mode=None,
+                      *,
+                      Altitude=0,
+                      Macha=0,
+                      dTs=0,
+                      Psa=None,
+                      Tsa=None,
+                      RH=None,
+                      H2O_mass_pct=None,
                       H2O_vol_pct=None,
                       enable_liquid_water = None):
 
@@ -215,8 +221,8 @@ class TAmbient(TComponent):
             humidity_mode=hum_mode,
             humidity_value=hum_value,
             dry_X_dict=self.system.air_X,
-            dry_Y_dict=self.system.air_Y)   
-        return     
+            dry_Y_dict=self.system.air_Y)
+        return
 
     def Run(self, Mode, PointTime):
         Q_ambient = self.CalculateHeatTransfer(self.fs_ambient, fu.HeatTransferLocation.AMBIENT)
@@ -303,7 +309,7 @@ class TAmbient(TComponent):
                 # correct gas mass fractions (gas_q.Y) to total mass fractions (including liquid water) by dividing by total mass
                 value = self.fs_ambient.gas_q.Y[idx] * self.fs_ambient.gas_q.mass / self.fs_ambient.W
             out[f"Y{s}_{sp}"] = value
-        return out  
+        return out
 
     def get_output_units(self):
         units = super().get_output_units()
@@ -321,7 +327,7 @@ class TAmbient(TComponent):
 
         for sp in self.fs_out_output_species:
             units[f"Y{s}_{sp}"] = "[-]"
-        return units      
+        return units
 
     # obsolete
     # def get_station_nr(self):
