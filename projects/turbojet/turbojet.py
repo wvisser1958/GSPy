@@ -198,7 +198,7 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
+    turbojet.ambient.SetConditions('DP', Altitude=0, Mach=0)
     turbojet.Run_DP_simulation()
 
     run_OD = True
@@ -212,7 +212,7 @@ def main():
         print("=======================")
         # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
         # conditions is desired
-        turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
+        turbojet.ambient.SetConditions('OD', Altitude=0, Mach=0)
         # Run OD simulation
         # turbojet.VERBOSE = False # suppress OD output to terminal
         turbojet.Run_OD_simulation()

@@ -45,6 +45,7 @@ See the LICENSE file for details.
 - TFlowState layer between Cantera Quantity and GSPy fluid calculations
   including liquid water
 - accounting for fuel sensible heat in combustor calculations
+- arguments passed by keyword for most methods
 
 ### GSPy v2.0.0.0                                                     14-04-2026
 --------------------------------------------------------------------------------

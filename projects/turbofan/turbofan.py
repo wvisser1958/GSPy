@@ -207,7 +207,7 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    turbofan.ambient.SetConditions('DP', 0, 0, 0, None, None)
+    turbofan.ambient.SetConditions('DP', Altitude=0, Mach=0)
     turbofan.Run_DP_simulation()
 
     Run_OD = True
@@ -218,7 +218,7 @@ def main():
         print("=======================")
 
         # test OD simulation at Design conditions
-        turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None)
+        turbofan.ambient.SetConditions('OD', Altitude=0, Mach=0)
         turbofan.input_points = fuel_control.re_init_input(None,
                                                                 1.11,
                                                                 1600, 1200, -50,

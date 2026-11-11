@@ -64,7 +64,7 @@ class TAmbient(TComponent):
             for sp in self.fs_out_output_species
         ]
 
-        self.SetConditions('Init', Altitude=Altitude, Macha=Macha, dTs=dTs, Psa=Psa, Tsa=Tsa, RH=RH)
+        self.SetConditions('Init', Altitude=Altitude, Mach=Macha, dTs=dTs, Psa=Psa, Tsa=Tsa, RH=RH)
 
         self.system.ambient = self
 
@@ -131,22 +131,60 @@ class TAmbient(TComponent):
 
         raise ValueError(f"Unknown humidity_mode '{self.humidity_mode}'")
 
-
     def SetConditions(self,
-                      Mode=None,
-                      *,
-                      Altitude=0,
-                      Macha=0,
-                      dTs=0,
-                      Psa=None,
-                      Tsa=None,
-                      RH=None,
-                      H2O_mass_pct=None,
-                      H2O_vol_pct=None,
-                      enable_liquid_water = None):
+                    Mode=None,
+                    *,
+                    Altitude=None,
+                    Mach=None,
+                    dTs=None,
+                    Psa=None,
+                    Tsa=None,
+                    RH=None,
+                    H2O_mass_pct=None,
+                    H2O_vol_pct=None,
+                    enable_liquid_water=None):
 
-        self.RH = RH
+        # Validate flight/inlet condition arguments
+        has_altitude = Altitude is not None
+        has_Psa = Psa is not None
+        has_Tsa = Tsa is not None
 
+        if has_altitude:
+            if has_Psa or has_Tsa:
+                raise ValueError(
+                    "Specify either Altitude/Mach or Psa/Tsa, not both."
+                )
+            if Mach is None:
+                raise ValueError(
+                    "Macha must be specified when Altitude is given."
+                )
+        else:
+            if not (has_Psa and has_Tsa):
+                raise ValueError(
+                    "Specify either Altitude and Mach, or both Psa and Tsa."
+                )
+            if dTs is not None:
+                raise ValueError(
+                    "dTs is only allowed when Altitude is specified."
+                )
+
+        if Mach is not None and Mach < 0:
+            raise ValueError("Macha must be non-negative.")
+
+        if Psa is not None and Psa <= 0:
+            raise ValueError("Psa must be positive.")
+
+        if Tsa is not None and Tsa <= 0:
+            raise ValueError("Tsa must be positive (Kelvin).")
+
+        # Default values after validation
+        if Mach is None:
+            Mach = 0.0
+
+        if dTs is None:
+            dTs = 0.0
+
+        # Validate humidity arguments
         specified = [(k, v) for k, v in {
             'RH': RH,
             'H2O_mass_pct': H2O_mass_pct,
@@ -159,60 +197,74 @@ class TAmbient(TComponent):
                 f"{', '.join(k for k, _ in specified)}"
             )
 
-        hum_mode, hum_value = (specified[0] if specified else (None, None))
+        hum_mode, hum_value = (
+            specified[0] if specified else (None, None)
+        )
 
-        #  2.1
+        self.RH = RH
+
+        # Liquid water setting
         if enable_liquid_water is None:
-            self.fs_ambient.enable_liquid_water = self.system.sys_enable_liquid_water
+            self.fs_ambient.enable_liquid_water = (
+                self.system.sys_enable_liquid_water
+            )
         else:
             self.fs_ambient.enable_liquid_water = enable_liquid_water
 
+        # Store design point input conditions
         if Mode == 'DP':
             self.Altitude_des = Altitude
-            self.Macha_des = Macha
+            self.Macha_des = Mach
             self.dTs_des = dTs
             self.Psa_des = Psa
             self.Tsa_des = Tsa
             self.humidity_mode_des = hum_mode
             self.humidity_value_des = hum_value
 
+        # Store input conditions
         self.Altitude = Altitude
-        self.Macha = Macha
+        self.Macha = Mach
         self.dTs = dTs
         self.Psa = Psa
         self.Tsa = Tsa
         self.humidity_mode = hum_mode
         self.humidity_value = hum_value
 
-        if self.Tsa == None:
-            # Tsa not defined, use standard atmosphere
-            self.Tsa = ac.std_atm.alt2temp(self.Altitude, alt_units='m', temp_units='K')
-            # for standard atmosphere, use dTs if defined
-            if self.dTs != None:
-                self.Tsa = self.Tsa + self.dTs
-        if self.Psa == None:
-            # Ps0 not defined, used standard atmosphere
-            self.Psa = ac.std_atm.alt2press(self.Altitude, alt_units='m', press_units='pa')
+        # Calculate static conditions from standard atmosphere if needed
+        if self.Tsa is None:
+            self.Tsa = ac.std_atm.alt2temp(
+                self.Altitude, alt_units='m', temp_units='K'
+            )
+            self.Tsa += self.dTs
 
-        # 1) composition from static ambient humidity definition
+        if self.Psa is None:
+            self.Psa = ac.std_atm.alt2press(
+                self.Altitude, alt_units='m', press_units='pa'
+            )
+
+        # 1) Composition from static ambient humidity definition
         X = self._get_ambient_mole_fractions_from_static_conditions()
 
-        # 2) static humid-air state
+        # 2) Static humid-air state
         self.fs_ambient.TPX = self.Tsa, self.Psa, X
         cp = self.fs_ambient.gas_q.cp_mass
         cv = self.fs_ambient.gas_q.cv_mass
         gamma = cp / cv
 
-        # 3) static velocity
+        # 3) Static velocity
         a_s = self.fs_ambient.gas_q.sound_speed
         self.V = self.Macha * a_s
 
-        # make V available in the TFlowState for convenience
+        # Make V available in TFlowState
         self.fs_ambient.velocity = self.V
 
-        # 4) total conditions using humid-air gamma
-        self.Tta = self.Tsa * (1.0 + 0.5 * (gamma - 1.0) * self.Macha**2)
-        self.Pta = self.Psa * (self.Tta / self.Tsa)**(gamma / (gamma - 1.0))
+        # 4) Total conditions using humid-air gamma
+        self.Tta = self.Tsa * (
+            1.0 + 0.5 * (gamma - 1.0) * self.Macha**2
+        )
+        self.Pta = self.Psa * (
+            self.Tta / self.Tsa
+        )**(gamma / (gamma - 1.0))
 
         self.fs_ambient.set_conditions_humidity(
             T=self.Tsa,
@@ -221,8 +273,8 @@ class TAmbient(TComponent):
             humidity_mode=hum_mode,
             humidity_value=hum_value,
             dry_X_dict=self.system.air_X,
-            dry_Y_dict=self.system.air_Y)
-        return
+            dry_Y_dict=self.system.air_Y
+        )
 
     def Run(self, Mode, PointTime):
         Q_ambient = self.CalculateHeatTransfer(self.fs_ambient, fu.HeatTransferLocation.AMBIENT)
