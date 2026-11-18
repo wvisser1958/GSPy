@@ -26,12 +26,12 @@ from pathlib import Path
 from gspy.core.turbomap import TTurboMap
 
 class TTurboComponent(TGaspath):
-    def __init__(self, 
+    def __init__(self,
                  *,
                  shaft_id,
-                 Ndes, 
+                 Ndes,
                  Etades,
-                 Ncmapdes, 
+                 Ncmapdes,
                  Betamapdes,
                  Polytropic_DP_eta: bool = False,
                  **kwargs):
@@ -109,8 +109,8 @@ class TTurboComponent(TGaspath):
 
         # 2.1 if shaft not existing yet, create shaft and assume shaft Ntdes = Ndes, assign I = 0 here (specify turbomachinery with an I value)
         if all(shaft.shaft_id != shaft_id for shaft in self.system.shaft_list):
-            self.system.shaft_list.append(fshaft.TShaft(system=self.system, 
-                                                       shaft_id=shaft_id, 
+            self.system.shaft_list.append(fshaft.TShaft(system=self.system,
+                                                       shaft_id=shaft_id,
                                                        name=self.name + ' shaft ' + str(shaft_id),
                                                        Ntdes=self.Ndes, # shaft design speed
                                                        I=0          # shaft moment of inertia kg.m2
@@ -123,13 +123,18 @@ class TTurboComponent(TGaspath):
         pass
 
     # 1.6 WV
-    def ReadTurboMapAndSetScaling(self):
+    # 2.1 Wc may be set in case of cooling flow in turbine affecting  Wc (then fs_in.Wc <> Wc for the turbine map)
+    def ReadTurboMapAndSetScaling(self, Wc = None):
+        if Wc is None:
+            Wc = self.fs_in_des.Wc
         if self.maps_by_angle == None:  # single map only in map object
             # self.map.ReadMapAndGetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
-            self.map.ReadMapAndGetScaling(self.Ncdes, self.fs_in_des.Wc, self.PRdes, self.Etades)
+            # self.map.ReadMapAndGetScaling(self.Ncdes, self.fs_in_des.Wc, self.PRdes, self.Etades)
+            self.map.ReadMapAndGetScaling(self.Ncdes, Wc, self.PRdes, self.Etades)
         else:
             # scale the desig point map
-            SFnc, SFwc, SFpr, SFeta = self.map.ReadMapAndGetScaling(self.Ncdes, self.fs_in_des.Wc, self.PRdes, self.Etades)
+            # SFnc, SFwc, SFpr, SFeta = self.map.ReadMapAndGetScaling(self.Ncdes, self.fs_in_des.Wc, self.PRdes, self.Etades)
+            SFnc, SFwc, SFpr, SFeta = self.map.ReadMapAndGetScaling(self.Ncdes, Wc, self.PRdes, self.Etades)
             # now copy the scaling factors to the other maps
 
             for angle, tmap in self.maps_by_angle.items():
@@ -261,4 +266,4 @@ class TTurboComponent(TGaspath):
 
         units[f"PW{self.id}"] = "[kW]"
 
-        return units    
+        return units

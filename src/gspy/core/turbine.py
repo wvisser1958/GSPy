@@ -21,7 +21,7 @@ from gspy.core.turbo_component import TTurboComponent
 from gspy.core.turbinemap import TTurbineMap
 
 class TTurbine(TTurboComponent):
-    def __init__(self, 
+    def __init__(self,
                  *,
                  Etamechdes,
                  TurbineType,
@@ -87,14 +87,14 @@ class TTurbine(TTurboComponent):
                 if dPexp > 0:
                     PRexp = (self.fs_out.P + dPexp) / self.fs_out.P
                     # 2.1
-                    # cf.DHWexp = fu.TurbineExpansion(cf.fs_injected, cf.fs_out, PRexp, self.Eta, cf.W, 
+                    # cf.DHWexp = fu.TurbineExpansion(cf.fs_injected, cf.fs_out, PRexp, self.Eta, cf.W,
                     #                                 self.Polytropic_DP_eta if Mode == 'DP' else 0)
                     cf.fs_out, cf.DHWexp = cf.fs_injected.expand_real_eta(
                         PR=PRexp,
                         out=cf.fs_out,
                         eta=self.Eta,
                         polytropic_eta=self.Polytropic_DP_eta if Mode == 'DP' else False
-                    )                    
+                    )
 
                     self.DHW_cl_exp += cf.DHWexp
                 else:
@@ -128,7 +128,7 @@ class TTurbine(TTurboComponent):
             # power without cooling:
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW, mechanical power output = PW
             # PW_PR = fu.TurbineExpansion(self.fs_in, self.fs_out, PR_iter, self.Eta, None, self.Polytropic_Eta)
-            # DHW_PR = fu.TurbineExpansion(self.fs_in, self.fs_out, PR_iter, self.Eta, None, 
+            # DHW_PR = fu.TurbineExpansion(self.fs_in, self.fs_out, PR_iter, self.Eta, None,
             #                              self.Polytropic_DP_eta if Mode == 'DP' else 0)
             self.fs_out, DHW_PR = self.fs_in.expand_real_eta(
                 PR=PR_iter,
@@ -189,7 +189,7 @@ class TTurbine(TTurboComponent):
 
                 # 1.6.0.8 adding thermodynamic power excl. mech. losses = DHW, mechanical power output = PW
                 # self.PW = fu.TurbineExpansion(self.fs_in, self.fs_out, self.PRdes, self.Etades, None, self.Polytropic_Eta)
-                # self.DHW = fu.TurbineExpansion(self.fs_in, self.fs_out, self.PRdes, self.Etades, None, 
+                # self.DHW = fu.TurbineExpansion(self.fs_in, self.fs_out, self.PRdes, self.Etades, None,
                 #                                self.Polytropic_DP_eta)
                 self.fs_out, self.DHW = self.fs_in.expand_real_eta(
                     PR=self.PRdes,
@@ -219,10 +219,11 @@ class TTurbine(TTurboComponent):
             # v1.2 recalculate self.Wcdes adding cooling flow
             # self.Wcdes = (self.Wdes + self.W_cl_eff) * fu.GetFlowCorrectionFactor(self.fs_in_des)
             self.Wcdes = (self.fs_in_des.W + self.W_cl_eff) * fu.GetFlowCorrectionFactor(self.fs_in_des)
-    
+
             # 1.6
             # self.map.ReadMapAndSetScaling(self.Ncdes, self.Wcdes, self.PRdes, self.Etades)
-            self.ReadTurboMapAndSetScaling()
+            # 2.1 Nov
+            self.ReadTurboMapAndSetScaling(self.Wcdes)
 
             # add states and errors
             # rotor speed state is same as compressor's
@@ -261,7 +262,7 @@ class TTurbine(TTurboComponent):
                 eta=self.Eta,
                 polytropic_eta = False # OD always False
             )
-            
+
             # v1.2
             if self.CoolingFlows != None:
                 self.dDHWcl, self.W_cl_eff = CalcCoolingFlowEffects()
@@ -269,6 +270,8 @@ class TTurbine(TTurboComponent):
                 # self.PW = self.PW + self.dPWcl
                 self.DHW = self.DHW + self.dDHWcl
             self.system.errors[self.ierror_wc ] = (self.W - fu.scalar(self.fs_in.mass) - self.W_cl_eff) / self.fs_in_des.W
+            # 2.1 Nov
+            self.fs_out.W = self.fs_in.W + self.W_cl_eff
 
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
             self.PW = self.DHW * self.Etamechdes
@@ -312,4 +315,4 @@ class TTurbine(TTurboComponent):
             for coolingflow in self.CoolingFlows:
                 units.update(coolingflow.get_output_units())
 
-        return units    
+        return units
