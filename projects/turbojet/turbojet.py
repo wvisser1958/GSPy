@@ -194,7 +194,7 @@ def main():
     # turbojet.error_tolerance = 0.0001   # default iteration equation relative residual tolerance, adjust when needed
 
     # run the system model Design Point (DP) calculation
-    turbojet.mode = 'DP'
+    # turbojet.mode = 'DP'
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
@@ -205,7 +205,7 @@ def main():
 
     if run_OD:
         # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
-        turbojet.mode = 'OD'
+        # turbojet.mode = 'OD'
         turbojet.input_points = fuelcontrol.get_OD_input_points()
         # turbojet.input_points = np.array([[0, 0.36]])
         print("\nOff-design (OD) results")

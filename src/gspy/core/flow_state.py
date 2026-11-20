@@ -23,8 +23,8 @@ class TFlowState:
 
     LIQ_ABS_TOL = 1e-9
     LIQ_REL_TOL = 1e-4   # 0.01% of water inventory; adjust to e.g. 1e-3 or 1e-5 if needed
-    RH_TOL = 1e-8    
-    
+    RH_TOL = 1e-8
+
     WATER_TOL = 1e-12
 
     def_debug_flash: bool = False
@@ -43,13 +43,13 @@ class TFlowState:
 
                 # new single flag enable_liquid_water
                             #  enable_liquid_model: bool = def_enable_liquid_model,   # if True allow condensation / evaporation model
-                            #  force_gas_only: bool = def_force_gas_only,             # if True: set m_total_water = m_vap, m_liq = 0   
-                            # In practice, force_gas_only is the strongest 
-                            # shortcut for gas turbines, as it allows skipping 
-                            # all liquid model logic and just treating water 
-                            # as a gas species that can be present up to saturation. 
-                            # So it's recommended to set force_gas_only=True for 
-                            # compressor and combustor conditions, and enable_liquid_model=True 
+                            #  force_gas_only: bool = def_force_gas_only,             # if True: set m_total_water = m_vap, m_liq = 0
+                            # In practice, force_gas_only is the strongest
+                            # shortcut for gas turbines, as it allows skipping
+                            # all liquid model logic and just treating water
+                            # as a gas species that can be present up to saturation.
+                            # So it's recommended to set force_gas_only=True for
+                            # compressor and combustor conditions, and enable_liquid_model=True
                             # but force_gas_only=False for ambient inlet conditions if you want to track humidity there.
                  enable_liquid_water: bool = False,
 
@@ -85,7 +85,7 @@ class TFlowState:
         # scratch objects for fast residual evaluations
         # self._scratch_gas = ct.Solution(self.mechanism)
         # self._scratch_water = ct.Water()
-        self._scratch_water = None   # create when needed only to save initialization time and memory  
+        self._scratch_water = None   # create when needed only to save initialization time and memory
 
         self.m_dry = gas_mass * (1.0 - self._gas_h2o_mass_fraction())
 
@@ -114,7 +114,7 @@ class TFlowState:
                     "enable_liquid_water=False but total water inventory "
                     "differs from gas-phase H2O inventory."
                 )
-                
+
     # ------------------------------------------------------------------
     # basic forwarding / compatibility
     # ------------------------------------------------------------------
@@ -143,15 +143,15 @@ class TFlowState:
     @property
     def X(self):
         return dict(zip(self.gas_q.species_names, self.gas_q.X))
-        
+
     @property
     def Y(self):
-        return dict(zip(self.gas_q.species_names, self.gas_q.Y))        
+        return dict(zip(self.gas_q.species_names, self.gas_q.Y))
 
     @property
     def W_gas(self):
         return self.gas_q.mass
-    
+
     @W_gas.setter
     def W_gas(self, value):
         liq_old = self.m_liq
@@ -213,13 +213,13 @@ class TFlowState:
 
         self.gas_q.mass *= f    # this sets W_gas, which is used to compute m_vap and m_liq
         self.m_dry *= f
-        self.m_total_water *= f # now m_total_water = m_vap + m_liq, so this is consistent with the scaled W_gas and m_liq 
-                                # m_vap is calculated from the H2O fraction in the W_gas (or gas_q.mass) 
+        self.m_total_water *= f # now m_total_water = m_vap + m_liq, so this is consistent with the scaled W_gas and m_liq
+                                # m_vap is calculated from the H2O fraction in the W_gas (or gas_q.mass)
                                 # with m_total_water set, now m_liq is also defined
 
         # no need to scale W, since W is derived from W_gas and m_liq
-        # self.W *= f    
-        # self.W = f    
+        # self.W *= f
+        # self.W = f
 
         return self
 
@@ -352,7 +352,7 @@ class TFlowState:
         Therefore: m_liq == 0 Always.
         So the recuperator can simply do:
         self.fs_in.disable_liquid_model(collapse=False)
-        and from then on all subsequent property setters use the fast gas-only path.            
+        and from then on all subsequent property setters use the fast gas-only path.
 
         Notes
         -----
@@ -387,7 +387,7 @@ class TFlowState:
                 self.gas_q.TPY = T, P, Y_new
                 self.gas_q.mass = m_gas_new
 
-            self.enable_liquid_water = False   # assume that after collapse, the liquid model is no longer needed 
+            self.enable_liquid_water = False   # assume that after collapse, the liquid model is no longer needed
             self.m_total_water = self.gas_q.mass * self._gas_h2o_mass_fraction()
 
             if hasattr(self, "_m_vap"):
@@ -402,7 +402,7 @@ class TFlowState:
                     "Use collapse=True to convert liquid water to gas-phase H2O."
                 )
 
-            self.enable_liquid_water = False    # assume that after collapse, the liquid model is no longer needed 
+            self.enable_liquid_water = False    # assume that after collapse, the liquid model is no longer needed
 
     def maybe_disable_liquid_model(self, T_threshold=700.0):
         if self.T >= T_threshold and self.m_liq <= self.LIQ_ABS_TOL:
@@ -412,14 +412,14 @@ class TFlowState:
     # constructors
     # ------------------------------------------------------------------
     @classmethod
-    def create_empty(cls, gas, station_nr: str, 
+    def create_empty(cls, gas, station_nr: str,
                      *,
                      enable_liquid_water = False):
         # gas = ct.Solution(mechanism)
         return cls(gas=gas, gas_mass=1.0, station_nr=station_nr, enable_liquid_water = enable_liquid_water)
 
     @classmethod
-    def from_RH(cls, gas: ct.Solution, gas_mass: float, station_nr: str, 
+    def from_RH(cls, gas: ct.Solution, gas_mass: float, station_nr: str,
                 *,
                 T: float, P: float,
                 RH: float, dry_X: dict,
@@ -449,7 +449,7 @@ class TFlowState:
         return obj
 
     @classmethod
-    def from_vol_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str, 
+    def from_vol_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str,
                      *,
                      # i_H2O: int,
                      T: float, P: float,
@@ -478,9 +478,9 @@ class TFlowState:
         return obj
 
     @classmethod
-    def from_mass_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str, 
+    def from_mass_pct(cls, gas: ct.Solution, gas_mass: float, station_nr: str,
                       *,
-                    #   i_H2O: int,  
+                    #   i_H2O: int,
                       T: float, P: float,
                       H2O_mass_pct: float, dry_Y: dict,
                       enable_liquid_water: bool = False,
@@ -504,15 +504,18 @@ class TFlowState:
         )
         return obj
 
-    def copy_from(self, other: "TFlowState", new_station_nr: str = None, scale_W: float = 1.0,
+    def copy_from(self, other: "TFlowState",
+                  *,
+                  new_station_nr: str = None,
+                  scale_W: float = 1.0,
                   overrule_enable_liquid_water = None) -> "TFlowState":
         self.gas_q.TPX = other.gas_q.T, other.gas_q.P, other.gas_q.X
-        
+
         # self.station_nr = new_station_nr if str(new_station_nr) is not None else str(other.station_nr)
         if new_station_nr is not None:
             # if new_station_nr given, always assign to self.station_nr
-            self.station_nr = new_station_nr  
-        else: 
+            self.station_nr = new_station_nr
+        else:
             if self.station_nr is None:
                 # assign to other.station_nr
                 self.station_nr = other.station_nr
@@ -523,11 +526,11 @@ class TFlowState:
         else:
             self.enable_liquid_water = other.enable_liquid_water
 
-        # these 3 need to be set, the W, m_vap and m_liq properties are derived from them 
+        # these 3 need to be set, the W, m_vap and m_liq properties are derived from them
         self.gas_q.mass = other.gas_q.mass * scale_W    # this sets W_gas, which is used to compute m_vap and m_liq
         self.m_dry = other.m_dry * scale_W
-        self.m_total_water = other.m_total_water * scale_W  # now m_total_water = m_vap + m_liq, so this is consistent with the scaled W_gas and m_liq 
-                                                            # m_vap is calculated from the H2O fraction in the W_gas (or gas_q.mass) 
+        self.m_total_water = other.m_total_water * scale_W  # now m_total_water = m_vap + m_liq, so this is consistent with the scaled W_gas and m_liq
+                                                            # m_vap is calculated from the H2O fraction in the W_gas (or gas_q.mass)
                                                             # with m_total_water set, now m_liq is also defined
 
         # self.enable_liquid_model = other.enable_liquid_model
@@ -806,7 +809,7 @@ class TFlowState:
             repartition=True,
         )
 
-    # HP = (H_total [J], P [Pa])  H = total enthalpy = gas enthalpy + liquid enthalpy, 
+    # HP = (H_total [J], P [Pa])  H = total enthalpy = gas enthalpy + liquid enthalpy,
     # so that HP flash conserves total enthalpy (h*mass + m_liq*sat_liq_h)
     @property
     def HP(self):
@@ -839,7 +842,7 @@ class TFlowState:
         h, P, Y = args
         self._set_energy_state_with_composition("H", "Y", h, P, Y)
 
-    # SP = (S_total [J/K], P [Pa])  S = total entropy = gas entropy + liquid entropy, 
+    # SP = (S_total [J/K], P [Pa])  S = total entropy = gas entropy + liquid entropy,
     # so that SP flash conserves total entropy (s*mass + m_liq*sat_liq_s)
     @property
     def SP(self):
@@ -1379,13 +1382,13 @@ class TFlowState:
             self.disable_liquid_model(collapse=True)
             return
 
-        if mode == "H":            
-            target = self.W_gas * value 
+        if mode == "H":
+            target = self.W_gas * value
             if liq_old > self.LIQ_ABS_TOL:
                 target += liq_old * self._sat_liquid_h(self.T)
             self.update_HP(H_target=target, P_target=P)
         elif mode == "S":
-            target = self.W_gas * value 
+            target = self.W_gas * value
             if liq_old > self.LIQ_ABS_TOL:
                 target += liq_old * self._sat_liquid_s(self.T)
             self.update_SP(S_target=target, P_target=P)
@@ -2158,14 +2161,14 @@ class TFlowState:
     # ------------------------------------------------------------------
     # method to re ininitialize TGaspathCondition
     # ------------------------------------------------------------------
-    def set_conditions_humidity(self, 
-                                *, 
-                                T, 
-                                P, 
+    def set_conditions_humidity(self,
+                                *,
+                                T,
+                                P,
                                 total_mass=None,
-                                humidity_mode=None, 
+                                humidity_mode=None,
                                 humidity_value=0.0,
-                                dry_X_dict=None, 
+                                dry_X_dict=None,
                                 dry_Y_dict=None):
         """
         Reinitialize this existing TGaspathCondition in-place.
@@ -2229,7 +2232,7 @@ class TFlowState:
             raise ValueError("humidity_mode must be None, 'dry', 'RH', 'H2O_vol_pct', or 'H2O_mass_pct'")
 
         self._set_static_equal_total()
-        return self    
+        return self
 
     # ------------------------------------------------------------------
     # convenience compressor helpers
@@ -2244,7 +2247,7 @@ class TFlowState:
             raise ValueError(f"out cannot be equal to self in TFlowState.compress_isentropic, at station {self.station_nr}")
         out.copy_from(self)
 
-        # in case mass is given (e.g., for a compressor with bleed, fan core or duct flow etc.), 
+        # in case mass is given (e.g., for a compressor with bleed, fan core or duct flow etc.),
         # set the output mass by scaling from self
         Starget = float(self.S_total)
         if W_out is not None:
@@ -2264,11 +2267,11 @@ class TFlowState:
 
         H1 = self.H_total
 
-        # in case mass is given (e.g., for a compressor with bleed, fan core or duct flow etc.), 
+        # in case mass is given (e.g., for a compressor with bleed, fan core or duct flow etc.),
         # set the output mass by scaling from self
         if W_out is not None:
             H1 = H1 * W_out/self.W
-        
+
         H2s = out.H_total
 
         H2_target = H1 + (H2s - H1) / eta_is
@@ -2744,7 +2747,7 @@ class TFlowState:
             self.LIQ_REL_TOL * self.m_total_water,
         )
 
-        if self.m_liq <= liq_tol:            
+        if self.m_liq <= liq_tol:
 
             if Polytropic_Eta:
 
@@ -2893,7 +2896,7 @@ class TFlowState:
     # Original TGasConditions method: equilibrium compression
     # vs.
     # GSP method                    : post-compression evaporation correction
-    # 
+    #
     # The difference is fundamental:
     # In original TGasConditions you solve:
         # S_total(T,P,m_vap,m_liq) = constant
@@ -2938,7 +2941,7 @@ class TFlowState:
     # Equilibrium model : compress while cooling continuously
     # GSP model         : compress adiabatically then apply cooling afterwards
     # The latter always produces a higher outlet temperature.
-    
+
     # Which is physically correct?
     # For infinitely small droplets with perfect mixing and infinitely fast evaporation TGasConditions equilibrium method is correct.
     # For larger droplets with finite evaporation times the GSP method may actually be closer to reality.
@@ -2997,7 +3000,7 @@ class TFlowState:
         reference enthalpy of the Cantera gas mechanism.
         """
         return self._pure_h2o_gas_h(T, P) - self._water_latent_heat(T)
-   
+
     def compress_isentropic_gsp_wet(self,
                                     pressure_ratio: float,
                                     out: "TFlowState"):

@@ -34,12 +34,16 @@ class TLoad(TOneShaftComponent):
                                         # by the control component
                 **kwargs):
         super().__init__(**kwargs)
-        self.power_w_des = power_kw_des * 1000  # convert kW to W
-        self.power_w = self.power_w_des
+        # 2.1 WV
+        # avoid confusion with the power_kw_des argument, which is in kW, while the internal power_w is in W
+        # self.power_w_des = power_kw_des * 1000  # convert kW to W
+        # self.power_w = self.power_w_des
+        self.power_kw_des = power_kw_des
+        self.power_kw = self.power_kw_des
 
     def get_outputs(self):
         out = {}
-        out["PW_" + self.name] = self.power_w / 1000  # convert W to kW for output
+        out["PW_" + self.name] = self.power_kw # output in kW, so no conversion needed
 
         return out
 
@@ -49,9 +53,13 @@ class TLoad(TOneShaftComponent):
 
         return out
 
-    def get_drive_shaft_power(self):
+    def get_drive_shaft_power(self, Mode):
         # Power consumer, so negative sign: power absorbed from shaft
-        return -self.power_w
+        # 2.1 WV
+        if Mode == "DP":
+            return -self.power_kw_des * 1000  # convert kW to W for internal calculations
+        else:
+            return -self.power_kw * 1000  # convert kW to W for internal calculations
 
     def set_OD_power_demand(self, power_kw):
         """
@@ -60,4 +68,4 @@ class TLoad(TOneShaftComponent):
         Args:
             power_kw (float): Power demand in kW.
         """
-        self.power_w = power_kw * 1000  # convert kW to W
+        self.power_kw = power_kw

@@ -33,12 +33,12 @@ class TMotor(TOneShaftComponent):
                 **kwargs
                 ):
         super().__init__(**kwargs)
-        self.power_w_des = power_kw_des * 1000  # convert kW to W
-        self.power_w = self.power_w_des
+        self.power_kw_des = power_kw_des * 1000  # convert kW to W
+        self.power_kw = self.power_kw_des
 
     def get_outputs(self):
         out = {}
-        out["PW_" + self.name] = self.power_w / 1000  # convert W to kW for output
+        out["PW_" + self.name] = self.power_kw / 1000  # convert W to kW for output
 
         return out
 
@@ -47,7 +47,12 @@ class TMotor(TOneShaftComponent):
         out["PW_" + self.name] = "[kW]"
 
         return out
-    
-    def get_drive_shaft_power(self):
+
+    def get_drive_shaft_power(self, Mode):
         # Power producer, so positive sign: power delivered to shaft
-        return self.power_w
+        # 2.1 WV
+        # return self.power_kw
+        if Mode == "DP":
+            return self.power_kw_des * 1000  # convert kW to W for internal calculations
+        else:
+            return self.power_kw * 1000  # convert kW to W for internal calculations

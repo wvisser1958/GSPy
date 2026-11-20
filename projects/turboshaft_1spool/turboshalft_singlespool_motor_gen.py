@@ -265,7 +265,7 @@ def main():
 
         generator_load.set_OD_power_demand(generator_load_value)
 
-        fuelcontrol.OD_start_value = generator_load.power_w / 1000  # convert to kW as the TControl error will compare the power output table value which is in kW
+        fuelcontrol.OD_start_value = generator_load.power_kw / 1000  # convert to kW as the TControl error will compare the power output table value which is in kW
         turboshaft.input_points = fuelcontrol.get_OD_input_points()
         # Run OD simulation
         turboshaft.Run_OD_simulation(f'ISA SL OD {fuelcontrol.OD_start_value} kW')

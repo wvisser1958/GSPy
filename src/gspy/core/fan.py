@@ -22,14 +22,14 @@ from gspy.core.compressormap import TCompressorMap
 
 
 class TFan(TTurboComponent):
-    def __init__(self, 
-                    *,     
-                    map_filename_core, 
-                    map_filename_duct, 
-                    station_out_core, station_out_duct, 
-                    BPRdes,                    
-                    PRdes_core, Etades_core, Ncmapdes_core, Betamapdes_core, 
-                    PRdes_duct, Etades_duct, Ncmapdes_duct, Betamapdes_duct, 
+    def __init__(self,
+                    *,
+                    map_filename_core,
+                    map_filename_duct,
+                    station_out_core, station_out_duct,
+                    BPRdes,
+                    PRdes_core, Etades_core, Ncmapdes_core, Betamapdes_core,
+                    PRdes_duct, Etades_duct, Ncmapdes_duct, Betamapdes_duct,
                     #  v1.6 Cf factor for off-design duct-core cross flow correction
                     # cf < 1 :  cross flow between duct/bypass and core sections (with different maps used for compression calculation)
                     #           for cf = 0 : cross flow between fan exit and splitter, we need to mix some of the core flow with bypass or
@@ -39,32 +39,32 @@ class TFan(TTurboComponent):
                     # cf = 1 :  no cross flow between duct/bypass and core sections (with different maps used for compression calculation)
                     #           the flow distribution to core and duct/bypass maps remains corresponding to design BPR (BPRdes)
                     # default value for cf = 1 : most stable, assuming the duct-core dividing stream line remains the same as with BPRdes
-                    # see image Fan_model_BPR_Cf_factor.png 
+                    # see image Fan_model_BPR_Cf_factor.png
                     cf = 1,
                     **kwargs):
 
         # TTurboComponent parent class creator    no control link
         # 1.6 WV at this stage no variable geometry in this fan model, so VGparvaluedes = None and only a single map file for core and one for duct
         super().__init__( # map_filename, leave map_filename = None, because we have 2 maps now, one for core and one for duct
-                         station_out = station_out_core, 
-                         Etades = Etades_core, 
-                         Ncmapdes = Ncmapdes_core, 
+                         station_out = station_out_core,
+                         Etades = Etades_core,
+                         Ncmapdes = Ncmapdes_core,
                          Betamapdes = Betamapdes_core,
                          **kwargs)
         self.station_out_duct = station_out_duct
 
-        self.fs_out_duct = TFlowState.create_empty(self.system.gas, 
+        self.fs_out_duct = TFlowState.create_empty(self.system.gas,
                                                    station_nr=self.station_out_duct,
                                                    enable_liquid_water=self.enable_liquid_water)
-        self.fs_crossflow = TFlowState.create_empty(self.system.gas, 
+        self.fs_crossflow = TFlowState.create_empty(self.system.gas,
                                                     station_nr=self.station_out,
                                                    enable_liquid_water=False) # no liquid water in cross flow (drops will go strait trough)
 
         self.BPRdes = BPRdes
 
         # core side map
-        self.map_core = TCompressorMap(self, self.name + '_map_core', 
-                                       map_filename_core, "Wc_core_"+self.name, "PR_core_"+self.name, self.shaft_id, 
+        self.map_core = TCompressorMap(self, self.name + '_map_core',
+                                       map_filename_core, "Wc_core_"+self.name, "PR_core_"+self.name, self.shaft_id,
                                        Ncmapdes_core, Betamapdes_core)
         self.PRdes_core = PRdes_core
         #  1.5 set self.Etades to None, use Etadec_core instead to avoid duplicate in output
@@ -73,8 +73,8 @@ class TFan(TTurboComponent):
         self.Etades = None
 
         # duct side map
-        self.map_duct = TCompressorMap(self, self.name + '_map_duct', 
-                                       map_filename_duct, "Wc_duct_"+self.name, "PR_duct_"+self.name, self.shaft_id, 
+        self.map_duct = TCompressorMap(self, self.name + '_map_duct',
+                                       map_filename_duct, "Wc_duct_"+self.name, "PR_duct_"+self.name, self.shaft_id,
                                        Ncmapdes_duct, Betamapdes_duct)
         self.PRdes_duct = PRdes_duct
         self.Etades_duct = Etades_duct
@@ -132,7 +132,7 @@ class TFan(TTurboComponent):
         # effective inlet flows for maps (eq. 3-21, 3-22)
         # for cf = 1, the off-design flow distribution to core and duct/bypass maps will be corresponding to actual BPR (off-design BPR)
         #             so there is cross flow between duct/bypass and core sections BEFORE the fan rotor inlet
-        #             if Cf<1, som of the cross flow will be compressed by the map of 'the other side' (1-cf) * cross flow   
+        #             if Cf<1, som of the cross flow will be compressed by the map of 'the other side' (1-cf) * cross flow
         # for cf = 0, the off-design flow distribution to core and duct/bypass maps remains corresponding to design BPR (BPRdes)
         #             there is only cross flow after the end of the fan compression, to correspond to the off design BPR
         # for 0 < Cf < 1 at BPR deviation from BPRdes, a part of the cross flow is compressed by the map of 'the other side' (1-cf) * cross flow
@@ -182,7 +182,7 @@ class TFan(TTurboComponent):
             self.istate_n = self.system.add_state(self.name + '_N', 1.0)
             self.shaft.istate = self.istate_n
 
-            # state for bypass ratio BPR            
+            # state for bypass ratio BPR
             # self.system.states = np.append(self.system.states, 1)
             # self.istate_BPR = self.system.states.size-1
             self.istate_BPR = self.system.add_state(self.name + '_BPR', 1.0)
@@ -272,7 +272,9 @@ class TFan(TTurboComponent):
                     self.fs_out.scale_mass((self.fs_out.W - crossflow_to_add)/self.fs_out.W)
                     # add W_crossflow to duct flow mass:
                     # assign crossflow flowstate properties to the crossflow flowstate, for adding to the duct flow
-                    self.fs_crossflow.copy_from(self.fs_out, self.station_out, scale_W = crossflow_to_add/self.fs_out.W)
+                    self.fs_crossflow.copy_from(self.fs_out,
+                                                new_station_nr = self.station_out,
+                                                scale_W = crossflow_to_add/self.fs_out.W)
                     # interpolate the pressure of the mixed flow, based on the mass flow weighted average of the pressures of the two flows
                     P_out_mixed = (self.fs_out_duct.P*self.fs_out_duct.W + self.fs_crossflow.P*self.fs_crossflow.W)/(self.fs_out_duct.W + self.fs_crossflow.W)
                     self.fs_out_duct.mix_same_composition_gas_only(self.fs_out_duct, self.fs_crossflow, P_out=P_out_mixed)
@@ -282,7 +284,9 @@ class TFan(TTurboComponent):
                     self.fs_out_duct.scale_mass((self.fs_out_duct.W + crossflow_to_add)/self.fs_out_duct.W)
                     # add W_crossflow to core flow mass:
                     # assign crossflow flowstate properties to the crossflow flowstate, for adding to the core flow
-                    self.fs_crossflow.copy_from(self.fs_out_duct, self.station_out, scale_W = -crossflow_to_add/self.fs_out_duct.W)
+                    self.fs_crossflow.copy_from(self.fs_out_duct,
+                                                new_station_nr = self.station_out,
+                                                scale_W = -crossflow_to_add/self.fs_out_duct.W)
                     # interpolate the pressure of the mixed flow, based on the mass flow weighted average of the pressures of the two flows
                     P_out_mixed = (self.fs_out.P*self.fs_out.W + self.fs_crossflow.P*self.fs_crossflow.W)/(self.fs_out.W + self.fs_crossflow.W)
                     self.fs_out.mix_same_composition_gas_only(self.fs_out, self.fs_crossflow, P_out=P_out_mixed)
@@ -292,7 +296,7 @@ class TFan(TTurboComponent):
         self.shaft.PW_sum = self.shaft.PW_sum - self.PW
 
         # calculate parameters for output
-        self.Wc = fu.scalar(self.fs_in.mass) * fu.GetFlowCorrectionFactor(self.fs_in)
+        # 2.1 obsolete ? self.Wc = fu.scalar(self.fs_in.mass) * fu.GetFlowCorrectionFactor(self.fs_in)
 
         # assigne fs_out_duct to gaspath_conditions dictionary, for the core flow already done in TGaspath parent class
         self.system.gaspath_conditions[self.station_out_duct] = self.fs_out_duct

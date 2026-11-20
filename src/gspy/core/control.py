@@ -24,6 +24,7 @@ class TControl(TComponent):
                  OD_end_value = None,
                  OD_point_step_value = None,
                  OD_controlled_parameter_name=None,
+                 OD_controlled_parameter_norm_factor = None,
                  point_time_value_array = None,
                  **kwargs):
         # note that, if OD_controlledparname != None:
@@ -39,6 +40,7 @@ class TControl(TComponent):
                     OD_end_value,
                     OD_point_step_value,
                     OD_controlled_parameter_name,
+                    OD_controlled_parameter_norm_factor,
                     point_time_value_array = point_time_value_array)
 
     # 2.1
@@ -48,6 +50,7 @@ class TControl(TComponent):
                             OD_end_value = None,
                             OD_point_step_value = None,
                             OD_controlled_parameter_name = None,
+                            OD_controlled_parameter_norm_factor = None,
                             *,
                             # point_time_value_array:
                             #   - either an array with control demand/input values
@@ -68,6 +71,7 @@ class TControl(TComponent):
         self.OD_end_value = OD_end_value
         self.OD_point_step_value = OD_point_step_value
         self.OD_controlled_parameter_name = OD_controlled_parameter_name
+        self.OD_controlled_parameter_norm_factor = OD_controlled_parameter_norm_factor
         self.control_parameter_demand = None
         # if point_time_value_array is not None:
         #     self.point_time_value_array = np.asarray(point_time_value_array)
@@ -149,7 +153,7 @@ class TControl(TComponent):
             # self.control_parameter_demand = self.OD_start_value
 
             # Set description of the control for output table
-            if self.system.descr is None:
+            if (self.system.descr is None) and (self.OD_controlled_parameter_name is not None):
                 self.system.descr = "Control: " + self.name + ", " + str(self.OD_controlled_parameter_name) + " = " + str(point_time_input_value)
 
             # # if not((self.OD_end_value == None) or (self.OD_point_step_value == None)):
@@ -173,13 +177,18 @@ class TControl(TComponent):
                 self.ierror_control = self.system.add_error(self.name, 0.0)
                 #  get control parameter DP value
                 self.DP_control_parameter_value = self.system.output_dict[self.OD_controlled_parameter_name]
+                if self.OD_controlled_parameter_norm_factor is None:
+                    self.OD_parameter_norm_factor = self.DP_control_parameter_value
+                else:
+                    self.OD_parameter_norm_factor = self.OD_controlled_parameter_norm_factor
             else:
                 # get control demanded (set point) parameter value from input
                 # self.controlpar_demand = self.OD_startvalue + self.OD_inputpoints[PointTime] * self.OD_pointstepvalue
                 #  get control parameter current value
                 # lastrownumber = len(self.owner.OutputTable)
                 control_parameter_value = self.system.output_dict[self.OD_controlled_parameter_name]
-                self.system.errors[self.ierror_control] = (self.control_parameter_demand - control_parameter_value) / self.DP_control_parameter_value
+                self.system.errors[self.ierror_control] = (self.control_parameter_demand - control_parameter_value) / self.OD_parameter_norm_factor
+            pass
 
     # 2.0.0.0
     def get_outputs(self):

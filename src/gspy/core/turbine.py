@@ -19,6 +19,7 @@ from scipy.optimize import root_scalar
 import gspy.core.utils as fu
 from gspy.core.turbo_component import TTurboComponent
 from gspy.core.turbinemap import TTurbineMap
+import gspy.core.constants as c
 
 class TTurbine(TTurboComponent):
     def __init__(self,
@@ -28,6 +29,7 @@ class TTurbine(TTurboComponent):
                  CoolingFlows=None,
                  **kwargs):
         super().__init__(**kwargs)
+        self.ierror_shaftpw = None
         self.Etamechdes = Etamechdes # spool mechanical efficiency
         self.TurbineType = TurbineType  # gas generator turbine providing all power required by compressor(s)
         # TurbineType = 'PT'  # heavy duty single spool or power turbine, providing power to external loads
@@ -61,62 +63,67 @@ class TTurbine(TTurboComponent):
             self.DHW_cl_pump = 0
             self.DHW_cl_exp = 0
             self.W_cl_eff = 0
+            self.W_cl_tot = 0
             Ekin_at_R1 = np.square(np.pi*self.N/60)
             # we are assuming not liquid water in the bleed flows, so also not in the cooling flows
             for cf in self.CoolingFlows:
-                cf.Run(Mode, PointTime)  # this calculates the bleed flow rate, set fs_injected to fs_in
+                # if cf.fs_in.W > c.W_ABS_TOL:
+                cf.Run(Mode, PointTime)  # this calculates the bleed flow rate, set fs_injected to fs_in * fractiontaken, and sets fs_out to fs_injected
                 # pumping power for blade cooling
-                if cf.Rexit > 0:
-                    # power taken from shaft for accelerating the cooling flow in circumferential direction
-                    dhradialpump = Ekin_at_R1 * np.square(cf.Rexit)
-                    cf.DHWpump =  dhradialpump * cf.W
-                    self.DHW_cl_pump += cf.DHWpump
-                    # isentropic compression due to 'radial pump' action
-                    # in the rotating frame dH increase is half of dHradialpump
-                    dH_for_P = dhradialpump/2
-                    TR_pump = (cf.fs_in.T + dH_for_P/cf.fs_in.gas_q.cp_mass)/cf.fs_in.T
-                    gamma = cf.fs_in.gas_q.cp_mass/cf.fs_in.gas_q.cv_mass
-                    PR_pump = np.power(TR_pump, gamma/(gamma-1))
-                    # now add full dHradialpump to enthalpy, and P increase to fs_injected
-                    cf.fs_injected.HP = cf.fs_in.gas_q.enthalpy_mass + dhradialpump, cf.fs_in.P * PR_pump
-                else:
-                    cf.DHWpump = 0
+                if cf.fs_injected.W > c.W_ABS_TOL:
+                    if cf.Rexit > 0:
+                        # power taken from shaft for accelerating the cooling flow in circumferential direction
+                        dhradialpump = Ekin_at_R1 * np.square(cf.Rexit)
+                        cf.DHWpump =  dhradialpump * cf.fs_injected.W
+                        self.DHW_cl_pump += cf.DHWpump
+                        # isentropic compression due to 'radial pump' action
+                        # in the rotating frame dH increase is half of dHradialpump
+                        dH_for_P = dhradialpump/2
+                        TR_pump = (cf.fs_in.T + dH_for_P/cf.fs_in.gas_q.cp_mass)/cf.fs_in.T
+                        gamma = cf.fs_in.gas_q.cp_mass/cf.fs_in.gas_q.cv_mass
+                        PR_pump = np.power(TR_pump, gamma/(gamma-1))
+                        # now add full dHradialpump to enthalpy, and P increase to fs_injected
+                        cf.fs_injected.HP = cf.fs_in.gas_q.enthalpy_mass + dhradialpump, cf.fs_in.P * PR_pump
+                    else:
+                        cf.DHWpump = 0
 
-                # expansion of cooling flow contribution to turbine power
-                dPexp = (cf.fs_injected.P - self.fs_out.P) * cf.dPfraction
-                if dPexp > 0:
-                    PRexp = (self.fs_out.P + dPexp) / self.fs_out.P
+                    # expansion of cooling flow contribution to turbine power
+                    dPexp = (cf.fs_injected.P - self.fs_out.P) * cf.dPfraction
+                    if dPexp > 0:
+                        PRexp = (self.fs_out.P + dPexp) / self.fs_out.P
+                        # 2.1
+                        # cf.DHWexp = fu.TurbineExpansion(cf.fs_injected, cf.fs_out, PRexp, self.Eta, cf.W,
+                        #                                 self.Polytropic_DP_eta if Mode == 'DP' else 0)
+                        cf.fs_out, cf.DHWexp = cf.fs_injected.expand_real_eta(
+                            PR=PRexp,
+                            out=cf.fs_out,
+                            eta=self.Eta,
+                            polytropic_eta=self.Polytropic_DP_eta if Mode == 'DP' else False
+                        )
+
+                        self.DHW_cl_exp += cf.DHWexp
+                    else:
+                        cf.DHWexp = 0
+
                     # 2.1
-                    # cf.DHWexp = fu.TurbineExpansion(cf.fs_injected, cf.fs_out, PRexp, self.Eta, cf.W,
-                    #                                 self.Polytropic_DP_eta if Mode == 'DP' else 0)
-                    cf.fs_out, cf.DHWexp = cf.fs_injected.expand_real_eta(
-                        PR=PRexp,
-                        out=cf.fs_out,
-                        eta=self.Eta,
-                        polytropic_eta=self.Polytropic_DP_eta if Mode == 'DP' else False
-                    )
+                    self.W_cl_tot += cf.fs_injected.W
+                    # add fraction of flow to be included inlet mass flow conservation of mass error equation
+                    self.W_cl_eff += cf.W_tur_eff_fraction * cf.fs_injected.W
 
-                    self.DHW_cl_exp += cf.DHWexp
-                else:
-                    cf.DHWexp = 0
+                    # add to main exit flow
+                    Pout = self.fs_out.P
+                    # self.fs_out = self.fs_out + cf.fs_out
+                    # Because Cantera assumes you are physically combining two finite quantities of gas,
+                    # so it recomputes the real thermodynamic result, not a mathematical average.
+                    # That means:
+                    # If the two gases weren’t identical species distribution + identical temperature,
+                    # the post-mix EOS solution will slightly shift pressure — even if both started at “same P”.
+                    #  so we must preserve pressure strictly
+                    # self.fs_out.HP = self.fs_out.enthalpy_mass, Pout
+                    self.fs_out.mix_from(self.fs_out, cf.fs_out, P_out=Pout)
 
-                # add fraction of flow to be included inlet mass flow conservation of mass error equation
-                self.W_cl_eff += cf.W_tur_eff_fraction * cf.W
-
-                # add to main exit flow
-                Pout = self.fs_out.P
-                # self.fs_out = self.fs_out + cf.fs_out
-                # Because Cantera assumes you are physically combining two finite quantities of gas,
-                # so it recomputes the real thermodynamic result, not a mathematical average.
-                # That means:
-                # If the two gases weren’t identical species distribution + identical temperature,
-                # the post-mix EOS solution will slightly shift pressure — even if both started at “same P”.
-                #  so we must preserve pressure strictly
-                # self.fs_out.HP = self.fs_out.enthalpy_mass, Pout
-                self.fs_out.mix_from(self.fs_out, cf.fs_out, P_out=Pout)
-
-            # return total cooling effects on turbine performance: PW delta and Wc delta
-            return self.DHW_cl_exp - self.DHW_cl_pump, self.W_cl_eff
+                # return total cooling effects on turbine performance: PW delta and Wc delta
+            return self.DHW_cl_exp - self.DHW_cl_pump, self.W_cl_tot, self.W_cl_eff
 
         def pressure_ratio_for_turbine_power(PR_iter):
             # Set the initial state
@@ -139,10 +146,11 @@ class TTurbine(TTurboComponent):
 
             # cooling flow effects
             if self.CoolingFlows != None:
-                self.dDHWcl, self.W_cl_eff = CalcCoolingFlowEffects()
+                self.dDHWcl, self.W_cl_tot, self.W_cl_eff = CalcCoolingFlowEffects()
                 DHW_PR = DHW_PR + self.dDHWcl
             else:
                 self.dDHWcl = 0
+                self.W_cl_tot = 0
                 self.W_cl_eff = 0
 
             PW_PR = DHW_PR * self.Etamechdes
@@ -187,10 +195,6 @@ class TTurbine(TTurboComponent):
                 self.PRdes = self.fs_in.P/Pout
                 self.PR = self.PRdes
 
-                # 1.6.0.8 adding thermodynamic power excl. mech. losses = DHW, mechanical power output = PW
-                # self.PW = fu.TurbineExpansion(self.fs_in, self.fs_out, self.PRdes, self.Etades, None, self.Polytropic_Eta)
-                # self.DHW = fu.TurbineExpansion(self.fs_in, self.fs_out, self.PRdes, self.Etades, None,
-                #                                self.Polytropic_DP_eta)
                 self.fs_out, self.DHW = self.fs_in.expand_real_eta(
                     PR=self.PRdes,
                     out=self.fs_out,
@@ -201,13 +205,10 @@ class TTurbine(TTurboComponent):
                 # v1.2
                 # cooling flow effects
                 if self.CoolingFlows != None:
-                    self.dDHWcl, self.W_cl_eff = CalcCoolingFlowEffects()
+                    self.dDHWcl, self.W_cl_tot, self.W_cl_eff = CalcCoolingFlowEffects()
                     self.DHW = self.DHW + self.dDHWcl
 
                 self.PW = self.DHW * self.Etamechdes
-
-                # 1.6.0.8 adding thermodynamic power excl. mech. losses = DHW, mechanical power output = PW
-                # self.shaft.PW_sum = self.shaft.PW_sum + self.PW * self.Etamechdes
                 self.shaft.PW_sum = self.shaft.PW_sum + self.PW
 
             # reset fs_out to gaspath_conditions dictionary (because link broken by adding cooling flow to fs_out
@@ -235,9 +236,7 @@ class TTurbine(TTurboComponent):
             # self.ierror_wc = self.system.errors.size-1
             self.ierror_wc = self.system.add_error(self.name + '_wc', 0.0)
             # shaft power error
-            if self.TurbineType == 'GG':
-                # self.system.errors = np.append(self.system.errors, 0)
-                # self.ierror_shaftpw = self.system.errors.size-1
+            if (self.TurbineType == 'GG'):
                 self.ierror_shaftpw = self.system.add_error(self.name + '_shaftpw', 0.0)
             # calculate parameters for output
             self.N = self.Nc * fu.GetRotorspeedCorrectionFactor(self.fs_in)
@@ -245,12 +244,20 @@ class TTurbine(TTurboComponent):
 
         # ******************** OD off design mode *************************
         else:
-            if self.TurbineType == 'GG':
-                self.N = self.system.states[self.shaft.istate] * self.Ndes
+            # if self.TurbineType == 'GG':
+            #     self.N = self.system.states[self.shaft.istate] * self.Ndes
+            self.N = self.shaft.Nt
             self.Nc = self.N / fu.GetRotorspeedCorrectionFactor(self.fs_in)
 
+            # calculate Wc according to map and current Nc and beta
             self.Wc, self.PR, self.Eta = self.map.GetScaledMapPerformance(self.Nc, self.system.states[self.istate_beta])
-            self.W = self.Wc / fu.GetFlowCorrectionFactor(self.fs_in)
+            # get Wmap according to map Wc and flow correction factor for current inlet conditions
+            Wmap = self.Wc / fu.GetFlowCorrectionFactor(self.fs_in)
+            # Wmap includes the fraction of the total cooling flow assigned to consume flow cross area (map characteristic)
+            # according to cooling flow W_tur_eff_fraction values
+            # this must be subtracted from Wmap to get the actual flow through the turbine W_in, which must equal the incoming flow fs_in.W
+            # see self.system.errors[self.ierror_wc ] equation code below
+            W_in = Wmap - self.W_cl_eff
 
             # 2.1
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
@@ -265,13 +272,16 @@ class TTurbine(TTurboComponent):
 
             # v1.2
             if self.CoolingFlows != None:
-                self.dDHWcl, self.W_cl_eff = CalcCoolingFlowEffects()
+                self.dDHWcl, self.W_cl_tot, self.W_cl_eff = CalcCoolingFlowEffects()
                 # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
                 # self.PW = self.PW + self.dPWcl
                 self.DHW = self.DHW + self.dDHWcl
-            self.system.errors[self.ierror_wc ] = (self.W - fu.scalar(self.fs_in.mass) - self.W_cl_eff) / self.fs_in_des.W
-            # 2.1 Nov
-            self.fs_out.W = self.fs_in.W + self.W_cl_eff
+
+            # 2.1 calculate flow error residual for mass flow rate conservation, including cooling flow effects
+            # this means Wmap (total flow according to map), minus the part from the cooling flow must equal the actual incoming flow fs_in.W
+            self.system.errors[self.ierror_wc ] = (W_in - fu.scalar(self.fs_in.mass)) / self.fs_in_des.W
+            # 2.1 add the incoming cooling flow to the incoming flow to obatin the outgoing flow fs_out_W
+            self.fs_out.W = self.fs_in.W + self.W_cl_tot
 
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
             self.PW = self.DHW * self.Etamechdes
@@ -279,7 +289,9 @@ class TTurbine(TTurboComponent):
             # 1.6.0.8
             # self.shaft.PW_sum = self.shaft.PW_sum + self.PW * self.Etamechdes
             self.shaft.PW_sum = self.shaft.PW_sum + self.PW
-            if self.TurbineType == 'GG':
+            # if self.TurbineType == 'GG':
+            # if (self.TurbineType == 'GG') or (self.TurbineType == 'SP'):
+            if self.ierror_shaftpw is not None:
                 self.system.errors[self.ierror_shaftpw] = self.shaft.PW_sum / self.PWdes
 
             # reset fs_out to gaspath_conditions dictionary (because link broken by adding cooling flow to fs_out

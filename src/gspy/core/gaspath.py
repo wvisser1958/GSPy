@@ -21,9 +21,9 @@ import gspy.core.utils as fu
 import gspy.core.constants as c
 
 class TGaspath(TComponent):
-    def __init__(self, 
+    def __init__(self,
                  *,
-                 station_in, 
+                 station_in,
                  station_out,
                  fs_out_output_species = None,
                  enable_liquid_water = None,
@@ -63,20 +63,23 @@ class TGaspath(TComponent):
         else:
             self.enable_liquid_water = enable_liquid_water
 
-        self.fs_in_des = TFlowState.create_empty(self.system.gas, 
+        self.fs_in_des = TFlowState.create_empty(self.system.gas,
                                                  station_nr=self.station_in,
                                                  enable_liquid_water=self.enable_liquid_water)
-        self.fs_out = TFlowState.create_empty(self.system.gas, 
-                                              station_nr=self.station_out, 
+        self.fs_out = TFlowState.create_empty(self.system.gas,
+                                              station_nr=self.station_out,
                                               enable_liquid_water=self.enable_liquid_water)
 
     def Run(self, Mode, PointTime):
         self.fs_in = self.system.gaspath_conditions[self.station_in]
 
         if Mode == 'DP':
-            self.fs_in_des.copy_from(self.fs_in, self.station_in)
+            self.fs_in_des.copy_from(self.fs_in,
+                                     new_station_nr = self.station_in)
 
-        self.fs_out.copy_from(self.fs_in, self.station_out, overrule_enable_liquid_water=self.enable_liquid_water)
+        self.fs_out.copy_from(self.fs_in,
+                              new_station_nr = self.station_out,
+                              overrule_enable_liquid_water=self.enable_liquid_water)
 
         # if heathpaths, add Q
         self.Add_Q_to_fs_in_q(Mode)
@@ -95,7 +98,7 @@ class TGaspath(TComponent):
         # copy from fs_in
         self.fs_in_q.copy_from(
             self.fs_in,
-            str(self.fs_in.station_nr) + '_hx',
+            new_station_nr = str(self.fs_in.station_nr) + '_hx'
         )
         if Mode == 'DP':
             if self.fs_in_des_q is None:
@@ -107,7 +110,7 @@ class TGaspath(TComponent):
             # copy from fs_in
             self.fs_in_des_q.copy_from(
                 self.fs_in,
-                str(self.fs_in.station_nr) + '_hx',
+                new_station_nr = str(self.fs_in.station_nr) + '_hx',
             )
 
         # if heathpaths, add Q
@@ -210,7 +213,7 @@ class TGaspath(TComponent):
         for sp in self.fs_out_output_species:
             units[f"Y{station_nr}_{sp}"] = "[-]"
         return units
-    
+
     def get_output_units(self):
         units = super().get_output_units()
 
@@ -227,6 +230,3 @@ class TGaspath(TComponent):
 
         self.get_flowstate_mass_fraction_units(units, self.station_out)
         return units
-
-
-

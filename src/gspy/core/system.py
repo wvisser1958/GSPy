@@ -217,6 +217,8 @@ class TSystemModel:
         self.output_shaft_power_total = False
         self.output_thrust = False
 
+        self.Run_count: int = 0
+
         self.PW_is_zero_tolerance = 10  # W, below this value, PW is considered zero for output purposes
         self.F_is_zero_tolerance = 10   # N, below this value, FN, FD, RD is considered zero for output purposes
 
@@ -402,14 +404,17 @@ class TSystemModel:
         for comp in self.component_run_list:
             comp.PostRun(mode, point_time)
 
+        self.Run_count += 1
+
         return self.errors
 
-    # 1.6.0.1.8 dictionary with design targets and variables
-    # def Run_DP_simulation():
     def Run_DP_simulation(self, targets = None, *, descr = None):
 
         #  2.1
+        self.mode = 'DP'
         self.descr = descr
+        self.high_gas_fidelity = True
+        self.Run_count = 0
 
         try:
             # check for Heat sinks: these must add DP equations :
@@ -452,6 +457,7 @@ class TSystemModel:
                         targetresiduals,
                         dp_variables_init,
                         method='krylov',
+                        # method = 'hybr',
                         # tol=self.error_tolerance,
                         # options={'maxiter': 100}
                         options={
@@ -512,6 +518,7 @@ class TSystemModel:
             return errors
 
         #  2.1
+        self.mode = 'OD'
         self.descr = descr
 
         try:
@@ -524,6 +531,7 @@ class TSystemModel:
             failedcount = 0
             for point_time, value in self.input_points:
                 # solution returns the residual errors after conversion (shoudl be within the tolerance 'tol')
+                self.Run_count = 0
                 rmax = 0
                 try:
                     def find_solution(high_gas_fidelity):
@@ -603,7 +611,7 @@ class TSystemModel:
             print(f"\tPower offtake shaft {shaft.shaft_id} : {shaft.PW_sum/1000:.2f} kW")
         for component in self.component_run_list:
             if isinstance(component, TShaftComponent):
-                self.PW -= component.get_drive_shaft_power()
+                self.PW -= component.get_drive_shaft_power(self.mode)
         if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)) or self.output_shaft_power_total: # ignoring PW <= 10 W
             self.output_shaft_power_total = True
             print(f"\tTotal power output : {self.PW/1000:.3f} kW")
@@ -630,12 +638,14 @@ class TSystemModel:
                 out[f"PW{shaft.shaft_id}"] = shaft.PW_sum/1000
         for component in self.component_run_list:
             if isinstance(component, TShaftComponent):
-                self.PW -= component.get_drive_shaft_power()
+                self.PW -= component.get_drive_shaft_power(self.mode)
         if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)) or self.output_shaft_power_total: # ignoring PW <= 10 W
             self.output_shaft_power_total = True
             out["PW"] = self.PW/1000
             if is_final_output and (not math.isclose(self.PW, 0.0, abs_tol=self.PW_is_zero_tolerance)):
                 out["SFCshaft"] = self.WF / self.PW * 1e6 # g/s/kW
+
+        out["Run_count"] = str(self.Run_count)
         return out
 
     def get_output_units(self):
@@ -684,6 +694,8 @@ class TSystemModel:
 
     def print_states_and_errors(self):
         self.vprint(f"Nr. of state variables: {len(self.states)}\nNr. of error equations: {len(self.errors)}")
+        if len(self.states) != len(self.errors):
+            raise ValueError("number of error equations must equal number of state variables")
 
     def prepare_output_table(self):
         #  collect output_rows in dataframe, for processing in OutputToCSV, Plot_X_nY_graph, PlotMaps etc.

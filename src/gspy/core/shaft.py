@@ -21,13 +21,13 @@ from gspy.core.base_component import TComponent
 sqr2Pi_60 = (2*pi/60) ** 2
 
 class TShaft(TComponent):
-    def __init__(self, 
+    def __init__(self,
                  *,
                  shaft_id,
-                 Ntdes, 
+                 Ntdes,
                  I,
                  **kwargs):  # Constructor of the class
-        super().__init__(**kwargs)        
+        super().__init__(**kwargs)
         self.shaft_id = shaft_id
         self.I = I # moment of inertia [kg.m2]
         self.Ivariable = 0 # variable moment of inertia [kg.m2]
@@ -48,7 +48,8 @@ class TShaft(TComponent):
         if Mode == 'DP':
             self.Nt = self.Ntdes
         else:
-            self.Nt = self.system.states[self.istate] * self.Ntdes
+            if self.istate is not None:
+                self.Nt = self.system.states[self.istate] * self.Ntdes
 
     def PWaccel(self, dt):
         self.Ndot = (self.Nt - self.Ntprev)/dt

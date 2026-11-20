@@ -15,6 +15,9 @@
 
 import cantera as ct
 
+#  2.1
+W_ABS_TOL = 1e-6  # absolute tolerance for mass flow rate [kg/s]
+
 # constants
 # ----------------------------------------------------------------------
 # Standard dry-air mole composition
@@ -57,8 +60,8 @@ air_composition_moles_array = [
 #     for sp, y, x, xo2 in Air_composition
 # }
 
-# s_air_composition_moles = '' 
-# s_air_composition_mass = '' 
+# s_air_composition_moles = ''
+# s_air_composition_mass = ''
 
 # for species, massfraction, molefraction, O2_norm_molefraction in Air_composition:
 #     # m_total = m_total + massfraction            should be 1.0 !

@@ -21,9 +21,9 @@ from gspy.core.gaspath import TGaspath
 from gspy.core.flow_state import TFlowState
 
 class TInlet(TGaspath):
-    def __init__(self, 
+    def __init__(self,
                  *,
-                 Wdes, 
+                 Wdes,
                  PRdes,
                  **kwargs):  # Constructor of the class
         super().__init__(**kwargs)
@@ -32,15 +32,16 @@ class TInlet(TGaspath):
         self.PR = self.PRdes
         # 2.1 separate TGasCondition for fs_in (do not share with ambient gaspath_condition)
         self.fs_in = TFlowState.create_empty(self.system.gas, station_nr=self.station_in)
-        
+
     def Run(self, Mode, PointTime):
         if Mode == 'DP':
             # assign fs in to system gaspath_conditions library
             self.system.gaspath_conditions[self.station_in] = self.fs_in
         # get ambient gas conditions into inlet entry conditions, Copy ambient flow, including total water
         fs_amb = self.system.ambient
-        self.fs_in.copy_from(self.system.gaspath_conditions[fs_amb.station_nr], fs_amb.station_nr)
-        
+        self.fs_in.copy_from(self.system.gaspath_conditions[fs_amb.station_nr],
+                             new_station_nr = fs_amb.station_nr)
+
         # Establish inlet total enthalpy corresponding to ambient, still with total mass 1 kg
         # static enthalpy + flight kinetic energy
         H_total_in = self.fs_in.H_total + 0.5 * fs_amb.V**2
@@ -66,10 +67,10 @@ class TInlet(TGaspath):
         # if Mode == 'DP':
             # obsolete
             # self.fs_in.mass = self.Wdes
-            
+
             # Wcdes is the design corrected flow, which is used to scale the inlet flow in OD mode using self.owner.states[self.istate_wc]
             self.Wcdes = self.fs_in.W_gas * fu.GetFlowCorrectionFactor(self.fs_in)
-            
+
             self.PR = self.PRdes
             # self.system.states = np.append(self.system.states, 1)
             # self.istate_wc = self.system.states.size-1   # add state for corrected inlet flow wc more stable... state staying closer to 1 at high altitude
@@ -101,7 +102,8 @@ class TInlet(TGaspath):
         #     dry_Y_dict=dict(self.fs_in.Y)
         # )
 
-        self.fs_out.copy_from(self.fs_in, self.station_out)
+        self.fs_out.copy_from(self.fs_in,
+                              new_station_nr = self.station_out)
         # self.fs_out.TP = self.fs_in.T, self.fs_in.P * self.PR
 
         # Find equilibrium T and vapor/liquid split while conserving H

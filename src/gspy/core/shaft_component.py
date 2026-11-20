@@ -40,7 +40,7 @@ class TShaftComponent(TComponent, ABC):
         super().__init__(**kwargs)
 
     @abstractmethod
-    def get_drive_shaft_power(self) -> float:
+    def get_drive_shaft_power(self, Mode: str) -> float:
         """
         Return the power contribution applied to the drive shaft.
 
@@ -91,8 +91,8 @@ class TOneShaftComponent(TShaftComponent, ABC):
         super().__init__(**kwargs)
         self.drive_shaft_id = drive_shaft_id
         self.drive_shaft = None  # to be assigned later in Run()
-        self.power_w_des = None
-        self.power_w = None
+        self.power_kw_des = None
+        self.power_kw = None
 
         # Let us not define shafts from the shaft component, there is usually no known design speed
         # # Ensure shaft exists even if load is defined before turbomachinery, create shaft and assume shaft Ntdes = Ndes, assign I = 0 here (specify turbomachinery with an I value)
@@ -125,25 +125,25 @@ class TOneShaftComponent(TShaftComponent, ABC):
         """
         if mode == "DP":
             # Design point: fix the design demand
-            self.power_w = self.power_w_des
+            self.power_kw = self.power_kw_des
             if self.control is not None and self.control.input_value is not None:
                 # This overrides the design power of the ShaftDevice to the controller value
                 # Get the design control value (e.g. from a control component instance),
                 # the controller sets the "input_value" in design from "DP_input_value"
-                self.power_w = self.get_power_conversion() * self.control.input_value * 1000  # convert kW to W
+                self.power_kw = self.get_power_conversion() * self.control.input_value * 1000  # convert kW to W
         else:
             # Off-Design
             if self.control is not None:
                 # Get the control value (e.g. from a control component instance)
                 if self.control.OD_controlled_parameter_name is None:
-                    self.power_w = self.get_power_conversion() * self.control.input_value * 1000  # convert kW to W
+                    self.power_kw = self.get_power_conversion() * self.control.input_value * 1000  # convert kW to W
                 else:
                     # TODO
                     raise NotImplementedError(
                         "Control of shaft devices based on state variables is not implemented yet."
                     )
             else:  # use power demand from component
-                self.power_w
+                self.power_kw
 
     def Run(self, Mode, PointTime):
         # Get shaft by shaft_id
@@ -156,7 +156,7 @@ class TOneShaftComponent(TShaftComponent, ABC):
         self._calculate_power_demand(Mode)
 
         # Apply the shaft power contribution to the connected shaft
-        self.drive_shaft.PW_sum += self.get_drive_shaft_power()
+        self.drive_shaft.PW_sum += self.get_drive_shaft_power(Mode)
 
         return
 
@@ -190,7 +190,7 @@ class TTwoShaftComponent(TShaftComponent, ABC):
         # by the gear ratio, so both shafts need to be defined before the gearbox
         # can be defined.
         required_shaft_ids = {self.drive_shaft_id, self.driven_shaft_id}
-        existing_shaft_ids = {shaft.shaft_id for shaft in system.shaft_list}
+        existing_shaft_ids = {shaft.shaft_id for shaft in self.system.shaft_list}
 
         missing_ids = required_shaft_ids - existing_shaft_ids
 

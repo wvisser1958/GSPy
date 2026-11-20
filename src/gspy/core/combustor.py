@@ -23,21 +23,22 @@ import gspy.core.constants as c
 import gspy.core.utils as fu
 
 class TCombustor(TGaspath):
-    def __init__(self, 
+    def __init__(self,
                  *,
                  Wfdes, # Design fuel flow, or first guess fuel flow in case Texitdes specified
-                 Texitdes = None, 
-                 PRdes = 1, 
+                 Texitdes = None,
+                 PRdes = 1,
                  Etades = 1,
-                 Tfueldes = 288.15, 
+                 Tfueldes = 288.15,
                  LHVdes = None,   # LHV [kJ/kg] at T_standard_ref = 298.15 # (25°C)
-                 HCratiodes = None, 
-                 OCratiodes = None, 
-                 FuelCompositiondes = None, 
+                 HCratiodes = None,
+                 OCratiodes = None,
+                 FuelCompositiondes = None,
                  Cp_fuel_des = 0,   # leave as 0 if not specified, then will be calculated from the fuel composition if specified
                                     # and if LHV specified fuel , then fuel heating will be assumed 0
-                 A = None, 
+                 A = None,
                  FARdes = None,
+                 check_Wfdes_consistent = True, # check if Wfdes is consistent with control DP_input_value, as DP equation iteration with varying Wfdes is used, and control DP_input_value is not used in this case
                  **kwargs):
         super().__init__(**kwargs)
         self.Wfdes = Wfdes
@@ -86,6 +87,8 @@ class TCombustor(TGaspath):
 
         self.scratch_quantity = None  # scratch quantity for enthalpy calculations
 
+        self.check_Wfdes_consistent = check_Wfdes_consistent
+
     #  1.4 use separate routine, for allowing change of fuel for OD simulation cases
     def SetFuel(self, aTfuel, aLHV, aHCratio, aOCratio, aFuelComposition, Cp_fuel = None):
         self.Tfuel = aTfuel
@@ -95,8 +98,8 @@ class TCombustor(TGaspath):
         self.FuelComposition = aFuelComposition
         if Cp_fuel is None:
             self.Cp_fuel = self.Cp_fuel_des
-        else:    
-            self.Cp_fuel = Cp_fuel      
+        else:
+            self.Cp_fuel = Cp_fuel
         return
 
     def fuel_sensible_enthalpy(self):
@@ -283,8 +286,8 @@ class TCombustor(TGaspath):
                 self.Tfuelin = self.Tfuel
 
             if (self.FuelComposition == '') or (self.FuelComposition is None):  # fuel specification based on LHV, HC and OC mole ratio
-                #  2.1 use fs_out instead as the gas prior to mixing with fuel, 
-                # as fs_out.Y has been corrected for any liquid water (using self.fs_out.disable_liquid_model(collapse=True): 
+                #  2.1 use fs_out instead as the gas prior to mixing with fuel,
+                # as fs_out.Y has been corrected for any liquid water (using self.fs_out.disable_liquid_model(collapse=True):
                 # m_liq added to m_vap so that the gas composition is correct for the combustion calculation
                 # Yin = self.fs_in.gas_q.Y
                 # w_gas_in = self.fs_in.gas_q.mass
@@ -335,10 +338,10 @@ class TCombustor(TGaspath):
                 # for debug:
                 # print(type(product_composition_mass))
                 # print(product_composition_mass)
-                
-                # use self.gas_out to get h_gas_in_ref before combustion (thanks Joao Cardoso Lopes!)                
-                # so we can leave self.gas_in unchanged with the actual inlet composition, 
-                # and use self.gas_out to get the reference enthalpy of the inlet gas composition 
+
+                # use self.gas_out to get h_gas_in_ref before combustion (thanks Joao Cardoso Lopes!)
+                # so we can leave self.gas_in unchanged with the actual inlet composition,
+                # and use self.gas_out to get the reference enthalpy of the inlet gas composition
                 # at Tref and Pref, which is needed for the LHV-based calculation of the final enthalpy of the products after combustion
                 m_gas = self.fs_in_q.gas_q.mass
                 m_liq = self.fs_in_q.m_liq
@@ -359,7 +362,7 @@ class TCombustor(TGaspath):
                 H_in_ref = (
                     m_gas * h_gas_in_ref
                     + m_liq * c.h_liq_ref
-                ) 
+                )
 
                 # redefine gas_out for enthalpy of combustion products mixture at Pref and Tref of
                 # assume all gas phase
@@ -367,10 +370,10 @@ class TCombustor(TGaspath):
                 # make sure fuel mass flow added to the inlet gas flow (before working on total H !):
                 # self.fs_out.W_gas = self.fs_in.mass + self.Wf
                 self.fs_out.W = w_gas_in + self.Wf
-                # H_prod_ref is the enthalpy of the products at the reference conditions, 
-                # which is used as a baseline for calculating the final enthalpy of the products 
-                # after combustion based on the specified LHV and the enthalpy of the inlet gas 
-                # composition at the reference conditions. This allows us to account for the energy 
+                # H_prod_ref is the enthalpy of the products at the reference conditions,
+                # which is used as a baseline for calculating the final enthalpy of the products
+                # after combustion based on the specified LHV and the enthalpy of the inlet gas
+                # composition at the reference conditions. This allows us to account for the energy
                 # added by combustion while keeping track of the reference state for accurate energy balance calculations.
                 H_prod_ref = self.fs_out.H_total  # get total H in J (enthalpy_mass * mass), for use in LHV calculation with Etades
 
@@ -379,7 +382,7 @@ class TCombustor(TGaspath):
                 # w_fuel * LHV_kJ_kg*1000 + w_air * (h_air_initial - self.h_air_ref)  =   (w_air + w_fuel) * (h_prod_final - h_prod_ref)
                 # assuming LHV defined at c.T_standard_ref, c.P_standard_ref,
                 # 2.1 energy balance to calculate H_prod_final (final total enthalpy of the products after combustion)
-                # based on the specified LHV and the enthalpy of the inlet gas composition at the reference conditions, 
+                # based on the specified LHV and the enthalpy of the inlet gas composition at the reference conditions,
                 # and accounting for the efficiency (Etades) which represents heat loss during combustion:
                 # assuming all water evaporated
                 x = self.fuel_sensible_enthalpy()
@@ -396,8 +399,8 @@ class TCombustor(TGaspath):
                 # if Mode == 'DP':
                 if self.fuel is None:
                     # create separate fuel TFlowState for mixing with gas_in
-                    self.fuel = TFlowState.create_empty(self.system.gas, 
-                                                        station_nr=self.station_in, 
+                    self.fuel = TFlowState.create_empty(self.system.gas,
+                                                        station_nr=self.station_in,
                                                         enable_liquid_water = False)
                     self.fuel.enable_liquid_water = False  # no 2 phase water flow with fuel at this stage
                 self.fuel.W = self.Wf
@@ -466,11 +469,11 @@ class TCombustor(TGaspath):
 
         # self.GetLHV()
 
-        # 2.1 assume no liquid water in combustor, 
-        # so disable liquid model for the out gas, otherwise it may cause convergence issues when the water 
+        # 2.1 assume no liquid water in combustor,
+        # so disable liquid model for the out gas, otherwise it may cause convergence issues when the water
         # is close to saturation and the solver tries to add/remove liquid water to equilibrate
         self.fs_out.disable_liquid_model(collapse=True)
-        # save initial fs_out.Y and w_gas for Texit iteration start 
+        # save initial fs_out.Y and w_gas for Texit iteration start
         self.Y_out_0 = self.fs_out.gas_q.Y
         self.W_gas_in_0 = self.fs_out.gas_q.mass
 
@@ -485,7 +488,13 @@ class TCombustor(TGaspath):
                 self.Wfdes = self.Wf
 
             else:
+                # 2.1 check if Wfdes consistent with self.control.DP_input_value
+                if self.check_Wfdes_consistent and (self.control.DP_input_value is not None) and (self.Wfdes != self.control.DP_input_value):
+                    print(f"Warning: Combustor {self.name}: Wfdes ({self.Wfdes:.4f} kg/s) is not consistent with control design (DP) input value ({self.control.DP_input_value:.4f} kg/s). Using control DP input value.")
+                    # self.Wfdes = self.control.DP_input_value
+
                 self.Wf = self.Wfdes
+
         else:
             # 2.1 : simplified, no OD control of Texit anymore inside TCombustor
             if self.control is not None:

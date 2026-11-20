@@ -20,13 +20,13 @@ class TStarterGenerator(TMotor):
     Concrete starter-generator device where the power is defined in kVA and power factor.
 
     A starter-generator is a shaft-connected device that can operate as both a power
-    consumer (starter motor) and a power producer (generator load) depending on the 
+    consumer (starter motor) and a power producer (generator load) depending on the
     operating mode. This class extends TMotor but overrides the applied drive shaft
     power sign to support both operating modes.
-    
+
     This class uses a fixed power factor to convert between real power (kW) and apparent power (kVA),
-    to allow modeling of the power conversion behavior of the device, the get_power_conversion() method 
-    can be overridden to in derived classes from this class to retrieve the power factor for use with 
+    to allow modeling of the power conversion behavior of the device, the get_power_conversion() method
+    can be overridden to in derived classes from this class to retrieve the power factor for use with
     other components such as from an electrical system model.
     """
 
@@ -70,12 +70,12 @@ class TStarterGenerator(TMotor):
 
         # Now call the parent constructor with the calculated real power
         super().__init__(owner, name, map_filename_or_dict, control_component, shaft_id, power_kw_des)
-        self.power_w_des = power_kw_des * 1000  # convert kW to W
-        self.power_w = self.power_w_des
+        self.power_kw_des = power_kw_des * 1000  # convert kW to W
+        self.power_kw = self.power_kw_des
 
     def get_outputs(self):
         out = {}
-        out["PW_" + self.name] = self.power_w / 1000  # convert W to kW for output
+        out["PW_" + self.name] = self.power_kw / 1000  # convert W to kW for output
         out["S_" + self.name] = self.apparent_power  # apparent power in kVA for output
         out["PF_" + self.name] = self.power_factor  # power factor for output
         return out
@@ -86,11 +86,17 @@ class TStarterGenerator(TMotor):
         units["S_" + self.name] = "[kVA]"
         units["PF_" + self.name] = "[-]"
         return units
-    
-    def get_drive_shaft_power(self):
+
+    def get_drive_shaft_power(self, Mode: str) -> float:
         # Sign depends on operating mode: starter delivers power to shaft,
         # generator absorbs power from shaft
-        return self.power_w * self.power_sign
+        # 2.1 WV
+        # return self.power_kw * self.power_sign
+        # 2.1 WV
+        if Mode == "DP":
+            return self.power_kw_des * self.power_sign * 1000  # convert kW to W for internal calculations
+        else:
+            return self.power_kw * self.power_sign * 1000  # convert kW to W for internal calculations
 
     def get_power_conversion(self):
         return self.power_factor

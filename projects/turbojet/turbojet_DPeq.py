@@ -40,14 +40,14 @@ def main():
                            name='Fcontrol',             # component name
                            DP_input_value=0.38,         # design point (DP) input
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
-                           OD_start_value=0.38, 
-                           OD_end_value=0.08, 
+                           OD_start_value=0.38,
+                           OD_end_value=0.08,
                            OD_point_step_value=-0.01,   # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
                         #    OD_start_value = 0.30,       # off design (OD) input: single input value
 
                            OD_controlled_parameter_name=None
-                            )                     
+                            )
 
     # N1 rotor speed control
     # FuelControl = TControl('Ncontrol', '', 0.38, 100, 60, -5, 'N1%')
@@ -68,7 +68,7 @@ def main():
                               name='Compressor1',           # component name
                               map_filename='compmap.map' ,  # map file name
                               station_in = 2,               # station nr in and out
-                              station_out=3,                
+                              station_out=3,
                               shaft_id=1,                   # shaft id, strings are allowed as well (e.g. 'gg'), but for simplicity we use integers here
                               Ndes=16540,                   # design rpm
                               Etades=0.825,                 # design efficiency
@@ -84,7 +84,7 @@ def main():
                             name='Combustor1',              # component name
                             map_filename = None,            # map file name             # for future use of a combustor efficiency map
                             control_component = fuelcontrol,# fuel control component    # fuel control component setting fuel flow depending on OD / PointTime point
-                            station_in=3, 
+                            station_in=3,
                             station_out=4,                  # station nr in and out
                             Wfdes=0.38,                     # Design point (DP) fuel flow Wfdes
                             Texitdes=None,                  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
@@ -102,7 +102,7 @@ def main():
                            name='Turbine1',             # component name
                            map_filename='turbimap.map', # map file name
                            control_component=None,      # optional control component
-                           station_in=4, 
+                           station_in=4,
                            station_out=5,               # station nr in and out
                            shaft_id=1,                  # shaft nr
                            Ndes=16540,                  # design point (DP) rpm
@@ -118,15 +118,15 @@ def main():
 
     duct1    = TDuct(owner=turbojet,                    # owning system model object
                      name='ExhDuct',                    # component name
-                     station_in=5, 
+                     station_in=5,
                      station_out=7,                     # station nr in and out
                      PRdes=1.0                          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                     )
 
     exhaustnozzle = TExhaustNozzle(owner=turbojet,      # owning system model object
                                    name='ExhaustNozzle',# component name
-                                   station_in=7, 
-                                   station_throat=8, 
+                                   station_in=7,
+                                   station_throat=8,
                                    station_out=9,       # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle)
                                                         # con-di nozzle model still to be implemented
                                    CXdes=1,             # design CX thrust coefficient
@@ -150,7 +150,7 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
+    turbojet.ambient.SetConditions('DP', Altitude = 0, Mach = 0)
     turbojet.Run_DP_simulation()
     #  DP iteration towards DP with turbine map flow capacity scale factor set to 0.4 (a little larger), dictating flow capacity at station 4
     # and requiring 15 kN of thrust by varying Wdes (inlet flow rate)

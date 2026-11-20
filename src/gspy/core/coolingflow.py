@@ -35,27 +35,27 @@ class TCoolingFlow(TGaspath):
         self.gas_injected = None
         self.DHWexp = None
         self.DHWpump = None
-        self.fs_injected = TFlowState.create_empty(self.system.gas, 
-                                                   station_nr=self.station_out, 
+        self.fs_injected = TFlowState.create_empty(self.system.gas,
+                                                   station_nr=self.station_out,
                                                    enable_liquid_water=False)
-                
+
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         if Mode == 'DP':
             self.fractiontaken = self.fractiontakendes
-            # quantity of gas after injection: is a fraction of fs_in so cannot be the same as fs_in which is the out of the 
+            # quantity of gas after injection: is a fraction of fs_in so cannot be the same as fs_in which is the out of the
             # bleed flow, which must keep its total bleed flow mass flow rate
             # self.gas_injected = ct.Quantity(self.fs_in.phase, mass = self.fs_in.mass*self.fractiontaken)
             # self.gas_out = ct.Quantity(self.gas_injected.phase, mass = self.gas_injected.mass)
         # else:
             #  at this state, fraction taken still constant
             # self.fractiontaken = self.fractiontakendes
-        self.fs_injected.copy_from(self.fs_in, 
-                                   self.fractiontaken)
+        self.fs_injected.copy_from(self.fs_in,
+                                   scale_W = self.fractiontaken)
         # self.gas_injected.mass = self.fs_in.mass * self.fractiontaken
         # self.fs_injected.TPY = self.fs_in.TPY
         self.fs_out.copy_from(self.fs_injected)
-        self.W = self.fs_out.W
+        # obsolete self.W = self.fs_out.W
         return self.fs_out
 
     def PrintPerformance(self, Mode, PointTime):
