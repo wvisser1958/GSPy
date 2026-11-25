@@ -16,6 +16,7 @@
 
 import numpy as np
 from gspy.core.system import TSystemModel
+import gspy.core.constants as c
 
 from gspy.core.control import TControl
 from gspy.core.inlet import TInlet
@@ -43,13 +44,13 @@ def main():
                            name='Fcontrol',             # component name
                            DP_input_value=0.38,         # design point (DP) input
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
-                           OD_start_value=1235.9, 
+                           OD_start_value=1235.9,
                             # OD_start_value=0.38,
                            OD_end_value=None,
-                           OD_point_step_value=None, 
-                           OD_controlled_parameter_name='T4'                     
+                           OD_point_step_value=None,
+                           OD_controlled_parameter_name='T4'
                            )
-    
+
     inlet1   = TInlet(system = turbojet,     # owning system model object
                     name = 'Inlet1',        # component name
                     station_in  = 1,        # station nr in
@@ -75,7 +76,7 @@ def main():
                               name='Compressor1',           # component name
                               map_filename='compmap.map' ,  # map file name
                               station_in = 21,              # station nr in and out
-                              station_out=3,                
+                              station_out=3,
                               shaft_id=1,                   # shaft id, strings are allowed as well (e.g. 'gg'), but for simplicity we use integers here
                               Ndes=16540,                   # design rpm
                               Etades=0.825,                 # design efficiency
@@ -95,7 +96,7 @@ def main():
                             map_filename = None,            # map file name             # for future use of a combustor efficiency map
                             # OD fuel input from FuelControl
                             control_component = fuelcontrol,# fuel control component    # fuel control component setting fuel flow depending on OD / PointTime point
-                            station_in=3, 
+                            station_in=3,
                             station_out=4,                  # station nr in and out
                             Wfdes=0.38,                     # Design point (DP) fuel flow Wfdes
                             Texitdes=None,                  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
@@ -114,7 +115,7 @@ def main():
                            name='Turbine1',             # component name
                            map_filename='turbimap.map', # map file name
                            control_component=None,      # optional control component
-                           station_in=4, 
+                           station_in=4,
                            station_out=5,               # station nr in and out
                            shaft_id=1,                  # shaft nr
                            Ndes=16540,                  # design point (DP) rpm
@@ -128,19 +129,19 @@ def main():
                            Polytropic_DP_eta=0,         # option for working with polytropic efficiency in DP set Polytropic_DP_Eta=1 (OD always isentropic)
                            fs_out_output_species=WI_SPECIES
                            )
-                        
-                        
+
+
     duct1    = TDuct(system=turbojet,                    # owning system model object
                      name='ExhDuct',                    # component name
-                     station_in=5, 
+                     station_in=5,
                      station_out=7,                     # station nr in and out
                      PRdes=1.0                          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                     )
 
     exhaustnozzle = TExhaustNozzle(system=turbojet,      # owning system model object
                                    name='ExhaustNozzle',# component name
-                                   station_in=7, 
-                                   station_throat=8, 
+                                   station_in=7,
+                                   station_throat=8,
                                    station_out=9,       # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle)
                                                         # con-di nozzle model still to be implemented
                                    CXdes=1,             # design CX thrust coefficient
@@ -148,7 +149,7 @@ def main():
                                    CDdes=1,             # design CD discharge coefficient
                                    fs_out_output_species=WI_SPECIES
                                    )
-    
+
     # create a turbojet system model configuration
     turbojet.define_comp_run_list(  fuelcontrol,
                                     inlet1,
@@ -166,7 +167,7 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None, enable_liquid_water = True)
+    turbojet.ambient.SetConditions("DP", Altitude=0, Mach=0, enable_liquid_water = True)
     turbojet.Run_DP_simulation(descr = 'DP ISA SL')
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
@@ -178,15 +179,16 @@ def main():
     # conditions is desired
 
     # effect of water injection at ISA + 30 !, from 0 to mass 2% water injection in steps of 0.5% (0, 0.5, 1.0, 1.5, 2.0)
-    turbojet.ambient.SetConditions('OD', 0, 0, 30, None, None)
+    # turbojet.ambient.SetConditions('OD', 0, 0, 30, None, None)
+    turbojet.ambient.SetConditions("DP",  Altitude=0, Mach=0, dTs=30)
 
-    for percwater in np.arange(0, 10.1, 0.5): 
+    for percwater in np.arange(0, 10.1, 0.5):
         # Run OD simulation
         # turbojet.VERBOSE = False # suppress OD output to terminal
         waterinj.percent_water_injection = percwater
-        turbojet.Run_OD_simulation(descr = f"\tSL ISA OD {percwater:.1f}% water injection", 
+        turbojet.Run_OD_simulation(descr = f"\tSL ISA OD {percwater:.1f}% water injection",
                                    reinit_states_and_errors = False)# we are running a series of OD point outside the OD loop inside system
-                                                                    # so we do not reinit states and errors, to keep the previous OD solution 
+                                                                    # so we do not reinit states and errors, to keep the previous OD solution
                                                                     #  as initial guess for the next OD point
     # export OutputTable to CSV
     turbojet.OutputToCSV()

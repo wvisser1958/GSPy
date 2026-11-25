@@ -54,14 +54,10 @@ class TShaftComponent(TComponent, ABC):
         """
         Resolve the control reference if it is stored as a component name.
         """
-        if isinstance(self.control, str):
-            try:
-                self.control = self.system.components[self.control]
-            except Exception as e:
-                raise ValueError(
-                    f"ShaftDevice '{self.name}': Control '{self.control}' "
-                    f"cannot be resolved to an object. ({e})"
-                )
+        # 2.1 Codex 2026-11-23 13:08 CET
+        self.control = self.system.resolve_control(
+            self.control, component_name=self.name
+        )
 
     def get_outputs(self):
         """

@@ -34,36 +34,38 @@ class TControl(TComponent):
         # DP_inputvalue always is direct input values of the component using this control
         super().__init__(**kwargs) # no control controlling a control (yet)
         # 2.1
-        self.re_init_input(self.map_filename,
-                    DP_input_value,
-                    OD_start_value,
-                    OD_end_value,
-                    OD_point_step_value,
-                    OD_controlled_parameter_name,
-                    OD_controlled_parameter_norm_factor,
+        self.re_init_input(map_filename = self.map_filename,
+                    DP_input_value = DP_input_value,
+                    OD_start_value = OD_start_value,
+                    OD_end_value = OD_end_value,
+                    OD_point_step_value = OD_point_step_value,
+                    OD_controlled_parameter_name = OD_controlled_parameter_name,
+                    OD_controlled_parameter_norm_factor = OD_controlled_parameter_norm_factor,
                     point_time_value_array = point_time_value_array)
 
     # 2.1
-    def re_init_input(self, map_filename,
-                            DP_input_value,
-                            OD_start_value,
-                            OD_end_value = None,
-                            OD_point_step_value = None,
-                            OD_controlled_parameter_name = None,
-                            OD_controlled_parameter_norm_factor = None,
-                            *,
-                            # point_time_value_array:
-                            #   - either an array with control demand/input values
-                            #     (point_time incremented automaticall from OD_start_value)
-                            #   - or an array with [point_time, value] pairs, like
-                            #       point_values = np.array([
-                            #                     [3.0, 11],
-                            #                     [4.5, 10],
-                            #                     [5.0, 9]
-                            #                 ])
-                            point_time_value_array = None):
+    def re_init_input(self,
+                        *,
+                        map_filename = None,
+                        DP_input_value = None,
+                        OD_start_value = None,
+                        OD_end_value = None,
+                        OD_point_step_value = None,
+                        OD_controlled_parameter_name = None,
+                        OD_controlled_parameter_norm_factor = None,
+                        # point_time_value_array:
+                        #   - either an array with control demand/input values
+                        #     (point_time incremented automaticall from OD_start_value)
+                        #   - or an array with [point_time, value] pairs, like
+                        #       point_values = np.array([
+                        #                     [3.0, 11],
+                        #                     [4.5, 10],
+                        #                     [5.0, 9]
+                        #                 ])
+                        point_time_value_array = None):
         self.map_filename = map_filename # for use in customized child classes, e.g. with lookup tables
-        self.DP_input_value = DP_input_value
+        if DP_input_value is not None:
+            self.DP_input_value = DP_input_value
         if OD_start_value is None:
             self.OD_start_value = self.system.point_time + 1
         else:
@@ -101,6 +103,9 @@ class TControl(TComponent):
                 raise Exception("Invalid control variable begin, end and step values")
 
         return self.get_OD_input_points()
+
+    def set_input_normalization_factor(self, norm_factor):
+        self.DP_input_value = norm_factor
 
     # 2.1
     # def get_OD_input_points(self):

@@ -58,20 +58,26 @@ class TCombustor(TGaspath):
         # combustion gas composition change (neither in for the LHV specification option nor for the Fuel composition specification option )
         self.Etades = Etades
 
-        self.Tfueldes = Tfueldes
-        self.Tfuel = self.Tfueldes
-        self.LHVdes = LHVdes
-        self.HCratiodes = HCratiodes
-        self.OCratiodes = OCratiodes
+        self.fuel = None  # initialize fuel quantity for later testing if None or already assigned
+
+        # self.Tfueldes = Tfueldes
+        # self.Tfuel = self.Tfueldes
+        # self.LHVdes = LHVdes
+        # self.HCratiodes = HCratiodes
+        # self.OCratiodes = OCratiodes
         # fuel composition string, e.g. 'NC12H26:1', or a mixture like 'NC12H26:5, C2H6:1'
         # with 'NC12H26:5, C2H6:1' mole ratio if 5:1 if TPX is used, mass ratio if TPY is used, see Cantera documentation
-        self.FuelCompositiondes = FuelCompositiondes
+        # self.FuelCompositiondes = FuelCompositiondes
+        # self.Cp_fuel_des = Cp_fuel_des
 
-        self.Cp_fuel_des = Cp_fuel_des
-
-        # 1.4 set Fuel
-        self.fuel = None  # initialize fuel quantity for later testing if None or already assigned
-        self.SetFuel(Tfueldes, LHVdes, HCratiodes, OCratiodes, FuelCompositiondes)
+        self.SetFuel(Mode='DP',
+                    Init=True,
+                     aTfuel=Tfueldes,
+                     aLHV=LHVdes,
+                     aHCratio=HCratiodes,
+                     aOCratio=OCratiodes,
+                     aFuelComposition=FuelCompositiondes,
+                     Cp_fuel=Cp_fuel_des)
 
         # 2.0 for OD equation if Texit specified instead of Wf
         self.istate_Wf = None
@@ -89,18 +95,112 @@ class TCombustor(TGaspath):
 
         self.check_Wfdes_consistent = check_Wfdes_consistent
 
-    #  1.4 use separate routine, for allowing change of fuel for OD simulation cases
-    def SetFuel(self, aTfuel, aLHV, aHCratio, aOCratio, aFuelComposition, Cp_fuel = None):
-        self.Tfuel = aTfuel
-        self.LHV = aLHV          # Lower Heating Value in kJ/kg
-        self.HCratio = aHCratio  # H/C ratio for the virtual fuel
-        self.OCratio = aOCratio  # O/C ratio for the virtual fuel
-        self.FuelComposition = aFuelComposition
-        if Cp_fuel is None:
-            self.Cp_fuel = self.Cp_fuel_des
+    def SetFuel(self,
+                Mode='DP',
+                *,
+                Init=False,
+                aTfuel=None,
+                aLHV=None,
+                aHCratio=None,
+                aOCratio=None,
+                aFuelComposition=None,
+                Cp_fuel=None):
+
+        if Mode not in ('DP', 'OD'):
+            raise ValueError(f"Invalid fuel mode: {Mode}")
+
+        if Init and Mode != 'DP':
+            raise ValueError("Init=True requires Mode='DP'.")
+
+        # Check conflicting input arguments
+        has_composition = aFuelComposition is not None
+        has_fuel_props = any(
+            v is not None for v in (aLHV, aHCratio, aOCratio)
+        )
+
+        if has_composition and has_fuel_props:
+            raise ValueError(
+                "Specify either aFuelComposition or "
+                "aLHV/aHCratio/aOCratio, not both."
+            )
+
+        # Initialize design attributes on first call
+        if Init:
+            self.Tfuel_des = None
+            self.LHV_des = None
+            self.HCratio_des = None
+            self.OCratio_des = None
+            self.FuelComposition_des = None
+            self.Cp_fuel_des = 2000.0  # J/(kg K)
+
+        # Select starting values
+        if Mode == 'DP':
+            Tfuel = self.Tfuel_des
+            LHV = self.LHV_des
+            HCratio = self.HCratio_des
+            OCratio = self.OCratio_des
+            FuelComposition = self.FuelComposition_des
+            cp = self.Cp_fuel_des
         else:
-            self.Cp_fuel = Cp_fuel
-        return
+            Tfuel = self.Tfuel
+            LHV = self.LHV
+            HCratio = self.HCratio
+            OCratio = self.OCratio
+            FuelComposition = self.FuelComposition
+            cp = self.Cp_fuel
+
+        # Apply specified changes
+        if aTfuel is not None:
+            Tfuel = aTfuel
+
+        if has_composition:
+            FuelComposition = aFuelComposition
+            LHV = HCratio = OCratio = None
+
+        elif has_fuel_props:
+            FuelComposition = None
+
+            if aLHV is not None:
+                LHV = aLHV
+            if aHCratio is not None:
+                HCratio = aHCratio
+            if aOCratio is not None:
+                OCratio = aOCratio
+
+        if Cp_fuel is not None:
+            cp = Cp_fuel
+
+        # Validate resulting fuel specification
+        complete_fuel_props = all(
+            v is not None for v in (LHV, HCratio, OCratio)
+        )
+
+        if FuelComposition is None and not complete_fuel_props:
+            raise ValueError(
+                "Incomplete fuel specification: specify "
+                "FuelComposition or all of LHV, HCratio and OCratio."
+            )
+
+        # allow Tfuel to be None, then Tfuel is assumed to be equal to the temperature of the entry air flow
+        # if Tfuel is None:
+        #     raise ValueError("Fuel temperature is not specified.")
+
+        # Update current fuel properties
+        self.Tfuel = Tfuel
+        self.LHV = LHV
+        self.HCratio = HCratio
+        self.OCratio = OCratio
+        self.FuelComposition = FuelComposition
+        self.Cp_fuel = cp
+
+        # DP also updates design-point properties
+        if Mode == 'DP':
+            self.Tfuel_des = Tfuel
+            self.LHV_des = LHV
+            self.HCratio_des = HCratio
+            self.OCratio_des = OCratio
+            self.FuelComposition_des = FuelComposition
+            self.Cp_fuel_des = cp
 
     def fuel_sensible_enthalpy(self):
         return self.Cp_fuel * (
@@ -137,7 +237,7 @@ class TCombustor(TGaspath):
 
         self.system.vprint(f"LHV of CH4 (H2O vapor): {LHV:.2f} kJ/kg")
 
-    def fundamental_pressure_loss_rayleigh(self, A):
+    def fundamental_pressure_loss_rayleigh(self, *, A):
         """
         Fundamental (Rayleigh) total-pressure loss for constant-P, frictionless heating.
         Uses actual velocities from mdot and area (A_in=A_out=A).
@@ -271,13 +371,10 @@ class TCombustor(TGaspath):
     #         print(f"Exception error {e} in {self.name} Fund. Press. Loss calculation, Hint: increase (burner) duct cross area.")
 
     def Run(self, Mode, PointTime):
-        if isinstance(self.control, str):
-            try:
-                self.control = self.system.components[self.control]   # resolve by name -> object
-            except Exception as e:
-                raise ValueError(
-                    f"Combustor '{self.name}': Control '{self.control}' cannot be resolved to an object. ({e})"
-                )
+        # 2.1 Codex 2026-11-23 13:08 CET
+        self.control = self.system.resolve_control(
+            self.control, component_name=self.name
+        )
 
         def CalcEndConditions(PointTime, Mode):
             if self.Tfuel is None:      # assume Tfuel equal to T of air in
@@ -489,7 +586,7 @@ class TCombustor(TGaspath):
 
             else:
                 # 2.1 check if Wfdes consistent with self.control.DP_input_value
-                if self.check_Wfdes_consistent and (self.control.DP_input_value is not None) and (self.Wfdes != self.control.DP_input_value):
+                if (self.control is not None) and self.check_Wfdes_consistent and (self.control.DP_input_value is not None) and (self.Wfdes != self.control.DP_input_value):
                     print(f"Warning: Combustor {self.name}: Wfdes ({self.Wfdes:.4f} kg/s) is not consistent with control design (DP) input value ({self.control.DP_input_value:.4f} kg/s). Using control DP input value.")
                     # self.Wfdes = self.control.DP_input_value
 

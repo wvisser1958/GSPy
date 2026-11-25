@@ -48,7 +48,7 @@ def main():
                               name='Compressor1',           # component name
                               map_filename='compmap.map' ,  # map file name
                               station_in = 2,               # station nr in and out
-                              station_out=3,                
+                              station_out=3,
                               shaft_id=1,                   # shaft id, strings are allowed as well (e.g. 'gg'), but for simplicity we use integers here
                               Ndes=16540,                   # design rpm
                               Etades=0.825,                 # design efficiency
@@ -63,7 +63,7 @@ def main():
                             name='Combustor1',              # component name
                             map_filename = None,            # map file name             # for future use of a combustor efficiency map
                             # OD fuel input from FuelControl
-                            station_in=3, 
+                            station_in=3,
                             station_out=4,                  # station nr in and out
                             Wfdes=0.38,                     # Design point (DP) fuel flow Wfdes
                             Texitdes=None,                  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
@@ -75,12 +75,12 @@ def main():
                             OCratiodes=0,               # OCratio
                             FuelCompositiondes=None,    # Fuelcomposition  alternative: take 'NC12H26:1' for a jet fuel surrogate for example
                             A=None                      # Cross flow area to calculate fundamental pressue loss
-                            )    
+                            )
     turbine1 =    TTurbine(system=turbojet,              # owning system model object
                            name='Turbine1',             # component name
                            map_filename='turbimap.map', # map file name
                            control_component=None,      # optional control component
-                           station_in=4, 
+                           station_in=4,
                            station_out=5,               # station nr in and out
                            shaft_id=1,                  # shaft nr
                            Ndes=16540,                  # design point (DP) rpm
@@ -96,22 +96,22 @@ def main():
 
     duct1    = TDuct(system=turbojet,                    # owning system model object
                      name='ExhDuct',                    # component name
-                     station_in=5, 
+                     station_in=5,
                      station_out=7,                     # station nr in and out
                      PRdes=1.0                          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                     )
     exhaustnozzle = TExhaustNozzle(system=turbojet,     # owning system model object
                                    name='ExhaustNozzle',# component name
-                                   station_in=7, 
-                                   station_throat=8, 
+                                   station_in=7,
+                                   station_throat=8,
                                    station_out=9,       # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle)
                                                         # con-di nozzle model still to be implemented
                                    CXdes=1,             # design CX thrust coefficient
                                    CVdes=1,             # design CV velocity coefficient
                                    CDdes=1              # design CD discharge coefficient
                                    )
-    amcontrol = TAMcontrol( system = turbojet, 
-                            name = 'AMcontrol',                        
+    amcontrol = TAMcontrol( system = turbojet,
+                            name = 'AMcontrol',
                             measdatafilename = "Turbojet_AMinput.csv",  # input data file
                             powersetting_comp_par = (combustor1, "Wf"),
                             ambient_parameters = ['Alt', 'dTs', 'Macha'],
@@ -144,7 +144,7 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
+    turbojet.ambient.SetConditions('DP', Altitude = 0.0, Mach = 0.0)
     turbojet.Run_DP_simulation()
 
     # run the Off-Design (OD) simulation, to find the steady state operating points for all fsys.inputpoints
@@ -154,7 +154,7 @@ def main():
     print("=======================")
     # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
     # conditions is desired
-    turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
+    turbojet.ambient.SetConditions('OD', Altitude = 0.0, Mach = 0.0)
     # Run OD simulation
     turbojet.Run_OD_simulation()
 
