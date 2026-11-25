@@ -891,7 +891,7 @@ class TSystemModel:
         dp_mask = modes.eq("DP")
 
         # Split output into datasets using break rows added by AddOutputBreak().
-        break_rows = modes.eq("<br>")
+        break_rows = modes.eq("<BR>")
         dataset_id = break_rows.cumsum()
 
         operating_datasets = []
