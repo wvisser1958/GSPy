@@ -103,3 +103,5 @@ C_StefanBoltzmann = 5.67e-8; # [W/m2/K4]
 w = ct.Water()
 w.TQ = T_standard_ref, 0.0          # saturated liquid water at Tref
 h_liq_ref = w.enthalpy_mass
+
+OUTPUT_BREAK_ROW = "<br>"

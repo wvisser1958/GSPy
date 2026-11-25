@@ -17,6 +17,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from gspy.core.map import TMap
 from scipy.interpolate import RegularGridInterpolator
+from gspy.core.constants import OUTPUT_BREAK_ROW
+
 # from gspy.core import sys_global as fg
 
 class TTurboMap(TMap):
@@ -142,7 +144,8 @@ class TTurboMap(TMap):
             .astype(str)
             .str.strip()
             .str.lower()
-            .eq("<br>")
+            # .eq("<br>")
+            .eq(OUTPUT_BREAK_ROW)
         )
 
         dataset_id = break_rows.cumsum()

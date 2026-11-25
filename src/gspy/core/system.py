@@ -28,6 +28,7 @@ from gspy.core.ambient import TAmbient
 from gspy.core.gaspath import TGaspath
 from gspy.core.heatsink import THeatsink
 from gspy.core.shaft_component import TShaftComponent
+from gspy.core.constants import OUTPUT_BREAK_ROW
 
 DEFAULT_YAML = "jetsurf.yaml"
 DEFAULT_VERBOSE = True
@@ -702,7 +703,8 @@ class TSystemModel:
         if self.output_table is None:
             self.output_table = pd.DataFrame(self._output_rows)
 
-    def AddOutputBreak(self, break_mode = "<br>", break_comment = ""):
+    # def AddOutputBreak(self, break_mode = "<br>", break_comment = ""):
+    def AddOutputBreak(self, break_mode = OUTPUT_BREAK_ROW, break_comment = ""):
         break_row = {
             col: np.nan
             for col in self.output_dict.keys()
@@ -764,7 +766,8 @@ class TSystemModel:
             filename_suffix,
             xcol,
             ycollist,
-            do_show=False):
+            do_show=False,
+            exclude_errors=True):
 
         self.prepare_output_table()
 
@@ -796,10 +799,22 @@ class TSystemModel:
             .str.upper()
         )
 
-        dp_mask = modes.eq("DP")
+        # Rows to skip when drawing: Comment contains "Exception error".
+        if exclude_errors and "Comment" in self.output_table.columns:
+            error_rows = (
+                self.output_table["Comment"]
+                .astype(str)
+                .str.contains("Exception error", regex=False)
+            )
+        else:
+            error_rows = pd.Series(False, index=self.output_table.index)
+
+        # dp_mask = modes.eq("DP")
+        dp_mask = modes.eq("DP") & ~error_rows
 
         # Split output into datasets using break rows added by AddOutputBreak().
-        break_rows = modes.eq("<br>")
+        # break_rows = modes.eq("<br>") No! because of case sensitivity in filter/search options (.str.upper()), use upper() to normalize
+        break_rows = modes.eq(OUTPUT_BREAK_ROW.upper())
         dataset_id = break_rows.cumsum()
 
         operating_datasets = []
@@ -815,7 +830,10 @@ class TSystemModel:
                 .str.upper()
             )
 
-            od_dataset = dataset.loc[dataset_modes.eq("OD")]
+            # od_dataset = dataset.loc[dataset_modes.eq("OD")]
+            od_dataset = dataset.loc[
+                dataset_modes.eq("OD") & ~error_rows.loc[dataset.index]
+            ]
 
             if not od_dataset.empty:
                 description = (
