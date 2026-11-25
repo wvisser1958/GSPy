@@ -40,12 +40,12 @@ class HeatTransferLocation(Enum):
 # divide N by GetRotorspeedCorrectionFactor to get Nc corrected
 # def GetRotorspeedCorrectionFactor(gas: ct.Quantity):
 def GetRotorspeedCorrectionFactor(fs : TFlowState):
-    return math.sqrt(fs.T/c.T_std)
+    return math.sqrt(fs.T/c.T_std_ISA)
 
 # multiply W by GetFlowCorrectionFactor to get Wc corrected
 # def GetFlowCorrectionFactor(gas: ct.Quantity):
 def GetFlowCorrectionFactor(fs : TFlowState):
-    return math.sqrt(fs.T/c.T_std) / (fs.P/c.P_std)
+    return math.sqrt(fs.T/c.T_std_ISA) / (fs.P/c.P_std_ISA)
 
 def set_enthalpy(gas, target_enthalpy):
     def equation(Titer):

@@ -112,35 +112,83 @@ class TAMcontrol(TComponent):
                 Wf_state = self.system.states[self.istate_Wf]
                 setattr(psetcomp, 'Wf', Wf_meas * Wf_state)
 
-            #  set map modifiers according to states
-            for i, hp in enumerate(self.health_parameters, start=0):
-                setattr(hp.component, hp.attribute_name, self.system.states[self.first_attribute_stateindex+i] * hp.reference_value)
+            # 2.1 Codex 2026-11-23 13:28 CET
+            # #  set map modifiers according to states
+            # for i, hp in enumerate(self.health_parameters, start=0):
+            #     setattr(hp.component, hp.attribute_name, self.system.states[self.first_attribute_stateindex+i] * hp.reference_value)
+
+            for hp, state_index in zip(
+                self.health_parameters, self.health_state_indices, strict=True
+            ):
+                value = self.system.states[state_index] * hp.reference_value
+                setattr(hp.component, hp.attribute_name, value)
 
     # note that anything calculated in PostRun will not end up in the output_dict !
+    # 2.1 Codex 2026-11-23 13:28 CET
+    # def PostRun(self, mode, PointTime):
+    #     # super().PostRun(Mode, PointTime)
+    #     if mode == 'DP':
+    #         #  add states and errors at end of existing states and errors of system model
+    #         #  save the 1st index
+    #         self.first_attribute_stateindex = self.system.states.size
+    #         for i, hp in enumerate(self.health_parameters, start=0):
+    #             # set the map modifier factors backto hp.reference_value in case of multiple DP, OD calculations....
+    #             setattr(hp.component, hp.attribute_name, hp.reference_value)
+    #             # self.system.states = np.append(self.system.states, 1)
+    #             # self.system.errors = np.append(self.system.errors, 0)
+    #             self.system.add_state(hp.component.name + '_' + hp.attribute_name, 1.0)
+    #             self.system.add_error(self.name + '_' + hp.component.name + '_' + hp.attribute_name, 0.0)
+    #         for mp in self.measurement_parameters:
+    #             self.measpardesvalues = np.append(self.measpardesvalues, self.system.output_dict[f"{mp.parameter_name}"])
+    #     else:
+    #         for i, mp in enumerate(self.measurement_parameters, start = 0):
+    #             parname_measured = mp.parameter_name
+    #             parvalue_measured =  self.am_input.at[PointTime, parname_measured]
+    #             parvalue_calculated = self.system.output_dict[f"{parname_measured}"]
+    #             weight_factor = mp.weight
+    #             self.system.errors[self.first_attribute_stateindex+i] =  (   weight_factor
+    #                                                                       * (parvalue_calculated - parvalue_measured)
+    #                                                                       / self.measpardesvalues[i])
+
     def PostRun(self, mode, PointTime):
-        # super().PostRun(Mode, PointTime)
         if mode == 'DP':
-            #  add states and errors at end of existing states and errors of system model
-            #  save the 1st index
-            self.first_attribute_stateindex = self.system.states.size
-            for i, hp in enumerate(self.health_parameters, start=0):
-                # set the map modifier factors backto hp.reference_value in case of multiple DP, OD calculations....
-                setattr(hp.component, hp.attribute_name, hp.reference_value)
-                # self.system.states = np.append(self.system.states, 1)
-                # self.system.errors = np.append(self.system.errors, 0)
-                self.system.add_state(hp.component.name + '_' + hp.attribute_name, 1.0)
-                self.system.add_error(self.name + '_' + hp.component.name + '_' + hp.attribute_name, 0.0)
-            for mp in self.measurement_parameters:
-                self.measpardesvalues = np.append(self.measpardesvalues, self.system.output_dict[f"{mp.parameter_name}"])
-        else:
-            for i, mp in enumerate(self.measurement_parameters, start = 0):
-                parname_measured = mp.parameter_name
-                parvalue_measured =  self.am_input.at[PointTime, parname_measured]
-                parvalue_calculated = self.system.output_dict[f"{parname_measured}"]
-                weight_factor = mp.weight
-                self.system.errors[self.first_attribute_stateindex+i] =  (   weight_factor 
-                                                                          * (parvalue_calculated - parvalue_measured) 
-                                                                          / self.measpardesvalues[i])
+            if len(self.health_parameters) != len(self.measurement_parameters):
+                raise ValueError(
+                    f"{self.name}: expected one measurement per health parameter "
+                    "for the off-design root solver."
+                )
+
+            self.health_state_indices = [
+                self.system.add_state(
+                    f"{hp.component.name}_{hp.attribute_name}", 1.0
+                )
+                for hp in self.health_parameters
+            ]
+            self.measurement_error_indices = [
+                self.system.add_error(f"{self.name}_{mp.parameter_name}", 0.0)
+                for mp in self.measurement_parameters
+            ]
+            self.measpardesvalues = np.asarray(
+                [
+                    self.system.output_dict[mp.parameter_name]
+                    for mp in self.measurement_parameters
+                ],
+                dtype=float,
+            )
+            return
+
+        for mp, error_index, design_value in zip(
+            self.measurement_parameters,
+            self.measurement_error_indices,
+            self.measpardesvalues,
+            strict=True,
+        ):
+            name = mp.parameter_name
+            measured = self.am_input.at[PointTime, name]
+            calculated = self.system.output_dict[name]
+            self.system.errors[error_index] = (
+                mp.weight * (calculated - measured) / design_value
+            )
 
     def PrintPerformance(self, Mode, PointTime):
         if Mode == 'DP':

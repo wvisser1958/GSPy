@@ -219,22 +219,23 @@ def main():
 
         # test OD simulation at Design conditions
         turbofan.ambient.SetConditions('OD', Altitude=0, Mach=0)
-        turbofan.input_points = fuel_control.re_init_input(None,
-                                                                1.11,
-                                                                1600, 1200, -50,
-                                                                'T4')
-        turbofan.Run_OD_simulation('Test step at 0m / Ma 0.0 Design conditions')
+        turbofan.input_points = fuel_control.re_init_input(# Design point (DP) input for combustor
+                                                           DP_input_value=1.11,
+                                                           # Off-design simulation input
+                                                           OD_start_value=1600,
+                                                           OD_end_value=1200,
+                                                           OD_point_step_value=-50,
+                                                           OD_controlled_parameter_name='T4')
+        turbofan.AddOutputBreak()
+        turbofan.Run_OD_simulation('OD performance at 0m / Ma 0.0 Design conditions')
 
         # # intermediate step at design T4 to help iteration towards point far from DP
         # # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
         # # conditions is desired
-        # turbofan.ambient.SetConditions('OD', 0, 0.0, 0, None, None)
-        # turbofan.input_points = fuel_control.re_init_input(None,
-        #                                                         0.7,
-        #                                                         None, None, None,
-        #                                                         'T4',
-        #                                                         point_time_value_array = [combustor.Texitdes])
-        # turbofan.Run_OD_simulation('Intermediate step at 5000m / Ma 0.8')
+
+        turbofan.AddOutputBreak()
+        turbofan.ambient.SetConditions('OD', Altitude=5000, Mach=0.8)
+        turbofan.Run_OD_simulation('Intermediate step at 5000m / Ma 0.8')
 
 
         # # intermediate step at design T4 to help iteration towards point far from DP
@@ -254,6 +255,10 @@ def main():
         #                                                          'T4'
         #                                                     )
         # turbofan.Run_OD_simulation('10000m / Ma 0.8')
+        turbofan.AddOutputBreak()
+        turbofan.ambient.SetConditions('OD', Altitude=10000, Mach=0.8)
+        fuel_control.set_input_normalization_factor(0.7)
+        turbofan.Run_OD_simulation('Cruise at 10000m / Ma 0.8')
 
         # # sweep T4 at typical cruise condition 10k / Ma 0.8:
         # turbofan.ambient.SetConditions('OD', 5000, 0.8, 0, None, None)
@@ -273,12 +278,17 @@ def main():
         #                                                         1600, 1100, -50,
         #                                                         'T4')
         # turbofan.Run_OD_simulation('Performance at 11000m / Ma 0.8')
+        turbofan.AddOutputBreak()
+        turbofan.ambient.SetConditions('OD', Altitude=11000, Mach=0.8)
+        fuel_control.set_input_normalization_factor(0.5)
+        turbofan.Run_OD_simulation('Intermediate step at 11000m / Ma 0.8')
+
 
     # export OutputTable to CSV
     turbofan.OutputToCSV()
 
     # plot nY vs X parameter
-    turbofan.Plot_X_nY_graph('Performance vs N1 [%] at Alt 10000m, Ma 0.8 (DP at ISA SL)',
+    turbofan.Plot_X_nY_graph('Performance vs N1 [%] at Alt 11000m, Ma 0.8 (DP at ISA SL)',
                             "_1",
                             # common X parameter column name with label
                             ("N1%",           "Fan speed [%]"),

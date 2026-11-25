@@ -15,15 +15,15 @@
 
 from gspy.core.base_component import TComponent
 import math
-import numpy as np
 
 class TEquation(TComponent):
-    def __init__(self, owner, name, map_filename, control_component,
+    def __init__(self,
                 *,
                 obj_with_free_variable,
                 free_var_attr_name,
-                free_var_norm_factor):    # Constructor of the class
-        super().__init__(owner,     name, map_filename, control_component)
+                free_var_norm_factor,
+                **kwargs):    # Constructor of the class
+        super().__init__(**kwargs)
         self.obj_with_free_variable = obj_with_free_variable
         self.free_var_attr_name = free_var_attr_name
         self.free_var_norm_factor = free_var_norm_factor
@@ -50,20 +50,19 @@ class TEquation(TComponent):
     def PostRun(self, Mode, PointTime):
         # super().PostRun(Mode, PointTime)
         if Mode == 'DP':
-            self.system.states = np.append(self.system.states, 1)
-            self.istate_equation = self.system.states.size-1
-            self.system.errors = np.append(self.system.errors, 0)
-            self.ierror_equation = self.system.errors.size-1
+            # 2.1 Codex 2026-11-23 22:09 CET
+            self.istate_equation = self.system.add_state(f"{self.name}_free_var", 1.0)
+            self.ierror_equation = self.system.add_error(f"{self.name}_balance", 0.0)
             self.free_var_des_value = self.get_free_var_value()
             if self.free_var_norm_factor is None:
-                self.free_var_norm_factor = self.free_var_des_value    
+                self.free_var_norm_factor = self.free_var_des_value
             # if nearly 0, set it to 1
             if math.isclose(self.free_var_norm_factor, 0.0, abs_tol=1e-3):
                 self.free_var_norm_factor = 1
         else:
             # this is custom code for specific application, using the output table columns
             Qfuel_conditioning = self.system.output_dict["Q_fuel_cond kW"]
-            Qduct = self.free_var_value 
+            Qduct = self.free_var_value
             self.system.errors[self.ierror_equation] = (Qfuel_conditioning - Qduct) / self.free_var_norm_factor
 
     def PrintPerformance(self, Mode, PointTime):

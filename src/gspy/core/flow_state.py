@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ast import operator
 import math
 import cantera as ct
 import gspy.core.constants as c
@@ -152,24 +153,35 @@ class TFlowState:
     def W_gas(self):
         return self.gas_q.mass
 
+    # 2.1 codex
+    # @W_gas.setter
+    # def W_gas(self, value):
+    #     liq_old = self.m_liq
+    #     self.gas_q.mass = float(value)
+    #     self.m_dry = self.W_gas * (1.0 - self._gas_h2o_mass_fraction())
+
+    #     #  old code
+    #     # self.m_total_water = self.m_vap + liq_old
+    #     # # if self.force_gas_only:
+    #     # if not self.enable_liquid_water:
+    #     #     self.m_total_water = self.m_vap
+
+    #     # more efficient:
+    #     if self.enable_liquid_water:
+    #         self.m_total_water = self.m_vap + liq_old
+    #     else:
+    #         self.m_total_water = self.m_vap
+
     @W_gas.setter
     def W_gas(self, value):
-        liq_old = self.m_liq
-        self.gas_q.mass = float(value)
-        self.m_dry = self.W_gas * (1.0 - self._gas_h2o_mass_fraction())
+        liquid_mass = self.m_liq if self.enable_liquid_water else 0.0
 
-        #  old code
-        # self.m_total_water = self.m_vap + liq_old
-        # # if self.force_gas_only:
-        # if not self.enable_liquid_water:
-        #     self.m_total_water = self.m_vap
+        gas_mass = float(value)
+        self.gas_q.mass = gas_mass
 
-        # more efficient:
-        if self.enable_liquid_water:
-            self.m_total_water = self.m_vap + liq_old
-        else:
-            self.m_total_water = self.m_vap
-
+        vapor_mass = gas_mass * self._gas_h2o_mass_fraction()
+        self.m_dry = gas_mass - vapor_mass
+        self.m_total_water = vapor_mass + liquid_mass
 
     @property
     def W(self):
@@ -509,6 +521,12 @@ class TFlowState:
                   new_station_nr: str = None,
                   scale_W: float = 1.0,
                   overrule_enable_liquid_water = None) -> "TFlowState":
+
+        # 2.1 Codex
+        target_enthalpy = None
+        if overrule_enable_liquid_water is False and scale_W > 0 and other.m_liq > 0:
+            target_enthalpy = other.H_total * scale_W
+
         self.gas_q.TPX = other.gas_q.T, other.gas_q.P, other.gas_q.X
 
         # self.station_nr = new_station_nr if str(new_station_nr) is not None else str(other.station_nr)
@@ -541,6 +559,14 @@ class TFlowState:
         self.V = other.V
         self.A = other.A
         self.rho = other.rho
+
+        # 2.1 Codex
+        if target_enthalpy is not None:
+            pressure = self.P
+            self.disable_liquid_model(collapse=True)
+            self.gas_q.HP = target_enthalpy / self.W_gas, pressure
+            self._set_static_equal_total()
+
         return self
 
     def mix_same_composition_gas_only(
@@ -3236,6 +3262,19 @@ class TFlowState:
 
         if tmp is None:
             raise ValueError("tmp TGaspathCondition required for polytropic expansion")
+
+
+        # Codex 2.1
+        if isinstance(n_steps, bool):
+            raise ValueError("n_steps must be a positive integer")
+
+        try:
+            n_steps = operator.index(n_steps)
+        except TypeError as exc:
+            raise ValueError("n_steps must be a positive integer") from exc
+
+        if n_steps < 1:
+            raise ValueError("n_steps must be a positive integer")
 
         out.copy_from(self)
 

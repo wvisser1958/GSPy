@@ -199,6 +199,8 @@ class TSystemModel:
         self.reset_output()
 
         self.mode = None
+        # 2.1 Codex 2026-11-23 10:39 CET
+        self.dp_succeeded = False
         self.error_tolerance = 0.0001 # default error tolerance 0.1%, override if needed in main code
 
         # error code constants
@@ -263,6 +265,30 @@ class TSystemModel:
             if comp.name == component_name:
                 return comp
         return None  # Return None if no matching object is found
+
+    # 2.1 Codex 2026-11-23 13:08 CET
+    def resolve_control(self, control, *, component_name):
+        if not isinstance(control, str):
+            return control
+
+        matches = [
+            component
+            for component in self.component_run_list
+            if component.name == control
+        ]
+
+        if not matches:
+            raise ValueError(
+                f"{component_name!r} references control {control!r}, "
+                "which is missing from component_run_list."
+            )
+        if len(matches) > 1:
+            raise ValueError(
+                f"{component_name!r} references control {control!r}, "
+                "which appears more than once in component_run_list."
+            )
+
+        return matches[0]
 
     def get_component_object_by_name(self, aname):
         return next((obj for obj in self.component_run_list if obj.name == aname), None)
@@ -357,9 +383,71 @@ class TSystemModel:
             self.output_dict.update(comp.get_outputs())
         self.output_dict.update(self.get_outputs(True))
 
-    # # 2.0.0.0 not used
+    # 2.1 Codex 2026-11-23 10:39 CET
+    # def define_comp_run_list(self, *component_list):
+    #         self.component_run_list = [self.ambient, *component_list]
     def define_comp_run_list(self, *component_list):
-        self.component_run_list = [self.ambient, *component_list]
+        run_list = [self.ambient, *component_list]
+        self._validate_station_order(run_list)
+        self.component_run_list = run_list
+
+    def _validate_station_order(self, run_list):
+        from gspy.core.compressor import TCompressor
+        from gspy.core.exhaustnozzle import TExhaustNozzle
+        from gspy.core.fan import TFan
+        from gspy.core.inlet import TInlet
+        from gspy.core.turbine import TTurbine
+
+        producers = {}
+
+        def require(station, consumer):
+            if station not in producers:
+                raise ValueError(
+                    f"Component {consumer.name!r} reads station {station!r} "
+                    "before any component calculates / publishes it."
+                )
+
+        def publish(station, producer):
+            if station in producers:
+                raise ValueError(
+                    f"Station {station!r} is calculated / published by both "
+                    f"{producers[station].name!r} and {producer.name!r}."
+                )
+            producers[station] = producer
+
+        for comp in run_list:
+            if comp is self.ambient:
+                publish(comp.station_nr, comp)
+                continue
+
+            if not isinstance(comp, TGaspath):
+                continue
+
+            if isinstance(comp, TInlet):
+                require(self.ambient.station_nr, comp)
+                # The inlet creates this station at DP and updates it in place.
+                publish(comp.station_in, comp)
+            else:
+                require(comp.station_in, comp)
+
+            publish(comp.station_out, comp)
+
+            if isinstance(comp, TCompressor):
+                for bleed in comp.Bleeds or ():
+                    publish(bleed.station_in, comp)
+                    publish(bleed.station_out, bleed)
+
+            if isinstance(comp, TTurbine):
+                for cooling_flow in comp.CoolingFlows or ():
+                    require(cooling_flow.station_in, cooling_flow)
+                    publish(cooling_flow.station_out, cooling_flow)
+
+            if isinstance(comp, TFan):
+                publish(comp.station_out_duct, comp)
+
+            if isinstance(comp, TExhaustNozzle):
+                publish(comp.station_throat, comp)
+
 
     # method running component model simulations/calculations
     # from inlet(s) through exhaust(s)
@@ -409,94 +497,81 @@ class TSystemModel:
         return self.errors
 
     def Run_DP_simulation(self, targets = None, *, descr = None):
-
-        #  2.1
+        # 2.1 Codex 2026-11-23 10:39 CET
+        self.dp_succeeded = False
         self.mode = 'DP'
         self.descr = descr
         self.high_gas_fidelity = True
         self.Run_count = 0
 
         try:
-            # check for Heat sinks: these must add DP equations :
-            # T must be found for which heat flux residual of balance Q_balance = 0
+            # Heat sinks add a design-point heat-balance equation.
+            if targets is not None:
+                targets = list(targets)
             for comp in self.component_run_list:
                 if isinstance(comp, THeatsink):
                     if targets is None:
                         targets = []
-                    targets.append( (comp, "T", comp, "Q_balance", 0, comp.Q_norm_factor) )
+                    targets.append((comp, "T", comp, "Q_balance", 0, comp.Q_norm_factor))
                     print(f"DP Target Q=0 for {comp.name} (Q_norm = {comp.Q_norm_factor} [W])")
 
-            if targets is None:
-                # self.Do_Run('DP', 0, self.states)
+            if not targets:
                 self.Do_Run('DP', 0, None)
             else:
-                try:
-                    var_values_ref = [0.0] * len(targets)
+                var_values_ref = [
+                    getattr(varobj, varattr)
+                    for varobj, varattr, *_ in targets
+                ]
 
-                    for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
-                        var_values_ref[i] = getattr(varobj, varattr)
+                def targetresiduals(dp_variables):
+                    for i, (varobj, varattr, *_) in enumerate(targets):
+                        setattr(varobj, varattr, dp_variables[i] * var_values_ref[i])
+                    self.Do_Run('DP', 0, None)
 
-                    def targetresiduals(dp_variables):
-                        for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
-                            setattr(varobj, varattr, dp_variables[i] * var_values_ref[i])
-                        self.Do_Run('DP', 0, None)
+                    residuals = []
+                    for _, _, targetobj, targetattr, targetvalue, F_norm in targets:
+                        actual = getattr(targetobj, targetattr)
+                        residuals.append((actual - targetvalue) / (F_norm or targetvalue))
+                    return residuals
 
-                        residuals = [0.0] * len(targets)
-                        for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
-                            actual = getattr(targetobj, targetattr)
-                            if F_norm:
-                                residuals[i] = (actual - targetvalue) / F_norm
-                            else:
-                                residuals[i] = (actual - targetvalue) / targetvalue
+                solution = root(
+                    targetresiduals,
+                    [1.0] * len(targets),
+                    method='krylov',
+                    options={
+                        'maxiter': 100,
+                        'fatol': self.error_tolerance,
+                        'jac_options': {'rdiff': 1e-4},
+                    },
+                )
+                if not solution.success:
+                    raise RuntimeError(f"DP target solve failed: {solution.message}")
 
-                        return residuals
+                residuals = np.asarray(targetresiduals(solution.x), dtype=float)
+                if not np.all(np.isfinite(residuals)):
+                    raise RuntimeError("DP target solve produced non-finite residuals")
 
-                    dp_variables_init = [1.0] * len(targets)
+                max_residual = np.max(np.abs(residuals))
+                if max_residual > self.error_tolerance:
+                    raise RuntimeError(
+                        f"DP target residual {max_residual:g} exceeds "
+                        f"tolerance {self.error_tolerance:g}"
+                    )
 
-                    solution = root(
-                        targetresiduals,
-                        dp_variables_init,
-                        method='krylov',
-                        # method = 'hybr',
-                        # tol=self.error_tolerance,
-                        # options={'maxiter': 100}
-                        options={
-                                'maxiter': 100,
-                                'fatol': self.error_tolerance,     # absolute residual target
-                                # 'xatol': 1e-12,                     # avoid premature "small step" success
-                                'jac_options' :{
-                                    'rdiff': 1e-4,   # larger relative perturbation step
-                                    }
-                                }
-                        # options={
-                        #     "maxiter": 100,
-                        #     "fatol": 1e-8,
-                        #     "xatol": 1e-8,
-                        #     "line_search": None,
-                        #     "jac_options": {
-                        #         "rdiff": 1e-4,
-                        #         },
-                        #     }
-                        )
-                except Exception as e:
-                    self.Do_Output('DP', 0, self.exception_error)
-                    print(f"DP target iteration exception error: {e}")
+                self.vprint("DP simulation target equations solution:")
+                for varobj, varattr, targetobj, targetattr, targetvalue, _ in targets:
+                    self.vprint(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
 
-                # report target equations iteration result
-                # print(f"DP target iteration succesful. Results:")
-                # for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
-                #     print(f"Target eq. no {i}: {targetobj.name}.{targetattr} = {targetvalue} for {varobj.name}.{varattr} = {getattr(varobj, varattr)}")
-                if targets is not None:
-                    self.vprint(f"DP simulation target equations solution:")
-                    for i, (varobj, varattr, targetobj, targetattr, targetvalue, F_norm) in enumerate(targets):
-                        self.vprint(f"\t{f'{targetobj.name}.{targetattr}':<26} = {targetvalue:>10} (target)   at {f'{varobj.name}.{varattr}':<26} = {f'{getattr(varobj, varattr)}':>22}")
+            self.targets = targets
+            self.Do_Output('DP', 0, self.no_error)
+        except Exception as exc:
+            try:
+                self.Do_Output('DP', 0, self.exception_error)
+            except Exception as output_error:
+                exc.add_note(f"Could not report the failed design point: {output_error}")
+            raise
 
-            self.targets = targets # save target information for output
-
-            self.Do_Output('DP', 0, self.no_error)      # 0 to indicated all Ok if we get to this line of code after Do_Run
-        except Exception as e:
-            self.Do_Output('DP', 0, self.exception_error)
-            print(f"DP simulation: exception error: {e}")
+        self.dp_succeeded = True
 
     # 2.1
     def get_value_at_point_time(self, a_point_time):
@@ -510,12 +585,29 @@ class TSystemModel:
             return float(np.interp(a_point_time, times, values))
 
     def Run_OD_simulation(self, descr = None, reinit_states_and_errors = True):
+        # 2.1 Codex 2026-11-23 10:39 CET
+        if not self.dp_succeeded:
+            raise RuntimeError(
+                "Must run a successful design-point simulation before running off-design."
+            )
+
         def residuals(states):
             # residuals will return residuals of system conservation equations, schedules, limiters etc.
             # the residuals are the errors returned by Do_Run
             # 2.1
             errors = self.Do_Run('OD', point_time, states)
             return errors
+
+        # 2.1 Codex 2026-11-23 22:09 CET
+        if self.states.size != len(self.state_names):
+            raise RuntimeError("OD state values and names have different counts.")
+        if self.errors.size != len(self.error_names):
+            raise RuntimeError("OD residual values and names have different counts.")
+        if self.states.size != self.errors.size:
+            raise RuntimeError(
+                f"OD solve has {self.states.size} states and "
+                f"{self.errors.size} residuals. The root solver requires equal counts."
+            )
 
         #  2.1
         self.mode = 'OD'

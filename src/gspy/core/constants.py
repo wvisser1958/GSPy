@@ -87,8 +87,8 @@ air_composition_moles_array = [
 LIQUID_WATER_INDEX = -1
 
 # standard atmosphere sea level conditions
-T_std = 288.15
-P_std = 101325
+T_std_ISA = 288.15
+P_std_ISA = 101325
 
 # Standard temperature for chemical gas model calculations and for fuel LHV
 T_standard_ref = 298.15 # (25°C)
