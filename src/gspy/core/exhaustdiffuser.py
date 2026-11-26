@@ -63,6 +63,9 @@ class TExhaustDiffuser(TGaspath):
             # fsys.errors[self.ierror_p] = self.gas_in.P*self.PR / Pout
             self.system.errors[self.ierror_p] = (self.fs_in.P*self.PR - Pout) / Pout
         self.fs_out.TP = self.GasThroat.T, Pout
+
+        self.Add_Q_to_fs_out()
+
         return self.fs_out
 
     def PrintPerformance(self, Mode, PointTime):

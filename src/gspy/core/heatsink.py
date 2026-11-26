@@ -76,8 +76,8 @@ class THeatsink(TComponent):
         return out
 
     def get_output_units(self):
-        units = super().get_outputs()
+        units = super().get_output_units()
         units[f"T{self.id}"] = "[K]"
         units[f"Q_balance{self.id}"] = "[W]"
 
-        return units    
+        return units

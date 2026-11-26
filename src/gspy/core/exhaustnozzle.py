@@ -25,8 +25,8 @@ class TExhaustNozzle(TGaspath):
     def __init__(self,
                 *,
                 station_throat,
-                CXdes, 
-                CVdes, 
+                CXdes,
+                CVdes,
                 CDdes,
                 ConDi_exit_throat_area_ratio = 1,
                 **kwargs):    # Constructor of the class
@@ -39,7 +39,7 @@ class TExhaustNozzle(TGaspath):
         # add nozzle throat station
         # 2.1
         self.station_throat = station_throat
-        self.fs_throat = TFlowState.create_empty(self.system.gas, 
+        self.fs_throat = TFlowState.create_empty(self.system.gas,
                                                 self.station_throat,
                                                 enable_liquid_water=self.enable_liquid_water)
         self.CXdes = CXdes
@@ -1052,7 +1052,7 @@ class TExhaustNozzle(TGaspath):
     def Run(self, Mode, PointTime):
         super().Run(Mode, PointTime)
         self.fs_throat.copy_from(self.fs_in, overrule_enable_liquid_water=self.enable_liquid_water)
-        
+
         Hin = self.fs_in.gas_q.enthalpy_mass
         Pin = self.fs_in.gas_q.P
         P_amb = self.system.ambient.Psa
@@ -1116,16 +1116,19 @@ class TExhaustNozzle(TGaspath):
         self.V_exit = result["V_exit"] * self.CVdes
         self.P_exit = result["P_exit"] * self.CVdes
 
-        self.T_throat = result["T_throat"] 
-        self.P_throat = result["P_throat"] 
-        self.V_throat = result["V_throat"] 
-        self.M_throat = result["Mach_throat"] 
+        self.T_throat = result["T_throat"]
+        self.P_throat = result["P_throat"]
+        self.V_throat = result["V_throat"]
+        self.M_throat = result["Mach_throat"]
 
         self.FG = self.CXdes * (fu.scalar(self.fs_out.W) * self.V_exit + self.A_exit*(self.P_exit-P_amb)) / 1000 # kN
         # add gross thrust to system level thrust (note that multiple propelling nozzles may exist)
         self.system.FG = self.system.FG + self.FG
         self.A_throat_geom = self.A_throat / self.CDdes
         self.system.gaspath_conditions[self.station_throat] = self.fs_throat
+
+        self.Add_Q_to_fs_out()
+
         return self.fs_out
 
     def PrintPerformance(self, Mode, PointTime):
@@ -1176,4 +1179,3 @@ class TExhaustNozzle(TGaspath):
         units["FG_"+self.name]  = "[kN]"
 
         return units
-

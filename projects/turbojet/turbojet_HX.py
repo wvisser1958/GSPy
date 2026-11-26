@@ -43,13 +43,13 @@ def main():
                            name='Fcontrol',             # component name
                            DP_input_value=0.38,         # design point (DP) input
                            # off design control input ranging from 0.38 down to 0.8 with steps of -0.01
-                           OD_start_value=0.38, 
-                           OD_end_value=0.08, 
+                           OD_start_value=0.38,
+                           OD_end_value=0.08,
                            OD_point_step_value=-0.01,   # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 1235.9, 835.9, -25,        # off design (OD) input: starting value, end value and step value OR alternatively:
                            # 0.30, None, None,          # off design (OD) input: single input value
 
-                           OD_controlled_parameter_name=None                     
+                           OD_controlled_parameter_name=None
                             # OD control parameter name: must be an output present in the output table
                             # if None: the component using it directly takes the value
                             # if specified with parameter name, an equation is added forcing the parameter to match the input values
@@ -77,17 +77,17 @@ def main():
                     PRdes = 1               # design pressure ratio (PR = 1 - Ploss_relative)
                     )
 
-    heatsink_c_t = THeatsink(system=turbojet, 
-                             name='Heatsink_c_t', 
+    heatsink_c_t = THeatsink(system=turbojet,
+                             name='Heatsink_c_t',
                              mass = 1,               # mass and cp not relevant here (steady state)
                              cp = 1,
                              T_first_guess = 900,
-                             Q_norm_factor = 100000)    
+                             Q_norm_factor = 100000)
 
-    heatpath_c = THeatpath(system=turbojet,                  
-                           name='Heatpath_c', 
+    heatpath_c = THeatpath(system=turbojet,
+                           name='Heatpath_c',
                            heatsink = heatsink_c_t,          # heat sink path is connected to
-                           a_ht = 0.1,                      # heat transfer area m2
+                           a_ht = 1,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
                            d_re = 0.1,                      # D for Reynolds number
                            k_gas = 0.067,                   # gas conductivity
@@ -98,17 +98,17 @@ def main():
                            in_out_split_fraction = 0.5      # location factor
                            )
 
-    heatpath_t = THeatpath(system=turbojet,                  
-                           name='Heatpath_t',               
+    heatpath_t = THeatpath(system=turbojet,
+                           name='Heatpath_t',
                            heatsink = heatsink_c_t,          # heat sink path is connected to
-                           a_ht = 0.1,                      # heat transfer area m2
+                           a_ht = 1,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
                            d_re = 0.1,                      # D for Reynolds number
                            k_gas = 0.067,                   # gas conductivity
                            Nu = '0.023*Re^(4/5)*Pr^(1/3)',  # Nusselt expression
                            d_mat = 0.002,                   # wall material thickness
                            k_mat = 17.5,                    # wall material conductivity
-                           eps_rad = 0,                     # no radiation heat transfer
+                           eps_rad = 0.9,                     # no radiation heat transfer
                            in_out_split_fraction = 0.5            # location factor
                            )
 
@@ -116,7 +116,7 @@ def main():
                               name='Compressor1',           # component name
                               map_filename='compmap.map' ,  # map file name
                               station_in = 2,               # station nr in and out
-                              station_out=3,                
+                              station_out=3,
                               shaft_id=1,                   # shaft id, strings are allowed as well (e.g. 'gg'), but for simplicity we use integers here
                               Ndes=16540,                   # design rpm
                               Etades=0.825,                 # design efficiency
@@ -129,24 +129,24 @@ def main():
     )
 
     #  heat path between heatsinks _c_t and _b_a
-    heatpath_hs_ct_ba = THeatpath(system=turbojet,                  
-                           name='Heatpath_ct_ba',               
+    heatpath_hs_ct_ba = THeatpath(system=turbojet,
+                           name='Heatpath_ct_ba',
                            heatsink = heatsink_c_t,         # heat sink path is connected to
                            a_ht = 0.1,                     # heat transfer area m2
                            u_user = 10,                   # user specified heat transfer coefficient overriding the above
                            )
 
-    heatsink_b_a = THeatsink(system=turbojet, 
-                             name='Heatsink_b_a', 
+    heatsink_b_a = THeatsink(system=turbojet,
+                             name='Heatsink_b_a',
                              mass = 1,               # mass not and cp relevant here (steady state)
                              cp = 1,
                              T_first_guess = 700,
                              Q_norm_factor = 100000,
                              heatpaths = [heatpath_hs_ct_ba]
-                             )   
+                             )
 
-    heatpath_b = THeatpath(system=turbojet,                  
-                           name='Heatpath_b',               
+    heatpath_b = THeatpath(system=turbojet,
+                           name='Heatpath_b',
                            heatsink = heatsink_b_a,          # heat sink path is connected to
                            a_ht = 10,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
@@ -158,13 +158,13 @@ def main():
                            eps_rad = 0,                     # no radiation heat transfer
                            in_out_split_fraction = 0.5      # location factor
                            )
-    
+
     combustor1 = TCombustor(system=turbojet,                 # owning system model object
                             name='Combustor1',              # component name
                             map_filename = None,            # map file name             # for future use of a combustor efficiency map
                             # OD fuel input from FuelControl
                             control_component = fuelcontrol,# fuel control component    # fuel control component setting fuel flow depending on OD / PointTime point
-                            station_in=3, 
+                            station_in=3,
                             station_out=4,                  # station nr in and out
                             Wfdes=0.38,                     # Design point (DP) fuel flow Wfdes
                             Texitdes=None,                  # Texit design  - if specified (not None) Wfdes will be calculated from Texit,
@@ -214,7 +214,7 @@ def main():
                            name='Turbine1',             # component name
                            map_filename='turbimap.map', # map file name
                            control_component=None,      # optional control component
-                           station_in=4, 
+                           station_in=4,
                            station_out=5,               # station nr in and out
                            shaft_id=1,                  # shaft nr
                            Ndes=16540,                  # design point (DP) rpm
@@ -230,8 +230,8 @@ def main():
                         # option for working with polytropic efficiency: uncomment next line:
                         # turbine1.Polytropic_Eta = 1
 
-    heatpath_d_a = THeatpath(system=turbojet,                  
-                           name='Heatpath_d_a',               
+    heatpath_d_a = THeatpath(system=turbojet,
+                           name='Heatpath_d_a',
                            heatsink = heatsink_b_a,          # heat sink path is connected to
                            a_ht = 0.1,                      # heat transfer area m2
                            a_flow = 0.1,                    # flow cross area m2
@@ -246,7 +246,7 @@ def main():
 
     duct1    = TDuct(system=turbojet,                    # owning system model object
                      name='ExhDuct',                    # component name
-                     station_in=5, 
+                     station_in=5,
                      station_out=7,                     # station nr in and out
                      PRdes=1.0,                          # design pressure ratio, use to specify rel. pressure loss ploss (PR = (1 - ploss)/Pin)
                      heatpaths = [heatpath_d_a]
@@ -254,8 +254,8 @@ def main():
 
     exhaustnozzle = TExhaustNozzle(system=turbojet,      # owning system model object
                                    name='ExhaustNozzle',# component name
-                                   station_in=7, 
-                                   station_throat=8, 
+                                   station_in=7,
+                                   station_throat=8,
                                    station_out=9,       # station nr of entry, throat and exit  (throat and exit only different fo con-di nozzle)
                                                         # con-di nozzle model still to be implemented
                                    CXdes=1,             # design CX thrust coefficient
@@ -264,17 +264,17 @@ def main():
                                    )
 
     #  note that only now, once the system model and the heatsinks are defined, we can define the heatpath from system.ambient to the heatsinks
-    heatpath_ambient_c_t = THeatpath(system = turbojet,      
-                           name='Heatpath_amb_ct', 
+    heatpath_ambient_c_t = THeatpath(system = turbojet,
+                           name='Heatpath_amb_ct',
                            component = turbojet.ambient,
-                           heatsink = heatsink_c_t,     
+                           heatsink = heatsink_c_t,
                            Q_user = 1000,                   # user specified heat transfer coefficient overriding the above
                            )
-    
-    heatpath_ambient_b = THeatpath(system = turbojet,      
-                           name='Heatpath_amb_b', 
+
+    heatpath_ambient_b = THeatpath(system = turbojet,
+                           name='Heatpath_amb_b',
                            component = turbojet.ambient,
-                           heatsink = heatsink_b_a,     
+                           heatsink = heatsink_b_a,
                            a_ht = 0.1,                     # heat transfer area m2
                            u_user = 1000,                   # user specified heat transfer coefficient overriding the above
                            )
@@ -303,7 +303,7 @@ def main():
     print("Design point (DP) results")
     print("=========================")
     # set DP ambient/flight conditions
-    turbojet.ambient.SetConditions('DP', 0, 0, 0, None, None)
+    turbojet.ambient.SetConditions('DP', Altitude=0, Mach=0)
     turbojet.Run_DP_simulation()
 
     run_OD = True
@@ -316,7 +316,7 @@ def main():
         print("=======================")
         # set OD ambient/flight conditions; note that Ambient.SetConditions must be implemented inside RunODsimulation if a sweep of operating/inlet
         # conditions is desired
-        turbojet.ambient.SetConditions('OD', 0, 0, 0, None, None)
+        turbojet.ambient.SetConditions('OD', Altitude=0, Mach=0)
         # Run OD simulation
         # turbojet.VERBOSE = False # suppress OD output to terminal
         turbojet.Run_OD_simulation()

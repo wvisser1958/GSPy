@@ -53,17 +53,17 @@ class THeatTransferState:
 @dataclass
 class THeatPathStates:
     inlet: THeatTransferState
-    outlet: THeatTransferState    
+    outlet: THeatTransferState
 
 class THeatpath(ABC):
 
-    def __init__(self, 
+    def __init__(self,
                 *,
-                system: TSystemModel,                   # owning TSystemModel 
+                system: TSystemModel,                   # owning TSystemModel
                 component : TComponent | None = None,   # owning component is a TComponent (e.g. TGaspath, THeatsink, TAmbient) exchanging heat with the heatsink object
                                                         # component later assigned by
                 name: str,                              # unique name of the heat path
-            heatsink : THeatsink,                       # heat sink component the heat path is connected to  
+            heatsink : THeatsink,                       # heat sink component the heat path is connected to
                 a_ht=_NOT_SET,          # heat transfer area (between flow and wall)
                 a_flow=_NOT_SET,        # flow cross area (to calculate convection properties from mass flow)
                 d_re=_NOT_SET,          # characteristic length for Reynolds nr
@@ -72,17 +72,29 @@ class THeatpath(ABC):
                 d_mat=_NOT_SET,         # material/wall thickness for conduction
                 k_mat=_NOT_SET,         # wall material conductivity
                 eps_rad:float = 0.0,    # radiation emissivity (if None, then no radiation heat transfer)
-                u_user = _NOT_SET,      # manual user specified overall heat transfer coefficient u: 
-                                        # - optional for gaspath components, if not None, 
-                                        #   then overruling all above parameters (a_ht, a_flow, d_re, k_gas, Nu, d_mat, k_mat, eps_rad)                q_user,         # manual user specified total heat flux Q 
+                u_user = _NOT_SET,      # manual user specified overall heat transfer coefficient u:
+                                        # - optional for gaspath components, if not None,
+                                        #   then overruling all above parameters (a_ht, a_flow, d_re, k_gas, Nu, d_mat, k_mat, eps_rad)                q_user,         # manual user specified total heat flux Q
                 Q_user=_NOT_SET,        # if not None, overriding all other parameters
-                in_out_split_fraction=None) -> None: 
+                in_out_split_fraction=None) -> None:
                                         # factor for splitting heat transfer over start and end of compression, combustion etc.
                                         # 1 = all Q from gas path component entry
                                         # 0 = all Q from gas path component exit
                                         # 0.5 (default is half / half)
                                         # 0.3 0.3 from entry, 0.7 from exit
-             
+                                        # Note that a split value between 0 and 1 means
+                                        # heat transfer may accur via the connected heat sink
+                                        # from component inlet to exit or vice versa,
+                                        # depending on the sign of the heat transfer (Q) and
+                                        # the temperature difference between the gas path component and the heat sink.
+                                        # For example, with a compressor, the exit air may effectively warm up the inlet air
+                                        # via the heat sink, if the heat sink is hotter than the inlet air and colder than the exit air.
+                                        # To avoid this, the user may set the split fraction to 1 or 0,
+                                        # so that all heat transfer occurs at the inlet or outlet of the component.
+                                        # The other end of the component will then have no heat transfer to the heat sink, so for heat
+                                        # transfer at that location, connect a heat path to the connected gas path component (at the same gas path station)
+                                        # or: insert a TDuct component for heat transfer between gas path components
+
         self.system = system
         self.component = component
         self.name = name
@@ -97,7 +109,7 @@ class THeatpath(ABC):
             raise ValueError(
                 f"Heat path {name!r}: eps_rad must be between 0 and 1."
             )
-        
+
         self._validate_heat_transfer_inputs(
             a_ht=a_ht,
             a_flow=a_flow,
@@ -277,7 +289,7 @@ class THeatpath(ABC):
     #             f"Heat path {self.name!r}, connected to "
     #             f"{self.component.name!r}, requires: {', '.join(missing)}."
     #         )
-        
+
     def init_heattransferstates(self, component):
         self.component = component
         if isinstance(component, TGaspath):
@@ -294,7 +306,7 @@ class THeatpath(ABC):
         elif isinstance(component, TAmbient):
             if (component.fs_ambient.velocity<0.1) and (self.u_user is None) and (self.Q_user is None):
                 raise ValueError(
-                    f"Heat path {self.name!r} to Ambient must specify Q_user or u_user if ambient velocity = 0\n(No natural convection model implemented yet)")                
+                    f"Heat path {self.name!r} to Ambient must specify Q_user or u_user if ambient velocity = 0\n(No natural convection model implemented yet)")
             self.in_out_split_fraction = 1
             self.ht = THeatTransferState(ht_loc = HeatTransferLocation.AMBIENT)
             self.ht.a = self.a_ht
@@ -337,7 +349,7 @@ class THeatpath(ABC):
             ht_state = self.ht
             T_self_hx = self.hs_comp.T
         else:
-            raise ValueError("Invalid HeatTransferLocation in HeatPath calc_C") 
+            raise ValueError("Invalid HeatTransferLocation in HeatPath calc_C")
 
         if self.Q_user:
             # total Q for hx to component given: must split in case of inlet / outlet here:
@@ -345,41 +357,41 @@ class THeatpath(ABC):
                 ht_state.Q = self.Q_user * self.in_out_split_fraction
             elif hx_location == HeatTransferLocation.OUTLET:
                 ht_state.Q = self.Q_user * (1 - self.in_out_split_fraction)
-            else:     
+            else:
                 ht_state.Q = self.Q_user
         else:
             if self.u_user:
                 # user given u_user overriding the rest....
                 ht_state.Q = self.u_user * ht_state.a * (self.with_heatsink.T - T_self_hx)
-                ht_state.h_total = self.u_user                
+                ht_state.h_total = self.u_user
             else:
                 # calculate the heat transfer from the gas to the wall (convection) and through the wall (conduction)
                 ht_state.mu = fs_hx.gas_q.viscosity
                 ht_state.Rho = fs_hx.gas_q.density
                 if hx_location == HeatTransferLocation.AMBIENT:
                     ht_state.c = ht_state.c = fs_hx.velocity
-                else:        
+                else:
                     ht_state.c = fs_hx.gas_q.mass/self.a_flow/ht_state.Rho
                 ht_state.Re = ht_state.Rho * ht_state.c * self.d_re / ht_state.mu
-                ht_state.Pr = ht_state.mu * fs_hx.gas_q.cp / fs_hx.gas_q.thermal_conductivity 
+                ht_state.Pr = ht_state.mu * fs_hx.gas_q.cp / fs_hx.gas_q.thermal_conductivity
                 ht_state.Nu_value = self.Nu_func(ht_state.Re, ht_state.Pr)
 
                 ht_state.h_conv = ht_state.Nu_value * self.k_gas / self.d_re
                 ht_state.h_cond = self.k_mat / self.d_mat
                 ht_state.h_total = 1 / (1/ht_state.h_conv + 1/ht_state.h_cond)
-                
+
                 # heat going into the gas is positive, so:
                 ht_state.Q_conv_cond = ht_state.h_total * ht_state.a * (self.with_heatsink.T - T_self_hx)
 
-                # now with the calculated Q_conv_cond, we can calculate the wall temperature T_wall for radiation            
+                # now with the calculated Q_conv_cond, we can calculate the wall temperature T_wall for radiation
                 # Q_conv_cond  = (T_heatsink-T_wall)*A*h__cond, so
                 if math.isclose(ht_state.h_cond, 0.0, abs_tol=1e-12) or math.isclose(ht_state.a, 0.0, rel_tol=1e-12):
                     ht_state.T_wall = self.with_heatsink.T # assume temperature of heat sink
                 else:
                     ht_state.T_wall = self.with_heatsink.T - ht_state.Q_conv_cond/ht_state.a/ht_state.h_cond
-            
+
                 # radiation heat transfer (from wall to ambient) is not yet included in the Q calculation
-                ht_state.Q_rad = self.eps_rad * c.C_StefanBoltzmann * ht_state.a * (ht_state.T_wall**4-T_self_hx**4)  
+                ht_state.Q_rad = self.eps_rad * c.C_StefanBoltzmann * ht_state.a * (ht_state.T_wall**4-T_self_hx**4)
                 ht_state.Q = ht_state.Q_conv_cond + ht_state.Q_rad
 
         self.with_heatsink.Q_balance -= ht_state.Q
@@ -400,7 +412,7 @@ class THeatpath(ABC):
             print(f"\t\tQ inlet : {self.ht.inlet.Q:.0f} W")
             print(f"\t\tQ outlet: {self.ht.outlet.Q:.0f} W")
             print(f"\t\tQ total : {self.ht.inlet.Q + self.ht.outlet.Q:.0f} W")
-        else:   # ht is a single THeatTransferState 
+        else:   # ht is a single THeatTransferState
             print(f"\t\tQ  : {self.ht.Q:.0f} W")
         if self.system.debug_output:
             if isinstance(self.ht, THeatPathStates):
@@ -466,7 +478,7 @@ class THeatpath(ABC):
             units[f"T_wall_{loc_value} {self.name}"] = "[K]"
             units[f"Q_rad_{loc_value} {self.name}"] = "[W]"
         units[f"Q_{loc_value} {self.name}"] = "[W]"
-    
+
     def get_output_units(self):
         units = {}
 

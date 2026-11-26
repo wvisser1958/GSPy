@@ -20,7 +20,6 @@ from scipy.optimize import root, root_scalar
 import cantera as ct
 import gspy.core.constants as c
 from enum import Enum
-from gspy.core.gaspath_condition import TFlowState
 
 atomweightC = 12.010914
 molemassCO2 = 44.0098

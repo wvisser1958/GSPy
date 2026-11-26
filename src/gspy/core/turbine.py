@@ -128,8 +128,9 @@ class TTurbine(TTurboComponent):
         def pressure_ratio_for_turbine_power(PR_iter):
             # Set the initial state
             # reset fs_out to fs_in (in case cooling flow added during previous iteration step)
-            self.fs_out.gas_q.TPY = self.fs_in.gas_q.TPY
-            self.fs_out.gas_q.mass = self.fs_in.gas_q.mass
+            # 2.1 bug fix Immanuel: fs_out must be reset to fs_in_q, not fs_in. Expansion starts after heat transfer at turbine inlet
+            self.fs_out.gas_q.TPY = self.fs_in_q.gas_q.TPY
+            self.fs_out.gas_q.mass = self.fs_in_q.gas_q.mass
 
             # 2.1
             # power without cooling:
@@ -137,7 +138,8 @@ class TTurbine(TTurboComponent):
             # PW_PR = fu.TurbineExpansion(self.fs_in, self.fs_out, PR_iter, self.Eta, None, self.Polytropic_Eta)
             # DHW_PR = fu.TurbineExpansion(self.fs_in, self.fs_out, PR_iter, self.Eta, None,
             #                              self.Polytropic_DP_eta if Mode == 'DP' else 0)
-            self.fs_out, DHW_PR = self.fs_in.expand_real_eta(
+            # 2.1 bug fix Immanuel: Expansion starts after heat transfer at turbine inlet, at state fs_in_q
+            self.fs_out, DHW_PR = self.fs_in_q.expand_real_eta(
                 PR=PR_iter,
                 out=self.fs_out,
                 eta=self.Eta,
@@ -195,7 +197,8 @@ class TTurbine(TTurboComponent):
                 self.PRdes = self.fs_in.P/Pout
                 self.PR = self.PRdes
 
-                self.fs_out, self.DHW = self.fs_in.expand_real_eta(
+                # 2.1 bug fix Immanuel: Expansion starts after heat transfer at turbine inlet, at state fs_in_q
+                self.fs_out, self.DHW = self.fs_in_q.expand_real_eta(
                     PR=self.PRdes,
                     out=self.fs_out,
                     eta=self.Etades,
@@ -213,7 +216,8 @@ class TTurbine(TTurboComponent):
 
             # reset fs_out to gaspath_conditions dictionary (because link broken by adding cooling flow to fs_out
             #                                                self.fs_out = self.fs_out + cf.fs_out)
-            self.system.gaspath_conditions[self.station_out] = self.fs_out
+            # 2.1 moved to end, after adding Q effect
+            # self.system.gaspath_conditions[self.station_out] = self.fs_out
 
             self.PWdes = self.PW
 
@@ -263,7 +267,8 @@ class TTurbine(TTurboComponent):
             # 1.6.0.8 renaming: gross power excl. mech. losses = DHW (added), mechanical power output = PW
             # self.PW = fu.TurbineExpansion(self.fs_in, self.fs_out, self.PR, self.Eta, None, self.Polytropic_Eta)
             # self.DHW = fu.TurbineExpansion(self.fs_in, self.fs_out, self.PR, self.Eta, None, 0)
-            self.fs_out, self.DHW = self.fs_in.expand_real_eta(
+            # 2.1 bug fix Immanuel: Expansion starts after heat transfer at turbine inlet, at state fs_in_q
+            self.fs_out, self.DHW = self.fs_in_q.expand_real_eta(
                 PR=self.PR,
                 out=self.fs_out,
                 eta=self.Eta,
@@ -296,10 +301,14 @@ class TTurbine(TTurboComponent):
 
             # reset fs_out to gaspath_conditions dictionary (because link broken by adding cooling flow to fs_out
             #                                                self.fs_out = self.fs_out + cf.fs_out)
-            self.system.gaspath_conditions[self.station_out] = self.fs_out
+            # 2.1 obsolete, done in TGaspath
+            # self.system.gaspath_conditions[self.station_out] = self.fs_out
         # ******************** end OD off design mode *************************
 
         self.Add_Q_to_fs_out()
+
+        # reset fs_out to gaspath_conditions dictionary (because link broken by adding cooling flow to fs_out)
+        self.system.gaspath_conditions[self.station_out] = self.fs_out
 
         return self.fs_out
 
