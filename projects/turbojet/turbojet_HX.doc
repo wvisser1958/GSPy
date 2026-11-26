@@ -1,0 +1,26 @@
+Ambient (a)
+    |
+    v
+(1) -> Inlet1 -> (2) -> Compressor1 -> (3) -> Combustor1
+                                                  |
+                                                 (4)
+                                                  v
+                        Turbine1 -> (5) -> ExhDuct -> (7)
+                                                       |
+                                                       v
+                                         ExhaustNozzle (throat 8)
+                                                       |
+                                                       v
+                                                    Exit (9)
+
+Heat transfer scheme:
+Compressor1  <-->  Heatsink_c_t  <-->  Turbine1
+                       |
+                       +--- 1,000 W ---> Ambient
+                       |
+                      <->  Heatpath_ct_ba
+                       |
+Combustor1   <-->  Heatsink_b_a  <-->  ExhDuct
+                       |
+                      <->
+                    Ambient
