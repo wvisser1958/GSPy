@@ -133,7 +133,7 @@ class TTurboMap(TMap):
             )
 
     def _iter_operating_datasets(self):
-        """Yield consecutive result datasets separated by a <break> comment row."""
+        """Yield valid operating records grouped by output break rows."""
         table = self.simresultstable
 
         if table is None or table.empty:
@@ -149,9 +149,16 @@ class TTurboMap(TMap):
         )
 
         dataset_id = break_rows.cumsum()
+        plot_rows = ~break_rows
+        # Filter out rows with "Exception error" in the "Comment" column, if it exists
+        if "Comment" in table.columns:
+            error_rows = table["Comment"].astype(str).str.contains(
+                "Exception error", regex=False, na=False
+            )
+            plot_rows = plot_rows & ~error_rows
 
-        for _, dataset in table.loc[~break_rows].groupby(
-            dataset_id[~break_rows],
+        for _, dataset in table.loc[plot_rows].groupby(
+            dataset_id[plot_rows],
             sort=False
         ):
             if not dataset.empty:
